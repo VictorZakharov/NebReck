@@ -1,0 +1,44 @@
+/* damage + boost overlays */
+.vignette-damage {
+  position: absolute; inset: 0;
+  background: radial-gradient(ellipse at center, transparent 52%, rgba(255, 30, 20, 0.55) 100%);
+  opacity: 0; transition: opacity 0.1s ease;
+}
+.vignette-lowhull {
+  position: absolute; inset: 0;
+  background: radial-gradient(ellipse at center, transparent 58%, rgba(255, 30, 20, 0.4) 100%);
+  opacity: 0;
+}
+.vignette-lowhull.on { animation: lowhull 1.2s ease-in-out infinite; }
+@keyframes lowhull { 0%, 100% { opacity: 0.12; } 50% { opacity: 0.5; } }
+.vignette-jump {
+  position: absolute; inset: 0;
+  background: radial-gradient(ellipse at center, rgba(210, 245, 255, 0.95) 0%, rgba(120, 200, 255, 0.6) 55%, transparent 100%);
+  opacity: 0; transition: opacity 0.5s ease;
+  pointer-events: none;
+}
+
+/* HUD resources */
+.resource-line {
+  display: flex; gap: 16px; margin-top: 4px;
+  font-size: 12px; letter-spacing: 0.12em;
+}
+.resource-line span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.resource-line span i {
+  display: block;
+  width: 15px;
+  height: 15px;
+  font-style: normal;
+}
+.res-scrap { color: #ffa040; }
+.res-crystal { color: #2ee6c8; }
+.res-flux { color: #c26aff; }
+.hud-hint {
+  position: absolute; right: 34px; top: 48px;
+  font-size: 9.5px; letter-spacing: 0.24em; text-transform: uppercase;
+  opacity: 0.45; text-align: right;
+}

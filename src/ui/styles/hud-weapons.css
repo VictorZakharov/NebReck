@@ -1,0 +1,27 @@
+/* bottom-right weapons */
+.hud-weapons { right: 34px; bottom: 30px; text-align: right; width: 240px; }
+.weapon-name {
+  font-size: 15px; letter-spacing: 0.28em; text-transform: uppercase;
+  color: var(--accent); text-shadow: 0 0 10px var(--accent-dim);
+}
+.weapon-row { display: flex; gap: 12px; align-items: center; justify-content: flex-end; margin: 7px 0; }
+.weapon-energy { flex: 1; max-width: 130px; }
+.weapon-slots { display: flex; gap: 6px; justify-content: flex-end; }
+.weapon-slot {
+  width: 30px; height: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  font-size: 10px; line-height: 20px; text-align: center; opacity: 0.5;
+}
+.weapon-slot.active { border-color: var(--accent); color: var(--accent); opacity: 1; box-shadow: 0 0 8px var(--accent-dim); }
+.missile-status { font-size: 10.5px; letter-spacing: 0.26em; text-transform: uppercase; color: var(--warn); }
+.missile-status.cooling { opacity: 0.4; }
+
+/* 3D radar sphere — inboard of the weapons panel so the ship stays clear */
+.radar-wrap {
+  position: absolute; right: 296px; bottom: 14px;
+  width: 156px; height: 156px; opacity: 0.94;
+}
+.radar-canvas { width: 100%; height: 100%; display: block; }
+
+.boost-tag { font-size: 10px; letter-spacing: 0.5em; color: #c26aff; text-shadow: 0 0 10px #c26aff; opacity: 0; }
+.boost-tag.on { opacity: 1; animation: pulse-bar 0.5s ease-in-out infinite; }

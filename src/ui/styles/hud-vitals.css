@@ -1,0 +1,50 @@
+/* bottom-left status */
+/* Dismantled "Systems" card: three slim bottom-left clusters. */
+.hud-cluster {
+  position: absolute;
+  display: flex; flex-direction: column; gap: 5px;
+  z-index: 3;
+}
+.hud-vitals { left: 34px; bottom: 30px; width: 205px; }
+.hud-drive { left: 262px; bottom: 30px; width: 205px; }
+.hud-kit { left: 50%; bottom: 26px; transform: translateX(-50%); }
+.hud-resources {
+  position: absolute; right: 34px; bottom: 182px;
+  z-index: 3;
+}
+.pickup-fly {
+  position: absolute; z-index: 5;
+  transform: translate(-50%, -50%);
+  font-size: 16px; pointer-events: none;
+  text-shadow: 0 0 9px currentColor;
+  transition:
+    left 0.6s cubic-bezier(0.3, 0, 0.35, 1),
+    top 0.6s cubic-bezier(0.3, 0, 0.35, 1),
+    opacity 0.6s ease, transform 0.6s ease;
+}
+.fly-scrap { color: var(--warn); }
+.fly-crystal { color: #2ee6c8; }
+.fly-flux { color: #c26aff; }
+.bar-label {
+  display: flex; justify-content: space-between;
+  font-size: 10.5px; letter-spacing: 0.3em; text-transform: uppercase;
+  margin-bottom: 3px; opacity: 0.85;
+}
+.bar {
+  position: relative;
+  height: 7px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  clip-path: polygon(3px 0, 100% 0, calc(100% - 3px) 100%, 0 100%);
+  margin-bottom: 9px;
+}
+.bar > i {
+  display: block; height: 100%;
+  transition: width 0.12s linear;
+}
+.bar.shield > i { background: linear-gradient(90deg, #1899c9, var(--accent)); box-shadow: 0 0 8px var(--accent-dim); }
+.bar.hull > i { background: linear-gradient(90deg, #14a05a, #35e88a); }
+.bar.hull.low > i { background: linear-gradient(90deg, #a01414, var(--danger)); animation: pulse-bar 0.8s ease-in-out infinite; }
+.bar.energy > i { background: linear-gradient(90deg, #a06a14, var(--warn)); }
+.bar.boost > i { background: linear-gradient(90deg, #6a14a0, #c26aff); }
+.bar.jump > i { background: linear-gradient(90deg, #148a9c, #2ee6c8); box-shadow: 0 0 8px rgba(46, 230, 200, 0.4); }

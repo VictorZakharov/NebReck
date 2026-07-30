@@ -1,0 +1,89 @@
+/* offscreen enemy markers: chevron + range readout */
+.edge-marker { position: absolute; left: 0; top: 0; width: 0; height: 0; }
+.edge-arrow {
+  position: absolute; left: -8px; top: -14px;
+  width: 0; height: 0;
+  border-left: 8px solid transparent;
+  border-right: 8px solid transparent;
+  border-bottom: 13px solid var(--danger);
+  filter: drop-shadow(0 0 5px rgba(255, 59, 48, 0.9));
+  opacity: 0.9;
+}
+.edge-dist {
+  position: absolute; left: 0; top: 4px;
+  font-size: 10.5px; font-weight: 600; letter-spacing: 0.12em;
+  color: var(--danger);
+  background: rgba(4, 10, 18, 0.65);
+  padding: 1px 5px;
+  white-space: nowrap;
+  text-shadow: 0 0 6px rgba(255, 59, 48, 0.7);
+}
+.edge-marker.turret .edge-arrow { border-bottom-color: var(--warn); filter: drop-shadow(0 0 5px rgba(255, 167, 61, 0.8)); }
+.edge-marker.turret .edge-dist { color: var(--warn); text-shadow: 0 0 6px rgba(255, 167, 61, 0.6); }
+.edge-marker.far .edge-arrow { border-bottom-color: #96a5af; filter: none; opacity: 0.7; }
+.edge-marker.far .edge-dist { color: #96a5af; text-shadow: none; }
+.edge-marker.objective .edge-arrow { border-bottom-color: #ffd24a; filter: drop-shadow(0 0 6px rgba(255, 210, 74, 0.9)); }
+.edge-marker.objective .edge-dist { color: #ffd24a; text-shadow: 0 0 6px rgba(255, 210, 74, 0.6); }
+.edge-marker.merchant .edge-arrow { border-bottom-color: #8aff9f; filter: drop-shadow(0 0 6px rgba(138, 255, 159, 0.9)); }
+.edge-marker.merchant .edge-dist { color: #8aff9f; text-shadow: 0 0 6px rgba(138, 255, 159, 0.6); }
+.merchant-note { color: #8aff9f; }
+.planet-tag { color: #ffd24a; }
+
+/* interaction prompt + contract tracker */
+.interact-prompt {
+  position: absolute; left: 50%; bottom: 218px; transform: translateX(-50%);
+  font-size: 14px; font-weight: 600; letter-spacing: 0.3em; text-transform: uppercase;
+  color: #9fdcff;
+  background: rgba(4, 10, 18, 0.75);
+  border: 1px solid rgba(159, 220, 255, 0.5);
+  padding: 7px 18px;
+  opacity: 0; transition: opacity 0.15s ease;
+  text-shadow: 0 0 10px rgba(159, 220, 255, 0.6);
+}
+.interact-prompt.world-anchored {
+  bottom: auto;
+  white-space: nowrap;
+  transform: translate(-50%, calc(-100% - 18px));
+  animation: vein-prompt-float 1.8s ease-in-out infinite;
+}
+.interact-prompt.world-anchored::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 100%;
+  width: 1px;
+  height: 15px;
+  background: linear-gradient(rgba(159, 220, 255, 0.75), rgba(39, 232, 255, 0.15));
+  box-shadow: 0 0 7px rgba(39, 232, 255, 0.55);
+}
+@keyframes vein-prompt-float {
+  0%, 100% { margin-top: 0; }
+  50% { margin-top: -4px; }
+}
+/* contract offer review panel */
+.offer-panel {
+  position: absolute; right: 34px; top: 40%;
+  width: 320px;
+  background: linear-gradient(135deg, rgba(6, 16, 26, 0.88), rgba(4, 10, 18, 0.72));
+  border: 1px solid rgba(255, 210, 74, 0.5);
+  border-left: 3px solid #ffd24a;
+  padding: 16px 20px;
+  opacity: 0; pointer-events: none;
+  transition: opacity 0.15s ease;
+  clip-path: polygon(0 0, calc(100% - 14px) 0, 100% 14px, 100% 100%, 14px 100%, 0 calc(100% - 14px));
+}
+.offer-panel.show { opacity: 1; }
+.offer-head { font-size: 9.5px; letter-spacing: 0.5em; text-transform: uppercase; color: #ffd24a; opacity: 0.8; margin-bottom: 8px; }
+.offer-title { font-size: 15px; letter-spacing: 0.14em; color: #fff; margin-bottom: 8px; }
+.offer-desc { font-size: 12px; line-height: 1.55; opacity: 0.8; margin-bottom: 10px; }
+.offer-reward { font-size: 12px; letter-spacing: 0.12em; color: #8aff9f; margin-bottom: 12px; }
+.offer-keys { font-size: 11px; letter-spacing: 0.22em; text-transform: uppercase; opacity: 0.85; }
+.offer-keys b { color: var(--accent); }
+
+.quest-tracker { margin-top: 8px; display: flex; flex-direction: column; gap: 4px; }
+.quest-line {
+  display: flex; justify-content: space-between; gap: 14px;
+  font-size: 10.5px; letter-spacing: 0.14em; text-transform: uppercase;
+}
+.quest-line b { color: #ffd24a; font-weight: 600; }
+.quest-line span { color: var(--text); opacity: 0.85; }

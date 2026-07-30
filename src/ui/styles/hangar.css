@@ -1,0 +1,196 @@
+/* ---------- hangar ---------- */
+.screen.hangar {
+  justify-content: flex-start;
+  padding-top: 30px;
+  background: linear-gradient(90deg, rgba(1, 3, 8, 0.88) 0%, rgba(1, 3, 8, 0.25) 34%,
+              rgba(1, 3, 8, 0.15) 62%, rgba(1, 3, 8, 0.85) 100%);
+}
+.screen.hangar > h2 {
+  position: relative; z-index: 2;
+  min-width: 390px;
+  margin-bottom: 24px;
+  padding: 5px 58px 9px;
+  font-size: 27px; line-height: 1.08;
+  letter-spacing: 0.58em; text-indent: 0.58em;
+  color: #bffbff;
+  border-top: 1px solid rgba(39, 232, 255, 0.18);
+  border-bottom: 1px solid rgba(39, 232, 255, 0.28);
+  background:
+    linear-gradient(90deg, transparent, rgba(39, 232, 255, 0.7)) left 50% / 46px 1px no-repeat,
+    linear-gradient(90deg, rgba(39, 232, 255, 0.7), transparent) right 50% / 46px 1px no-repeat,
+    linear-gradient(90deg, transparent, rgba(39, 232, 255, 0.07), transparent);
+  text-shadow: 0 0 9px rgba(39, 232, 255, 0.5), 0 0 24px rgba(39, 232, 255, 0.2);
+}
+.screen.hangar > h2::after {
+  content: 'BAY 05  ·  FLIGHT DECK';
+  position: absolute; left: 50%; top: calc(100% + 5px);
+  transform: translateX(-50%);
+  color: var(--accent);
+  font-size: 8px; line-height: 1;
+  letter-spacing: 0.34em; text-indent: 0.34em;
+  opacity: 0.58; white-space: nowrap;
+  text-shadow: 0 0 8px rgba(39, 232, 255, 0.4);
+}
+/* Visor glass: soft curved sheen + darkened rim around the whole view. */
+.screen.hangar::before {
+  content: ''; position: absolute; inset: 0; pointer-events: none; z-index: 1;
+  background:
+    radial-gradient(ellipse 130% 95% at 50% 42%, transparent 58%, rgba(39, 232, 255, 0.05) 80%, rgba(4, 10, 18, 0.45) 100%),
+    linear-gradient(168deg, rgba(255, 255, 255, 0.045) 0%, transparent 24%);
+}
+/* Source DOM keeps layout and events while the visible copy is rasterized
+   onto convex WebGL sheets above the hangar scene. */
+.visor-src {
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+.hangar-stats, .hangar-ships, .hangar-right, .hangar-actions {
+  color: var(--text);
+  font-family: var(--font);
+}
+.hangar-ships { width: 900px; }
+.hangar-body {
+  position: relative;
+  display: flex; align-items: stretch; gap: 24px;
+  width: 100%; padding: 8px 38px 30px; flex: 1; min-height: 0;
+}
+.hangar-main { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+.hangar-center { flex: 1; } /* live 3D ship shows through here */
+.hangar-ships {
+  display: flex; flex-direction: row; gap: 14px;
+  pointer-events: auto;
+}
+.hangar-ships .ship-card { flex: 1; min-width: 0; max-width: 300px; }
+.hangar-right {
+  width: 300px; display: flex; flex-direction: column; gap: 7px;
+  align-self: flex-start;
+}
+.ship-card {
+  pointer-events: auto;
+  padding: 0 0 12px;
+  background: var(--panel);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  clip-path: polygon(12px 0, 100% 0, 100% calc(100% - 12px), calc(100% - 12px) 100%, 0 100%, 0 12px);
+}
+.ship-card:hover, .ship-card.visor-hover { border-color: var(--accent-dim); }
+.ship-card.selected {
+  border-color: var(--accent);
+  box-shadow: 0 0 26px rgba(39, 232, 255, 0.28);
+  background: linear-gradient(180deg, rgba(39, 232, 255, 0.1), var(--panel));
+}
+.ship-thumb {
+  width: 100%; height: 108px; object-fit: cover; display: block;
+  background: radial-gradient(ellipse at center, rgba(39, 232, 255, 0.08), transparent 70%);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  margin-bottom: 9px;
+}
+.ship-card-name { font-size: 16px; letter-spacing: 0.16em; color: #fff; padding: 0 14px; }
+.ship-card-role { font-size: 11px; letter-spacing: 0.4em; text-transform: uppercase; color: var(--accent); margin: 2px 0 8px; padding: 0 14px; }
+.stat-row { display: flex; align-items: center; gap: 8px; margin: 3.5px 0; padding: 0 14px; font-size: 10.75px; letter-spacing: 0.2em; text-transform: uppercase; }
+.stat-row span { width: 58px; opacity: 0.75; }
+.stat-track { flex: 1; height: 5px; background: rgba(255, 255, 255, 0.09); }
+.stat-track i { display: block; height: 100%; background: linear-gradient(90deg, #1899c9, var(--accent)); }
+.ship-detail {
+  background: var(--panel);
+  border: 1px solid var(--accent-dim);
+  padding: 16px 18px;
+  margin-bottom: 6px;
+}
+.ship-detail .ship-card-name, .ship-detail .ship-card-role { padding: 0; }
+.ship-detail-desc { font-size: 13px; line-height: 1.6; opacity: 0.8; margin-top: 6px; }
+.hangar-subhead { font-size: 12px; letter-spacing: 0.5em; text-transform: uppercase; color: var(--accent); opacity: 0.8; margin: 6px 0 2px; }
+.hardpoint-row { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+.hardpoint-chip {
+  font-size: 12px; letter-spacing: 0.12em; padding: 3px 9px;
+  border: 1px solid rgba(39, 232, 255, 0.35); color: var(--text);
+}
+.hardpoint-chip b { color: var(--accent); margin-right: 6px; font-weight: 600; }
+.hardpoint-chip.missile { border-color: rgba(255, 179, 71, 0.4); }
+.hardpoint-chip.missile b { color: var(--warn); }
+.hardpoint-chip.none {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 58px; height: 58px; padding: 0; text-align: center;
+  border-color: rgba(255, 255, 255, 0.15);
+  color: rgba(215, 244, 255, 0.55);
+}
+.hardpoint-row { position: relative; justify-content: center; }
+.hardpoint-chip.icon {
+  position: relative;
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 58px; height: 58px; padding: 0; cursor: help;
+}
+.hardpoint-chip.icon img { width: 44px; height: 44px; display: block; }
+.hardpoint-chip.icon b { position: absolute; top: 3px; left: 6px; font-size: 11px; margin: 0; }
+/* Instant tooltip — no native-title delay. */
+.hardpoint-chip[data-tip] { position: relative; }
+.hardpoint-chip[data-tip]::after {
+  content: attr(data-tip);
+  position: absolute; top: 50%; right: calc(100% + 12px);
+  transform: translateY(-50%);
+  width: 250px; padding: 10px 13px;
+  font-size: 14px; font-weight: 500; line-height: 1.45; letter-spacing: 0.035em;
+  text-transform: none; white-space: normal; text-align: left;
+  background: rgba(2, 8, 14, 0.995);
+  border: 1px solid rgba(39, 232, 255, 0.72);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.9);
+  color: rgba(215, 244, 255, 0.8);
+  opacity: 0; pointer-events: none;
+  z-index: 30;
+}
+/* All chips share one visual help anchor: just left of hardpoint 1. */
+.hardpoint-chip[data-tip]:nth-child(2)::after { right: calc(200% + 18px); }
+.hardpoint-chip[data-tip]:nth-child(3)::after { right: calc(300% + 24px); }
+.hardpoint-chip[data-tip]:nth-child(4)::after { right: calc(400% + 30px); }
+.hardpoint-chip[data-tip]:hover::after,
+.hardpoint-chip[data-tip].visor-hover::after { opacity: 1; }
+
+.diff-btn { display: flex; align-items: flex-start; gap: 12px; text-align: left; }
+.diff-icon { width: 30px; height: 30px; flex-shrink: 0; margin-top: 2px; }
+.diff-text { display: block; min-width: 0; }
+
+.hangar-stats {
+  position: absolute; left: 38px; top: 96px;
+  width: 250px; padding: 12px 16px;
+  background: linear-gradient(135deg, rgba(6, 16, 26, 0.78), rgba(4, 10, 18, 0.55));
+  border: 1px solid rgba(39, 232, 255, 0.16);
+  border-left: 2px solid rgba(39, 232, 255, 0.55);
+  clip-path: polygon(0 0, calc(100% - 14px) 0, 100% 14px, 100% 100%, 0 100%);
+}
+.hangar-stats .panel-title { margin-bottom: 8px; font-size: 10.5px; }
+.spec-line {
+  position: relative; overflow: hidden;
+  display: flex; justify-content: space-between;
+  font-size: 13px; letter-spacing: 0.14em; padding: 3.5px 6px 3.5px 4px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+/* Relative fill: 100% = roster-best for the stat. */
+.spec-line i {
+  position: absolute; left: 0; top: 2px; bottom: 2px; width: 0;
+  background: rgba(39, 232, 255, 0.1);
+  border-right: 1px solid rgba(39, 232, 255, 0.4);
+}
+.spec-line span { position: relative; opacity: 0.7; text-transform: uppercase; font-size: 11.5px; }
+.spec-line b { position: relative; color: var(--accent); font-weight: 600; }
+.diff-btn {
+  pointer-events: auto;
+  padding: 8px 14px;
+  background: var(--panel);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: var(--text); font-family: var(--font);
+  cursor: pointer; text-align: left;
+  transition: all 0.15s ease;
+}
+.diff-btn b { display: block; font-size: 16.5px; letter-spacing: 0.3em; text-transform: uppercase; margin-bottom: 4px; }
+.diff-btn span { font-size: 14px; line-height: 1.4; opacity: 0.78; }
+.diff-btn:hover, .diff-btn.visor-hover { border-color: var(--accent-dim); }
+.diff-btn.selected { border-color: var(--warn); box-shadow: 0 0 18px rgba(255, 179, 71, 0.25); }
+.diff-btn.selected b { color: var(--warn); }
+.hangar-actions {
+  position: absolute; right: 38px; bottom: 30px;
+  display: flex; width: 300px; gap: 12px;
+}
+/* Narrow flexed buttons: tighter padding/tracking so the label FITS — an
+   overflowing centered label eats the right padding and reads off-center. */
+.hangar-actions .ns-btn { min-width: 0; flex: 1; margin: 0; padding: 13px 8px; letter-spacing: 0.3em; }

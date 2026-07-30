@@ -1,0 +1,166 @@
+/* ---------- loadout ---------- */
+.screen.loadout { background: radial-gradient(ellipse at center, rgba(2, 6, 14, 0.5) 0%, rgba(1, 3, 8, 0.88) 100%); }
+.loadout-panel { display: flex; gap: 40px; max-width: 860px; max-height: 86vh; }
+.loadout-right { overflow-y: auto; min-height: 0; padding-right: 6px; }
+.loadout-right::-webkit-scrollbar { width: 8px; }
+.loadout-right::-webkit-scrollbar-track { background: rgba(255, 255, 255, 0.04); }
+.loadout-right::-webkit-scrollbar-thumb { background: var(--accent-dim); }
+.loadout-left { width: 270px; }
+.loadout-left h2 { margin-bottom: 6px; text-indent: 0; }
+.loadout-ship { font-size: 13px; letter-spacing: 0.3em; text-transform: uppercase; color: var(--warn); margin-bottom: 18px; }
+.loadout-subhead { font-size: 10.5px; letter-spacing: 0.4em; text-transform: uppercase; color: var(--accent); opacity: 0.8; margin: 16px 0 8px; }
+.res-line {
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr) minmax(2ch, auto);
+  align-items: center;
+  column-gap: 8px;
+  width: 100%;
+  font-size: 13.5px;
+  padding: 4px 12px 4px 8px;
+  border-left: 2px solid transparent;
+  box-sizing: border-box;
+}
+.res-line .res-glyph {
+  width: 18px;
+  height: 18px;
+  font-style: normal;
+  line-height: 1;
+  text-align: center;
+  justify-self: center;
+}
+.holding-icon {
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.35;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.holding-icon .icon-fill { fill: currentColor; stroke: none; }
+.holding-icon .icon-faint { opacity: 0.22; }
+.holding-icon .icon-solid { fill: currentColor; stroke: none; }
+.res-line .res-label { min-width: 0; }
+.res-line .res-count { margin: 0; font-size: 15px; justify-self: end; }
+.res-line.res-flux .holding-icon,
+.holding-icon.holding-flux {
+  filter: drop-shadow(0 0 3px rgba(194, 106, 255, 0.9));
+}
+.upgrade-line { display: flex; justify-content: space-between; font-size: 12px; padding: 4px 0; opacity: 0.9; }
+.pips .pip { display: inline-block; width: 9px; height: 9px; margin-left: 4px; border: 1px solid var(--accent-dim); transform: rotate(45deg); }
+.pips .pip.on { background: var(--accent); box-shadow: 0 0 6px var(--accent-dim); }
+.loadout-right { flex: 1; display: flex; flex-direction: column; gap: 12px; min-width: 400px; }
+.recipe-row {
+  display: flex; align-items: center; gap: 16px;
+  padding: 12px 14px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+.recipe-icon {
+  width: 52px; height: 52px; flex-shrink: 0;
+  background: rgba(39, 232, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 4px;
+}
+/* Fixed size: toggling Buy/Sell must not resize the popup (no layout shift). */
+.trade-panel { height: min(620px, 86vh); width: min(860px, 92vw); }
+
+/* Hover-link: the offer row and the hold currency it spends pulse together. */
+@keyframes link-pulse {
+  0%, 100% { box-shadow: 0 0 6px rgba(39, 232, 255, 0.25), inset 0 0 8px rgba(39, 232, 255, 0.08); }
+  50% { box-shadow: 0 0 16px rgba(39, 232, 255, 0.55), inset 0 0 14px rgba(39, 232, 255, 0.18); }
+}
+.res-line.linked {
+  border-left-color: var(--accent);
+  background: linear-gradient(90deg, rgba(39, 232, 255, 0.14), transparent 80%);
+  animation: link-pulse 1.1s ease-in-out infinite;
+}
+.recipe-row.linked {
+  border-color: var(--accent-dim);
+  animation: link-pulse 1.1s ease-in-out infinite;
+}
+.trade-tabs { display: flex; gap: 8px; margin-bottom: 12px; }
+
+.controls-panel { max-width: 900px; max-height: 82vh; }
+.controls-table kbd {
+  display: inline-block; min-width: 24px; padding: 3px 8px 4px;
+  font-family: var(--font); font-size: 11.5px; letter-spacing: 0.06em;
+  text-align: center; color: #eaf6ff;
+  background: linear-gradient(180deg, #3c4855, #222b35);
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  border-bottom: 3px solid rgba(0, 0, 0, 0.6);
+  border-radius: 5px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.14), 0 2px 3px rgba(0, 0, 0, 0.4);
+}
+.key-sep { opacity: 0.4; margin: 0 6px; font-size: 11px; }
+.key-note {
+  font-style: normal; font-size: 9.5px; opacity: 0.6;
+  margin-left: 5px; text-transform: uppercase; letter-spacing: 0.18em;
+}
+.mouse-glyph { vertical-align: middle; }
+.controls-table td:first-child { text-align: right; white-space: nowrap; padding-right: 16px; }
+.controls-cols { display: flex; gap: 46px; align-items: flex-start; }
+.controls-col { flex: 1; min-width: 0; }
+.controls-col .loadout-subhead { margin-top: 4px; }
+.trade-tab {
+  pointer-events: auto;
+  padding: 8px 30px;
+  background: rgba(39, 232, 255, 0.04);
+  border: 1px solid rgba(39, 232, 255, 0.2);
+  color: var(--text); font-family: var(--font);
+  font-size: 12.5px; letter-spacing: 0.3em; text-transform: uppercase;
+  cursor: pointer; transition: all 0.15s ease;
+}
+.trade-tab:hover { border-color: var(--accent-dim); }
+.trade-tab.active {
+  border-color: var(--accent); color: var(--accent);
+  background: rgba(39, 232, 255, 0.12);
+  box-shadow: 0 0 14px rgba(39, 232, 255, 0.2);
+}
+.trade-icon {
+  width: 64px; height: 64px; flex-shrink: 0;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 3px;
+}
+.close-x {
+  position: absolute; top: 10px; right: 12px;
+  pointer-events: auto;
+  width: 34px; height: 34px;
+  background: rgba(255, 59, 48, 0.08);
+  border: 1px solid rgba(255, 59, 48, 0.4);
+  color: var(--danger); font-size: 16px; font-family: var(--font);
+  cursor: pointer; transition: all 0.15s ease;
+}
+.close-x:hover { background: rgba(255, 59, 48, 0.25); border-color: var(--danger); }
+/* Chips hidden until the first HUD update decides their real visibility. */
+.planet-tag, .merchant-note { display: none; }
+.recipe-name { font-size: 13.5px; letter-spacing: 0.18em; text-transform: uppercase; color: #fff; }
+.recipe-desc { font-size: 11.5px; line-height: 1.5; opacity: 0.7; margin: 3px 0 6px; }
+.recipe-cost { display: flex; gap: 8px; }
+.res-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  padding: 2px 8px;
+  border: 1px solid currentColor;
+}
+.res-chip .chip-holding-icon { width: 14px; height: 14px; }
+.trade-arrow { align-self: center; color: #8aff9f; opacity: 0.7; }
+.trade-gain { color: #8aff9f; }
+.res-chip.short { opacity: 0.35; }
+.recipe-info { flex: 1; }
+.craft-btn {
+  pointer-events: auto;
+  padding: 9px 22px;
+  background: rgba(39, 232, 255, 0.1);
+  border: 1px solid var(--accent-dim);
+  color: var(--text); font-family: var(--font);
+  font-size: 11.5px; letter-spacing: 0.3em; text-transform: uppercase;
+  cursor: pointer; transition: all 0.15s ease;
+}
+.craft-btn:hover:not(:disabled) { border-color: var(--accent); box-shadow: 0 0 14px rgba(39, 232, 255, 0.3); }
+.craft-btn:disabled { opacity: 0.3; cursor: default; }
+.loadout-hint { margin-top: 20px; font-size: 10.5px; letter-spacing: 0.4em; text-transform: uppercase; opacity: 0.5; }

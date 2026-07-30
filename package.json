@@ -1,0 +1,42 @@
+{
+  "name": "cleverspace",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Nebula Reckoning — a fast arcade space dogfighter built with three.js",
+  "license": "MIT",
+  "author": "Victor Zakharov",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/VictorZakharov/CleverSpace.git"
+  },
+  "bugs": {
+    "url": "https://github.com/VictorZakharov/CleverSpace/issues"
+  },
+  "homepage": "https://github.com/VictorZakharov/CleverSpace#readme",
+  "scripts": {
+    "dev": "webpack serve --mode development",
+    "build": "webpack --mode production",
+    "typecheck": "tsc --noEmit",
+    "test:visual": "node test/visual/run.mjs",
+    "test:visual:update": "node test/visual/run.mjs --update",
+    "test:smoke": "node test/smoke.mjs"
+  },
+  "dependencies": {
+    "postprocessing": "^6.36.4",
+    "three": "^0.170.0"
+  },
+  "devDependencies": {
+    "@types/three": "^0.170.0",
+    "css-loader": "^7.1.2",
+    "html-webpack-plugin": "^5.6.3",
+    "pixelmatch": "^6.0.0",
+    "playwright": "^1.49.0",
+    "pngjs": "^7.0.0",
+    "style-loader": "^4.0.0",
+    "ts-loader": "^9.5.1",
+    "typescript": "^5.6.3",
+    "webpack": "^5.96.1",
+    "webpack-cli": "^5.1.4",
+    "webpack-dev-server": "^5.1.0"
+  }
+}

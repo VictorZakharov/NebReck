@@ -1,0 +1,59 @@
+# Nebula Reckoning — agent guide
+
+Last updated: 2026-07-30.
+
+Everspace-inspired exploration space-dogfighter. three.js + TypeScript + webpack,
+100% procedural (no binary assets). Read the docs before coding:
+
+- `docs/SYSTEMS.md` — gameplay rules and the actual balance numbers (start here
+  for any feature; most systems interlock through flux/alert/contracts).
+- `docs/ARCHITECTURE.md` — module map, state machine, frame flow, space↔planet
+  environment duality (`Game.world` accessor, `spaceStash` persistence).
+- `docs/GOTCHAS.md` — real bugs that shipped and their root causes. The lookAt/+Z,
+  light-count-recompile, and rng-fork-order entries WILL bite again if unread.
+- `docs/EXTENDING.md` — per-feature recipes (weapon, quest kind, device, base
+  template, marker kind, …).
+- `docs/TESTING.md` — the harness contract and staging rules.
+
+## Non-negotiable project rules
+
+1. **Every reported visual issue gets its own harness scene**, and you iterate on
+   the captured PNGs (Read them, judge them) until it looks right BEFORE handing
+   back. Behavioral bugs get smoke-test assertions that would have caught them.
+2. **Determinism**: all gameplay/world randomness via `core/Rng` streams; no
+   `Math.random()` or wall-clock in anything render-affecting; new world-gen rng
+   consumers are APPENDED after existing `fork()` calls.
+3. Ships nose along **-Z**: use `Ship.faceToward`, never `Object3D.lookAt`.
+4. Single-responsibility files; only `game/Game.ts` wires systems together. Its
+   render/input helpers live beside it (`CloakVisual`, `HudProjection`,
+   `InteractionTargeting`, `WorldCollision`, `GamePreferences`), not back inside
+   the orchestrator. Reuse `ui/ResourceIcons.ts` for material/consumable symbols;
+   do not introduce one-off Unicode glyphs in DOM inventory UI.
+5. Pooled + allocation-free per frame; pooled lights idle at intensity 0.
+
+Planet cave geometry is an open-bottomed procedural arch whose sampled colliders
+come from the same profile. Preserve the non-self-intersecting control path, dense
+`CaveLandmark.route`, terrain-triangle `heightAt` sampler, overlapping wall lattice,
+base/cave exclusion zones, open guard anchors, bounded rock aspect ratios, and
+closing-speed collision damage whenever surface generation changes.
+
+Hangar selection clicks are persistence commits. Save ship/difficulty synchronously
+inside the click callbacks; do not defer them to Engage or game entry.
+
+## Verify loop (run all three before claiming done)
+
+```bash
+npm run typecheck
+npm run test:visual          # 22 scenes vs local baselines; 0.000% on this machine
+npm run test:smoke           # full loop: peace→contract→merchant→planet→jump→combat→devices
+```
+
+Visual baselines are local generated artifacts and are intentionally Git-ignored.
+On a fresh clone the first run creates them; rerun to perform the comparison.
+After intentional visual changes: `npm run test:visual:update` (optionally
+`-- --scene=<name>`), then view the changed PNGs. Never commit generated PNGs.
+Dev server: `npm run dev` (port 8080 by default; pass
+`-- --host 127.0.0.1 --port 8123` for the review URL). Static scenes use
+`?testScene=<name>&seed=7`; the interactive rotating hangar uses
+`?testScene=hangar-live&seed=7`; isolated automation uses `?seed=99&headless=1`
+(no pointer lock, cookies, or meta persistence).

@@ -1,0 +1,139 @@
+# Nebula Reckoning
+
+Last updated: 2026-07-30.
+
+[MIT License](LICENSE) · [Contributing](CONTRIBUTING.md) ·
+[Security](SECURITY.md)
+
+> **Development note:** This project was vibe-coded over just two real-time days
+> using a combination of Fable 5 High and GPT-5.6 Sol Max.
+
+A fast arcade space dogfighter in the spirit of Everspace, built from scratch with
+**three.js + TypeScript + webpack**. Original fiction: you are Wren Callis, flying
+prototype hulls against the Vigil — an ancient machine fleet "preserving" the Halcyon
+Drift by emptying it.
+
+Everything is procedural: ships, cockpit, nebula skyboxes, planets, asteroid fields,
+particle FX, and even the audio (WebAudio synthesis — zero binary assets in the repo).
+
+## The loop
+
+Launch into a **peaceful first sector** with full jump fuel — mine ore veins, crack
+cave asteroids and wreck blackboxes, hail haulers (R) for **procedural contracts**
+(bounties, procurement, beacon deliveries, cross-sector courier runs) — then spool
+the jump drive (J, 2 Flux Cores) into ever-meaner sectors. Vigil kills raise your
+**alert**; hunter wings come collecting. Death banks your score as **credits** for
+permanent Legacy upgrades. The capital ship suppresses your jump drive — kill it or
+outrun its field.
+
+## Features
+
+- **Three playable ships** (Kestrel interceptor / Vanta scout / Aegis gunship) chosen
+  in an interactive convex-visor hangar, plus three difficulty tiers with real
+  multipliers. The card click itself commits each selection to a one-year browser
+  cookie; Engage or game entry is not required.
+- **Combat**: three energy weapons + lock-on seeker missiles, soft-targeting with lead
+  pip, enemy AI wings (approach/attack/break), escalating waves with story comms.
+- **Mining & crafting**: shoot glowing ore veins on asteroids, tractor in salvage
+  (Scrap / Ion Crystals / Flux Cores), spend it mid-run in the Tab Engineering screen
+  on repairs, refills and three-rank per-run upgrades. A shared original SVG set
+  identifies every material/consumable in the HUD, hold and cost chips. Vein hints
+  follow a stable, smoothly projected vein centroid; crafting purchases keep the
+  current scroll position.
+- **Planet dungeons**: broad, open-bottomed rock arches over carved cave routes,
+  connected angular bases, patrols, turrets, stashes and crystals. Visible cave
+  rock and its overlapping outward collision shell share one profile, while ground
+  collision interpolates the exact rendered terrain triangles. Cave paths cannot
+  fold through themselves, entrances stay clear, rock formations use bounded
+  lobes instead of needle spires, and impact damage scales with closing speed.
+  Revisiting the same planet in a sortie restores the exact terrain, harvested
+  loot, surviving enemies and cleared garrison state.
+- **Two cameras**: banked chase cam and a first-person cockpit with glowing MFDs,
+  blended smoothly (V).
+- **Visuals**: fragment-correct solar corona, HDR bloom, ACES tonemap, SMAA,
+  chromatic aberration on boost, procedural nebula/planets/asteroids, and pooled
+  explosions with shockwaves and lights.
+- **144 Hz ready**: rAF-driven loop, all simulation dt-scaled and frame-rate independent.
+
+## Run
+
+```bash
+npm install
+npm run dev        # http://localhost:8080
+npm run build      # production bundle → dist/
+```
+
+For the interactive hangar review route used during development:
+
+```text
+http://127.0.0.1:8123/?testScene=hangar-live&seed=7
+```
+
+## Controls
+
+| Input | Action |
+|---|---|
+| Mouse | Steer (pitch/yaw) |
+| LMB / RMB | Primary fire / seeker missile |
+| W / S | Thrust / brake |
+| A / D, Space / L-Ctrl | Strafe |
+| Q / E | Roll |
+| Shift | Boost |
+| 1·2·3 / wheel | Switch weapon |
+| V | Toggle cockpit / chase camera |
+| Tab | Engineering (craft & repair) |
+| J (hold) | Spool jump / land / lift off |
+| R | Hail, trade, deliver or accept |
+| F / G / H | Cloak / EMP / nanobots |
+| Esc | Pause |
+
+The in-game **Field Manual** (main menu) documents every implemented mechanic.
+
+## Testing
+
+```bash
+npm run typecheck            # strict TS, no emit
+npm run test:visual          # compare 22 scenes with local, ignored baselines
+npm run test:visual:update   # re-capture local baselines after intentional changes
+npm run test:smoke           # end-to-end behavior + persistence regression suite
+```
+
+The visual harness (`test/visual/run.mjs`) builds the app, serves `dist/`, drives
+headless Chromium on SwiftShader (software GL → GPU-independent pixels), loads each
+scene via `/?testScene=<name>&seed=7`, and diffs screenshots with pixelmatch.
+Scenes are staged deterministically (seeded RNG, fixed-step simulation, frozen CSS
+animations) — a same-machine re-render diffs at exactly 0.000%. Baselines are local
+generated artifacts and are intentionally not committed: the first run creates
+them, and subsequent runs compare against them. The 22 scenes cover world art,
+every major screen, targeting, combat/FX, caves, bases, trade, fleet connectivity,
+cloak and controls. Failure diffs land in `test/visual/diff/`.
+
+## Documentation
+
+- [docs/SYSTEMS.md](docs/SYSTEMS.md) — the gameplay rulebook: every mechanic with
+  its actual numbers (travel, alert, contracts, economy, devices, meta, planets).
+- [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) — module map, state machine, frame
+  flow, space↔planet environment duality, rendering pipeline, event catalog.
+- [docs/GOTCHAS.md](docs/GOTCHAS.md) — hard-won pitfalls with root causes
+  (lookAt/+Z, light-count recompiles, rng fork order, clip-path label clipping,
+  pointer-lock quirks, …). **Read before touching world gen, cameras, or AI.**
+- [docs/EXTENDING.md](docs/EXTENDING.md) — per-feature recipes: weapon, enemy,
+  ship, quest kind, device, trade, base template, marker kind, and tuning knobs.
+- [docs/TESTING.md](docs/TESTING.md) — harness contract, per-scene coverage,
+  staging rules, smoke assertions.
+- [CLAUDE.md](CLAUDE.md) — condensed agent onboarding + non-negotiable rules.
+
+## Contributing
+
+Issues and pull requests are welcome. Start with
+[CONTRIBUTING.md](CONTRIBUTING.md), which documents setup, required checks, and
+the project's deterministic rendering rules. Please report security issues
+privately as described in [SECURITY.md](SECURITY.md).
+
+## License
+
+Copyright © 2026 Victor Zakharov.
+
+Nebula Reckoning is released under the [MIT License](LICENSE). Production
+bundles include the license and the notices for incorporated dependencies in
+[THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).

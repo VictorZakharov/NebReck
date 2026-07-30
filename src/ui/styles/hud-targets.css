@@ -1,0 +1,61 @@
+/* target boxes */
+.target-box {
+  position: absolute;
+  width: 46px; height: 46px;
+  transform: translate(-50%, -50%);
+  border: 1.5px solid var(--warn);
+  clip-path: polygon(0 0, 30% 0, 30% 8%, 8% 8%, 8% 30%, 0 30%,
+                     70% 0, 100% 0, 100% 30%, 92% 30%, 92% 8%, 70% 8%,
+                     100% 70%, 100% 100%, 70% 100%, 70% 92%, 92% 92%, 92% 70%,
+                     0 70%, 8% 70%, 8% 92%, 30% 92%, 30% 100%, 0 100%);
+  box-shadow: 0 0 12px rgba(255, 179, 71, 0.4);
+  transition: opacity 0.15s;
+}
+.target-dist {
+  position: absolute;
+  transform: translate(-50%, 0);
+  font-size: 13px; font-weight: 600; letter-spacing: 0.18em; color: var(--warn);
+  background: rgba(4, 10, 18, 0.7);
+  border: 1px solid rgba(255, 179, 71, 0.45);
+  padding: 2px 9px;
+  white-space: nowrap;
+  text-shadow: 0 0 8px rgba(255, 179, 71, 0.6);
+}
+.lead-pip {
+  position: absolute;
+  width: 10px; height: 10px;
+  transform: translate(-50%, -50%) rotate(45deg);
+  border: 1.5px solid var(--accent);
+  box-shadow: 0 0 8px var(--accent-dim);
+}
+
+/* on-screen (unlocked) hostile brackets */
+.contact-marker {
+  position: absolute;
+  width: 26px; height: 26px;
+  transform: translate(-50%, -50%) rotate(45deg);
+  border: 1.5px solid rgba(255, 59, 48, 0.85);
+  box-shadow: 0 0 8px rgba(255, 59, 48, 0.35);
+}
+.contact-dist {
+  position: absolute;
+  left: 50%; top: 30px;
+  transform: rotate(-45deg) translate(-4px, 10px);
+  font-size: 10px; font-weight: 600; letter-spacing: 0.1em;
+  color: var(--danger);
+  background: rgba(4, 10, 18, 0.6);
+  padding: 1px 4px;
+  white-space: nowrap;
+  text-shadow: 0 0 6px rgba(255, 59, 48, 0.7);
+}
+/* Turrets mark amber; anything beyond current weapon reach goes grey. */
+.contact-marker.turret { border-color: rgba(255, 167, 61, 0.9); box-shadow: 0 0 8px rgba(255, 167, 61, 0.35); }
+.contact-marker.turret .contact-dist { color: var(--warn); text-shadow: 0 0 6px rgba(255, 167, 61, 0.6); }
+.contact-marker.far { border-color: rgba(150, 165, 175, 0.65); box-shadow: none; }
+.contact-marker.far .contact-dist { color: #96a5af; text-shadow: none; }
+.contact-marker.neutral { border-color: rgba(159, 220, 255, 0.8); box-shadow: 0 0 8px rgba(159, 220, 255, 0.3); border-style: dashed; }
+.contact-marker.neutral .contact-dist { color: #9fdcff; text-shadow: 0 0 6px rgba(159, 220, 255, 0.5); }
+.contact-marker.objective { border-color: rgba(255, 210, 74, 0.95); box-shadow: 0 0 12px rgba(255, 210, 74, 0.45); }
+.contact-marker.objective .contact-dist { color: #ffd24a; text-shadow: 0 0 6px rgba(255, 210, 74, 0.6); }
+.contact-marker.merchant { border-color: rgba(138, 255, 159, 0.95); box-shadow: 0 0 12px rgba(138, 255, 159, 0.4); border-style: double; }
+.contact-marker.merchant .contact-dist { color: #8aff9f; text-shadow: 0 0 6px rgba(138, 255, 159, 0.6); }

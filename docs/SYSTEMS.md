@@ -1,0 +1,208 @@
+# Systems & balance reference
+
+Last updated: 2026-07-30.
+
+The gameplay rulebook: what every system does, with the actual numbers and where
+they live. When designing a feature, check here first — most mechanics interlock
+(flux is fuel AND crafting feedstock AND merchant currency; alert links combat to
+travel; contracts link neutrals to everything).
+
+## The loop
+
+Launch (hangar: ship + difficulty) → **peaceful sector 1** (no Vigil, full jump
+fuel, merchant guaranteed) → explore/mine/trade/contract → **hold-J** jump into
+ever-meaner sectors (or dive onto planets) → death banks score÷10 as **credits**
+→ Legacy shop → next run. Per-run upgrades die with you; Legacy is permanent.
+
+## Environments
+
+| | Space sector | Planet surface |
+|---|---|---|
+| Built by | `Sector` (seeded from `Game.sectorRng.fork()`) | `PlanetSurface` |
+| Bodies list | `sector.asteroids.bodies` | `surface.bodies` |
+| Routed via | `Game.world` accessor (bodies/destroyRock/depleteOre/spawnChild) | same |
+| Hostiles | patrols, cave turrets, capital + batteries, hunters | base turrets + patrols (scaled by sector threat) |
+| Neutral traffic | haulers ×3, merchant (guaranteed s1, 70% after) | none |
+| Persistence | **exact across planetfall** (`spaceStash` detach/restore) | **exact across revisits in the current sector/sortie** (`planetStates`: surface + surviving garrison + pickups) |
+| Exit | hold-J jump (sector++) or planet dive (aim at planet) | hold-J aiming skyward (forward.y > 0.5) |
+
+Death/quit while landed: `discardSurface()` drops surface + stash, restores sector.
+Leaving the sector/sortie disposes its cached planet visits. A harvested node,
+destroyed enemy, or moved pickup otherwise stays changed when returning to that
+same planet.
+
+## Travel (Game.startJump / completeJump)
+
+- HOLD J: 5 s spool (`JUMP_SPOOL_TIME`); release cancels; **any player hit cancels**.
+- Sector jump: costs **2 Flux** (`JUMP_FLUX_COST`, charged at completion), requires
+  clear 340 u forward corridor (`jumpPathBlocked`), blocked inside 600 u of a live
+  capital (`JUMP_SUPPRESS_RANGE`). Arrival: fresh sector, +15%/sector threat
+  (`threatScale`), glide-in at 55 u/s, alert −2 tiers of heat.
+- Planet dive: free, no suppression/corridor check; triggers when a planet is inside
+  the crosshair cone (`findAimedPlanet`: angular radius + 0.04 rad).
+- Warp FX: `WarpTunnel` (camera-parented) intensity = spool progress; aberration punch.
+- A launch without an explicit `?seed=` rolls fresh entropy before the first sector,
+  so a new game does not keep replaying the same level theme. Explicit seeds remain
+  deterministic for tests and reproductions.
+
+## Threat & encounters (EncounterDirector)
+
+- **Alert 0–5** = floor(heat/3). Heat: fighter kill +1, turret +2, capital +6.
+- Alert ≥1 → hunter wings (2 + alert/2, max 5) dispatched every 55–85 s (−5 s/alert),
+  arriving 900–1200 u out on a shared vector. Ambient scout pair every 100–160 s.
+- Gated OFF in sector 1 and on planets.
+- Difficulty multipliers (`Difficulty.ts`): Rookie ×0.6 dmg /0.8 tough /0.75 aggr;
+  Veteran ×1; Reckoning ×1.45/1.3/1.3, score ×1.6.
+- Patrol wings detect the player at **380 u** (`PATROL_DETECT_RANGE`) or when shot.
+- Safe spawn: 48 candidates ≤750 u, max-min distance to hostiles **and patrol
+  waypoints**; planets: 40 candidates scored distance + 500 bonus if terrain blocks
+  every hostile sightline (`pickSpawn`).
+
+## Combat
+
+- Player weapons share one energy pool (regen × ship's `energyMult`); weapon reach =
+  `projectileSpeed × life` (pulse ≈ 544, scatter ≈ 243, lance ≈ 774) — drives the
+  grey out-of-range markers. Missiles: soft-lock seekers, 1.35 s cooldown.
+- Targeting soft-lock: 18° acquire cone / ~28° keep, 1500 u max, over ALL
+  hostiles (fighters + turrets + capital). Score `(1-dot)*400 + dist*0.5` with a
+  −60 keep-bonus: a much closer turret beats a distant fighter at similar angle.
+- Target preview (top-left, `TargetPreview.ts`): edge-wireframe of the locked
+  hostile in its REAL view-space orientation (nose-on when charging, tail-on
+  when fleeing), line color green→red by hull fraction; name + hull bar below.
+- Turrets: 340 u range, fire only with `hasLineOfSight` (terrain + big bodies,
+  own-mount excluded).
+- EMP stun: hostiles dead-stick (velocity decay, no fire). Cloak: brains go blind —
+  patrollers keep patrolling, engaged ships drift on their personal offset vector.
+- Ramming, asteroid scrapes, terrain impacts: speed-scaled hull damage.
+
+## Marker color language (HUD + edge chevrons + radar, always consistent)
+
+| Color | Meaning |
+|---|---|
+| red | hostile ship within current-weapon reach |
+| amber | turret (edge chevrons only ≤800 u; radar always) |
+| grey | hostile beyond current-weapon reach |
+| blue dashed | neutral hauler (no edge chevrons) |
+| **green double** | **merchant — marked at ANY range** + "⚖ Merchant" by sector readout |
+| gold | delivery-contract beacon |
+
+Locked target: orange box + lead pip + range chip. Every visible hostile gets a
+bracket; off-screen ones get chevrons with range.
+
+## Contracts (Quests.ts) — hail a hauler with R
+
+Offer shown in a review panel (title/description/pay) and **read aloud via
+SpeechSynthesis**; R accepts, X declines; max 2 active; tracker under the score
+panel, full log in Engineering (Tab).
+
+| Kind | Weight | Completes | Reward |
+|---|---|---|---|
+| bounty (N fighters) | 35% | kill count anywhere | 250·N pts + ●1 |
+| collect (X resource) | 30% | hail any hauler holding X (consumed) | 120·X pts + ●2 |
+| delivery (gold beacon 700–1300 u) | 20% | fly within 70 u | 900 pts + ◆3 ●1 |
+| courier (cross-sector) | 15% | complete a sector JUMP | 800 pts + ●3 |
+
+Jumping voids in-sector deliveries; planetfall does NOT (sector persists).
+
+## Economy
+
+- **Scrap**: amber ore veins, kills, wrecks, stashes. Sinks: nanobots, upgrades, trade.
+- **Ion Crystal**: teal veins, crystal formations (planets), stashes. Sinks: shield
+  cells/upgrades, weapon amps.
+- **Flux Core**: rare — brutes/turrets/capital kills, stashes, contract pay,
+  merchant (8 Scrap → 1 Flux). Sinks: **jumps (2)**, engine tune, shield matrix.
+- Scrap, crystal, flux, nanobots and seekers share original inline SVG marks in
+  HUD/hold/cost UI (`ResourceIcons.ts`); canvas/text-only feedback keeps compact
+  fallback symbols.
+- Ore mechanics: veins crack at `oreHp` (26 + scale·0.8); rock death releases buried
+  ore. Rocks ≥9 radius calve into 2–3 palette-matched children (reserved instance
+  slots); smaller rocks pop. No calving on planets. The “Mine the vein” prompt
+  attaches to the owning vein's centroid and is exponentially damped in screen
+  space, so aim moving between crystals does not jerk the label.
+- Stashes (`stash: true` bodies): mixed burst 3▲ 3◆ 2●. Found at bases, in caves,
+  cave asteroids, wreck blackboxes.
+- Merchant stock (`Trade.ts`): buy Flux 1 = Scrap 8 · nano = Scrap 5 ·
+  crystals 3 = Scrap 6; sell crystals 3 = Scrap 6 · Flux 1 = Scrap 10.
+  Trade screen rows carry painterly offer art (`TradeIcons.ts`), structured
+  SVG cost/gain holdings, and a ✕ close button. Purchases play SFX but no
+  merchant voiceover; docking fades the engine loop fully silent; Esc/R
+  undocks back to flight (auto-pause grace, no menu trip).
+
+## Devices & consumables (Devices.ts)
+
+| | Key | Effect | Numbers |
+|---|---|---|---|
+| Cloak | F | untargetable, brains blind; predator glass visual (hull 0.045 opacity + iridescent rim shell, engine glow ×0.12) | ≤12 s / 30 s cd; DRAINS weapon energy 2.5/s idle · 7/s moving · 16/s boosting — dry bank or FIRING breaks it |
+| EMP | G | stuns hostiles in radius | 250 u, 4 s stun / 25 s cd |
+| Nanobots | H | hull heal (crafted consumable) | +35 hull, stock via crafting/merchant |
+| Seekers | RMB | homing missiles, AMMO-gated | start ×8; restock: merchant ▲5→×4, craft ▲3→×2; Vanta has NO rack, Aegis fires at 2× rate |
+
+## Crafting (Inventory.ts RECIPES → Game.craft)
+
+nanobot-kit 6▲ (repeatable) · shield-cell 5◆ (instant +40, refused at full) ·
+weapon-amp 8◆4▲ (+15% dmg ×3) · engine-tune 8▲1● (+8% spd ×3) · shield-matrix
+8◆1● (+25 max shield ×3). Per-run only. A successful craft rerenders the recipe
+state without changing the right-hand list's scroll position.
+
+## Meta progression (MetaProgress.ts, localStorage, headless-disabled)
+
+Credits = floor(score/10) banked at death. Legacy upgrades: hull +10%×3 (400·n cr),
+damage +5%×3 (500·n), boost +10%×3 (350·n), starting scrap +4×2 (300·n). Applied in
+`createPlayer` (stat-block copy — never mutate the `PLAYER_SHIPS` catalog).
+
+## Ships (Ships.ts)
+
+Roster order: smallest first. Per-ship weapon LOADOUTS (WeaponSystem.setLoadout
+drives HUD slots, digit keys and wheel), energy banks and missile racks:
+- **Vanta** (scout, mesh ×0.78 — genuinely smaller & harder to hit): pulse +
+  lance, energy bank 55, NO seeker rack, energyMult 0.9.
+- **Kestrel** (balanced): pulse + lance, bank 100, standard rack, mult 1.0.
+- **Aegis** (gunship): ROTARY AUTOGUN (0.055 s cd, 2.6 dmg) + Fragment Storm
+  (Aegis-exclusive), bank 140, DOUBLE-rate rack, mult 1.35.
+Ion Lance: 0.28 s cd, 16 energy/shot — burst weapon, gated hard by the bank.
+Hangar shows hardpoint chips + a top-left numeric spec panel on one shared,
+outward-convex interactive visor; drag any mouse button on empty space to orbit
+the showcase. Ship and difficulty selections are validated and written
+immediately to one-year `cleverspace_ship` / `cleverspace_difficulty` cookies,
+even before Engage. Enemy: raider (fast, 34 hull) /
+brute (110 hull, drops flux 60%). Capital: 1600 hull, 4 hull-mounted batteries
+(die with it, NOT individually targetable — its hull sphere eats the bolts, so
+lock and damage route to the ship), 2500 pts, projects jump suppression.
+Turret: 60 hull, 200 pts.
+
+## Planet surface content (`PlanetSurface*.ts`)
+
+Analytic terrain = sines + 2–4 gaussian mountains + 3–5 rimmed craters + fine
+high-frequency detail sampled into a smooth-shaded SEG 180 grid. Runtime
+`heightAt` interpolates the exact rendered triangles rather than independently
+re-evaluating the analytic function, eliminating invisible ground at steep
+carves. Base sites are
+picked BEFORE terrain build and register **flattened foundation pads** (r 95,
+smoothstep blend) in `analyticHeightAt`, so installations sit level; boulders/
+crystals are displaced off pads (`onPad`). Vertex color: height gradient +
+strata bands + mineral patches + slope darkening. Content: 90 destructible
+boulders, 6–10 bounded multi-lobe rock formations, 4–6 lootable crystal
+formations, and 2–3
+**continuous cave routes** (`PlanetSurfaceCave.ts`): a Catmull-Rom path drives
+a broad, rough, open-bottomed rock arch from a broken mouth to an end chamber
+with stash/crystals, bounded rock lobes, light, and an interior guard. Control
+points form one broad-turn ordered walk and cannot fold a pseudo-branch back
+through the tunnel. Overlapping spheres sampled from and offset outside the same
+arch profile make visual rock equal collision rock. A dense approach route
+follows the first bend;
+terrain ramps, base/cave exclusion zones, side-only mouth rubble, and
+clearance-selected guard anchors keep entrances and enemies accessible. Body
+impact damage is linear in inward closing speed after a 4 m/s dead zone, so a
+parked overlap causes none. Every other visible obstacle registers with the
+shared body list and therefore blocks ships, fire, and line of sight. There are
+also 2–3 bases from templates (`PlanetSurfaceBase.ts`) — each on an angular hub
+with radial service decks and a connected landing pad, perimeter warning pylons,
+lit slit windows, floodlight poles, cargo containers, service pipes, plus its
+silhouette: compound (3 AABB
+blocks/3 rooftop guns, antenna, roof vents) · comm (lattice relay mast +
+gimballed dish + shed/2) · depot (4 domed silos + manifold + pump house + hazard
+bunds/1, double loot) · fortress (buttressed keep, parapets, lit gate, 4 capped
+towers/4). `baseLandmarks` exposes {center, kind} for staging. Player spawns on
+the surface with **level attitude** (yaw only). Each installation gets a low
+patrol wing (2–3). Revisit persistence detaches and reattaches the exact
+surface/garrison state instead of rebuilding it from the seed.

@@ -1,0 +1,6 @@
+/* device readouts (cloak / EMP / nanobots) */
+.device-row { display: flex; gap: 14px; margin-top: 7px; font-size: 10px; letter-spacing: 0.16em; text-transform: uppercase; }
+.device { color: var(--accent); opacity: 0.92; }
+.device.cooling { color: #96a5af; opacity: 0.55; }
+.device.on { color: #8aff9f; text-shadow: 0 0 8px rgba(138, 255, 159, 0.6); animation: pulse-bar 0.8s ease-in-out infinite; }
+@keyframes pulse-bar { 50% { opacity: 0.55; } }

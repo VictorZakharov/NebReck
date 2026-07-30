@@ -1,0 +1,12 @@
+/* ---------- field manual ---------- */
+.manual-panel { max-width: 900px; max-height: 72vh; overflow-y: auto; }
+.manual-cols { display: flex; gap: 44px; }
+.manual-col { flex: 1; }
+.manual-col h3 {
+  font-weight: 300; font-size: 13px;
+  letter-spacing: 0.4em; text-transform: uppercase;
+  color: var(--accent); margin: 18px 0 8px;
+}
+.manual-col h3:first-child { margin-top: 0; }
+.manual-col p { font-size: 12.5px; line-height: 1.6; opacity: 0.85; margin-bottom: 8px; }
+.manual-col p b { color: var(--warn); font-weight: 600; }

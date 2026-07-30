@@ -1,0 +1,56 @@
+/* top-left score / wave */
+.hud-score { left: 34px; top: 28px; }
+.score-line { font-size: 13px; letter-spacing: 0.3em; text-transform: uppercase; }
+.score-line b { color: var(--warn); font-weight: 600; }
+.hud-fps { position: absolute; right: 34px; top: 28px; font-size: 11px; letter-spacing: 0.2em; opacity: 0.55; }
+
+/* comms feed */
+.target-preview {
+  position: absolute; left: 34px; top: 124px;
+  width: 200px; display: none;
+  padding: 10px 14px 8px;
+}
+.target-preview.show { display: block; }
+.preview-wrap { margin: 6px 0 4px; }
+.preview-canvas { display: block; width: 170px; height: 128px; }
+.preview-name {
+  font-size: 11px; letter-spacing: 0.28em; text-transform: uppercase;
+  color: var(--accent); margin-bottom: 5px;
+}
+.preview-hullbar i { display: block; height: 100%; transition: width 0.15s ease; }
+
+.hud-corner, .target-preview { z-index: 3; } /* panels above contact markers */
+
+.comms-feed {
+  position: absolute; left: 420px; top: 30px; /* top row, right of the score panel */
+  width: 380px; display: flex; flex-direction: column; gap: 7px;
+}
+.comms-line {
+  font-size: 13px; line-height: 1.5;
+  padding: 8px 12px;
+  background: rgba(4, 10, 18, 0.65);
+  border-left: 2px solid var(--accent);
+  animation: comms-in 0.3s ease both;
+}
+.comms-line b { color: var(--accent); letter-spacing: 0.15em; margin-right: 8px; }
+.comms-line.fading { opacity: 0; transition: opacity 1s ease; }
+@keyframes comms-in { from { opacity: 0; transform: translateX(-16px); } to { opacity: 1; transform: none; } }
+
+/* wave banner */
+.wave-banner {
+  position: absolute; left: 50%; top: 26%;
+  transform: translateX(-50%);
+  font-size: 30px; font-weight: 200;
+  letter-spacing: 0.6em; text-indent: 0.6em;
+  text-transform: uppercase; color: #fff;
+  text-shadow: 0 0 20px var(--accent);
+  opacity: 0; pointer-events: none;
+  white-space: nowrap;
+}
+.wave-banner.show { animation: banner 3s ease both; }
+@keyframes banner {
+  0% { opacity: 0; letter-spacing: 1em; }
+  12% { opacity: 1; letter-spacing: 0.6em; }
+  80% { opacity: 1; }
+  100% { opacity: 0; }
+}

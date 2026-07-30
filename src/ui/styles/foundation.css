@@ -1,0 +1,76 @@
+/* ---------- base ---------- */
+:root {
+  --accent: #27e8ff;
+  --accent-dim: rgba(39, 232, 255, 0.35);
+  --warn: #ffb347;
+  --danger: #ff3b30;
+  --panel: rgba(6, 14, 22, 0.72);
+  --text: #d7f4ff;
+  --font: 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+html, body { width: 100%; height: 100%; overflow: hidden; background: #000; }
+
+#app { position: fixed; inset: 0; }
+
+#game-canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+
+#ui-root {
+  position: absolute; inset: 0;
+  font-family: var(--font);
+  color: var(--text);
+  pointer-events: none;
+  user-select: none;
+}
+
+/* ---------- shared bits ---------- */
+.ns-btn {
+  pointer-events: auto;
+  display: block;
+  min-width: 260px;
+  margin: 10px auto;
+  padding: 13px 34px;
+  background: linear-gradient(90deg, rgba(39, 232, 255, 0.06), rgba(39, 232, 255, 0.14), rgba(39, 232, 255, 0.06));
+  border: 1px solid var(--accent-dim);
+  color: var(--text);
+  font-family: var(--font);
+  font-size: 15px;
+  letter-spacing: 0.42em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: all 0.18s ease;
+  clip-path: polygon(12px 0, 100% 0, calc(100% - 12px) 100%, 0 100%);
+}
+.ns-btn:hover {
+  border-color: var(--accent);
+  background: linear-gradient(90deg, rgba(39, 232, 255, 0.16), rgba(39, 232, 255, 0.3), rgba(39, 232, 255, 0.16));
+  box-shadow: 0 0 24px rgba(39, 232, 255, 0.35);
+  color: #fff;
+}
+.ns-btn.visor-hover {
+  border-color: var(--accent);
+  background: linear-gradient(90deg, rgba(39, 232, 255, 0.16), rgba(39, 232, 255, 0.3), rgba(39, 232, 255, 0.16));
+  box-shadow: 0 0 24px rgba(39, 232, 255, 0.35);
+  color: #fff;
+}
+.ns-btn.danger { border-color: rgba(255, 59, 48, 0.4); }
+.ns-btn.danger:hover, .ns-btn.danger.visor-hover {
+  border-color: var(--danger);
+  box-shadow: 0 0 24px rgba(255, 59, 48, 0.35);
+}
+
+.ns-panel {
+  pointer-events: auto; /* panels must receive wheel events for scrolling */
+  position: relative;
+  z-index: 10; /* overlay screens sit ABOVE the HUD corner panels */
+  background: var(--panel);
+  border: 1px solid var(--accent-dim);
+  backdrop-filter: blur(6px);
+  padding: 26px 34px;
+}
+.ns-panel::-webkit-scrollbar { width: 9px; }
+.ns-panel::-webkit-scrollbar-track { background: rgba(255, 255, 255, 0.04); }
+.ns-panel::-webkit-scrollbar-thumb { background: var(--accent-dim); border-radius: 0; }
+.ns-panel::-webkit-scrollbar-thumb:hover { background: var(--accent); }

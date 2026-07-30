@@ -1,0 +1,21 @@
+node_modules/
+dist/
+
+# Generated test artifacts
+test/visual/baselines/
+test/visual/output/
+test/visual/diff/
+test-results/
+playwright-report/
+
+# Local environment and logs
+.env
+.env.*
+!.env.example
+*.log
+
+# OS/editor files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

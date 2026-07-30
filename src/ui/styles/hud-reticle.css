@@ -1,0 +1,83 @@
+/* crosshair */
+.crosshair {
+  position: absolute; left: 50%; top: 50%;
+  width: 26px; height: 26px;
+  transform: translate(-50%, -50%);
+}
+/* Layered reticle: broken arc ring around the cross. */
+.crosshair-ring {
+  position: absolute; left: 50%; top: 50%;
+  width: 46px; height: 46px;
+  transform: translate(-50%, -50%) rotate(45deg);
+  border: 1px solid rgba(39, 232, 255, 0.55);
+  border-radius: 50%;
+  clip-path: polygon(0 0, 38% 0, 38% 38%, 0 38%, 0 100%, 38% 100%, 38% 62%, 100% 62%, 100% 100%, 62% 100%, 62% 0, 100% 0, 100% 38%, 62% 38%);
+  box-shadow: 0 0 8px rgba(39, 232, 255, 0.25), inset 0 0 8px rgba(39, 232, 255, 0.15);
+}
+
+/* Center cluster: shield/hull semicircle arcs under the reticle, boost arc
+   above (boost only), seeker reload chip below. */
+.center-arcs {
+  position: absolute; left: 50%; top: 50%;
+  width: 210px; height: 210px;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  opacity: 0.6;
+}
+.center-arcs path { fill: none; stroke-width: 2.4; stroke-linecap: round; }
+.arc-track { stroke: rgba(255, 255, 255, 0.09); }
+.arc-shield {
+  stroke: var(--accent);
+  stroke-dasharray: 96.3;
+  filter: drop-shadow(0 0 3px rgba(39, 232, 255, 0.6));
+}
+.arc-hull {
+  stroke: #35e88a;
+  stroke-dasharray: 81.7;
+  filter: drop-shadow(0 0 3px rgba(53, 232, 138, 0.5));
+}
+.arc-boost {
+  stroke: #c26aff;
+  stroke-dasharray: 96.3;
+  filter: drop-shadow(0 0 4px rgba(194, 106, 255, 0.7));
+}
+.center-seeker {
+  position: absolute; left: 50%; top: calc(50% + 116px);
+  transform: translateX(-50%);
+  width: 92px; height: 17px;
+  display: flex; align-items: center; justify-content: center;
+  overflow: hidden;
+  border: 1px solid rgba(255, 179, 71, 0.3);
+  background: rgba(4, 10, 18, 0.4);
+  font-size: 10px; letter-spacing: 0.2em; color: var(--warn);
+}
+.center-seeker i {
+  position: absolute; left: 0; top: 0; bottom: 0; width: 0;
+  background: rgba(255, 179, 71, 0.22);
+}
+.center-seeker span { position: relative; }
+.crosshair::before, .crosshair::after {
+  content: ''; position: absolute; background: var(--accent);
+  box-shadow: 0 0 6px var(--accent);
+}
+.crosshair::before { left: 50%; top: 0; width: 1.5px; height: 100%; transform: translateX(-50%); clip-path: polygon(0 0, 100% 0, 100% 32%, 0 32%, 0 68%, 100% 68%, 100% 100%, 0 100%); }
+.crosshair::after { top: 50%; left: 0; height: 1.5px; width: 100%; transform: translateY(-50%); clip-path: polygon(0 0, 32% 0, 32% 100%, 0 100%, 68% 0, 100% 0, 100% 100%, 68% 100%); }
+
+.hitmarker {
+  position: absolute; left: 50%; top: 50%;
+  width: 34px; height: 34px;
+  transform: translate(-50%, -50%) rotate(45deg);
+  opacity: 0;
+  pointer-events: none;
+}
+.hitmarker::before, .hitmarker::after {
+  content: ''; position: absolute; background: #fff;
+}
+.hitmarker::before { left: 50%; top: 0; width: 2px; height: 100%; transform: translateX(-50%); clip-path: polygon(0 0, 100% 0, 100% 26%, 0 26%, 0 74%, 100% 74%, 100% 100%, 0 100%); }
+.hitmarker::after { top: 50%; left: 0; height: 2px; width: 100%; transform: translateY(-50%); clip-path: polygon(0 0, 26% 0, 26% 100%, 0 100%, 74% 0, 100% 0, 100% 100%, 74% 100%); }
+.hitmarker.kill::before, .hitmarker.kill::after { background: var(--danger); }
+.hitmarker.show { animation: hitmark 0.25s ease-out both; }
+@keyframes hitmark {
+  0% { opacity: 1; transform: translate(-50%, -50%) rotate(45deg) scale(1.5); }
+  100% { opacity: 0; transform: translate(-50%, -50%) rotate(45deg) scale(0.9); }
+}
