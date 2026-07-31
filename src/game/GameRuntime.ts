@@ -1,14 +1,19 @@
 import { Color, Vector3 } from 'three';
+import { CapitalBeamContext } from '../entities/CapitalShip';
 import { STYLE_ENGINES } from '../entities/ShipMesh';
 import { PostFx } from '../rendering/PostFx';
-import { targetPresentation } from './GameConstants';
+import {
+  CAPITAL_TURRET_LOCK_RANGE_METERS,
+  targetPresentation,
+} from './GameConstants';
 import { GameInteractions } from './GameInteractions';
 
 const menuLook = new Vector3();
 const trailPos = new Vector3();
 const trailVel = new Vector3();
 const aimForward = new Vector3();
-const aimBlockOff = new Vector3();
+const aimOffset = new Vector3();
+const turretLosOrigin = new Vector3();
 
 /**
  * Continuous simulation, input routing, rendering, and viewport management.
@@ -22,8 +27,24 @@ export abstract class GameRuntime extends GameInteractions {
   private viewportWidth = 0;
   private viewportHeight = 0;
   private viewportPixelRatio = 0;
+  private missileWarning: 'none' | 'locked' | 'imminent' = 'none';
+  private capitalBeamContext!: CapitalBeamContext;
 
   protected initializeRuntime(): void {
+    const runtime = this;
+    this.capitalBeamContext = {
+      get player() { return runtime.player; },
+      get playerVisible() { return runtime.player.alive && !runtime.devices.cloaked; },
+      canSeePlayer: () => !!runtime.capital && runtime.combat.hasLineOfSight(
+        runtime.capital.position,
+        runtime.player.position,
+      ),
+      onCharge: () => {
+        runtime.hud.showBanner('Capital annihilator charging');
+        runtime.audio.capitalCharge();
+      },
+      onFire: (shot) => runtime.combat.capitalBeamFire(shot),
+    };
     this.wireEvents();
     window.addEventListener('resize', () => this.scheduleResize());
     document.addEventListener('fullscreenchange', () => this.scheduleResize());
@@ -157,7 +178,9 @@ export abstract class GameRuntime extends GameInteractions {
       this.world.bodies,
       (hit) => this.combat.resolveHit(hit),
       this.surface ? this.terrainProjectileHit : undefined,
+      (target) => target !== player || !this.devices.cloaked,
     );
+    this.updateMissileWarning();
     this.pickups.update(
       dt,
       player.position,
@@ -246,14 +269,25 @@ export abstract class GameRuntime extends GameInteractions {
     this.hostiles.length = 0;
     for (const enemy of this.enemies) this.hostiles.push(enemy);
     for (const turret of this.turrets) {
-      if (turret.alive && !this.capitalTurrets.includes(turret)) {
-        this.hostiles.push(turret);
-      }
+      if (!turret.alive) continue;
+      const distantCapitalMount =
+        this.capitalTurrets.includes(turret) &&
+        turret.position.distanceToSquared(this.player.position) >
+          CAPITAL_TURRET_LOCK_RANGE_METERS ** 2;
+      if (!distantCapitalMount) this.hostiles.push(turret);
     }
     if (this.capital?.alive) this.hostiles.push(this.capital);
 
     this.shootables.length = 0;
-    for (const hostile of this.hostiles) this.shootables.push(hostile);
+    // Collision remains exact at every range even while distant carrier mounts
+    // are collapsed into the whole-hull targeting contact above.
+    for (const enemy of this.enemies) {
+      if (enemy.alive) this.shootables.push(enemy);
+    }
+    for (const turret of this.turrets) {
+      if (turret.alive) this.shootables.push(turret);
+    }
+    if (this.capital?.alive) this.shootables.push(this.capital);
     for (const neutral of this.neutrals) {
       if (neutral.alive) this.shootables.push(neutral);
     }
@@ -264,24 +298,28 @@ export abstract class GameRuntime extends GameInteractions {
     if (!player.alive) return;
 
     player.update(dt, this.input);
+    const weapon = this.weapons.weapon;
+    this.chaseCam.camera.getWorldDirection(aimForward);
     this.targeting.update(
       player,
       this.hostiles,
       this.neutrals,
-      this.weapons.weapon.projectileSpeed,
-      (ship) => this.combat.hasLineOfSight(player.position, ship.position),
+      weapon.projectileSpeed,
+      (ship) => this.combat.hasLineOfSight(player.position, ship.position, null, ship),
+      weapon.projectileSpeed * weapon.life,
+      aimForward,
     );
-    let hostileDot = -1;
-    if (this.targeting.current?.aimAssist) {
-      player.forward(aimForward);
-      aimBlockOff
-        .copy(this.targeting.current.ship.position)
-        .sub(player.position)
-        .normalize();
-      hostileDot = aimForward.dot(aimBlockOff);
-    }
-    this.lootAimed = this.aimedLoot(hostileDot);
-    if (this.lootAimed) this.targeting.current = null;
+    const closeCombatTarget =
+      this.targeting.current?.aimAssist === true &&
+      this.targeting.current.distance <= weapon.projectileSpeed * weapon.life;
+    const targetDot = this.targeting.current
+      ? aimOffset.copy(this.targeting.current.ship.position).sub(player.position).normalize()
+          .dot(aimForward)
+      : -1;
+    // A formation is informational and never auto-aimed. A close combat lock
+    // always wins; otherwise the object closest to the camera crosshair wins.
+    this.lootAimed = this.aimedLoot(closeCombatTarget ? 1 : targetDot, aimForward);
+    if (this.lootAimed && !closeCombatTarget) this.targeting.current = null;
     this.weapons.update(
       dt,
       this.input,
@@ -343,16 +381,29 @@ export abstract class GameRuntime extends GameInteractions {
       if (this.surface) this.combat.resolveEnemySurfaceCollision(enemy);
     }
     for (const turret of this.turrets) {
+      turretLosOrigin.copy(turret.position);
+      if (turret.mountNormal) turretLosOrigin.addScaledVector(turret.mountNormal, 3);
+      const seesPlayer =
+        playerVisible &&
+        this.combat.hasLineOfSight(turretLosOrigin, player.position);
       turret.update(
         dt,
         player.position,
         player.alive,
         (source) => this.combat.turretFire(source),
-        playerVisible,
+        seesPlayer,
       );
     }
     for (const neutral of this.neutrals) neutral.update(dt);
-    this.capital?.update(dt);
+    this.capital?.update(dt, this.capitalBeamContext);
+  }
+
+  private updateMissileWarning(): void {
+    const threat = this.projectiles.incomingThreat(this.player);
+    const next = threat.imminent ? 'imminent' : threat.locked ? 'locked' : 'none';
+    if (next === this.missileWarning) return;
+    this.missileWarning = next;
+    if (next !== 'none') this.audio.missileWarning(next === 'imminent');
   }
 
   private updatePlayerDeath(dt: number): boolean {

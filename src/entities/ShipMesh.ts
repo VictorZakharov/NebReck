@@ -9,6 +9,7 @@ export {
 } from './ShipMeshTypes';
 export type {
   ShipKind,
+  ShipHitBox,
   ShipMesh,
   ShipStyle,
 } from './ShipMeshTypes';

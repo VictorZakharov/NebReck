@@ -1,6 +1,6 @@
 # Systems & balance reference
 
-Last updated: 2026-07-30.
+Last updated: 2026-07-31.
 
 The gameplay rulebook: what every system does, with the actual numbers and where
 they live. When designing a feature, check here first — most mechanics interlock
@@ -63,19 +63,57 @@ same planet.
 - Player weapons share one energy pool (regen × ship's `energyMult`); weapon reach =
   `projectileSpeed × life` (pulse ≈ 544, scatter ≈ 243, lance ≈ 774) — drives the
   grey out-of-range markers. Missiles: soft-lock seekers, 1.35 s cooldown.
+- Enemy bombers and rocket batteries use two deterministic payload families:
+  **Seeker** (28 dmg, 92→205 u/s, 1.55 rad/s turn, 8 s life) or **Lance Rocket**
+  (24 dmg, unguided 285 u/s, 4.6 s life). Only a live seeker target raises the
+  amber missile-lock warning; the count is active in-flight homing rockets, not
+  enemies carrying launchers. Acceleration-aware pursuit ETA (with turn penalty)
+  ≤2 s raises the red imminent warning and counts down from approximately two
+  seconds instead of appearing late near 0.6 s. A cloak activated outside the
+  hostile exclusion radius drops every seeker target immediately; the missile
+  continues ballistically and no longer contributes to the warning. Seeker bombers
+  may launch while pursuing anywhere inside 1,200 m. Once imminent, each missile's
+  displayed ETA only decreases; an outbound/missed missile drops the timer.
+- Rotary interceptors and batteries fire amber 2.6-damage bolts at autogun cadence
+  (fighter 0.055 s, battery 0.11 s), 390 m/s, with audio chatter globally rate-limited.
+- Alert hunter wings are capped at 12 live reinforcements. A dispatch fills only
+  the available slots and emits its actual arrival count; if the cap is full the
+  cadence timers continue normally without allocating another wing. Sector patrols
+  and fixed batteries are separate from this reinforcement budget.
 - Targeting soft-lock: 18° acquire cone / ~28° keep, 1500 u max, over ALL
-  hostiles (fighters + turrets + capital), filtered through world/terrain LOS.
-  Score `(1-dot)*400 + dist*0.5` with a −60 keep-bonus: a much closer turret beats
-  a distant fighter at similar angle. Only when no visible hostile qualifies does
-  the same cone identify a visible merchant/hauler as an informational contact.
-  `Targeting.aimTarget` stays null for those contacts, so primary convergence,
-  missile homing and the lead pip remain disabled.
+  hostiles (fighters + independent turrets + capital), filtered through
+  world/terrain LOS. The carrier's twelve mounted batteries collapse into its
+  whole-hull contact beyond 260 m; inside 260 m they become individual lock and
+  HUD/radar contacts. Projectile collision still tests every mount at every range.
+  Inside weapon reach, score `(1-dot)*400 + dist*0.5` with a −60 keep-bonus lets a
+  much closer turret beat a distant fighter. Beyond reach, hostiles switch to the
+  same camera-crosshair ranking as informational contacts. Only when no hostile
+  qualifies does the acquire cone identify a merchant/hauler. Civilians are
+  sensor contacts (asteroid clutter does not suppress identification) and choose
+  the smallest crosshair angle regardless of world
+  distance, use range only as an exact-angle tie-break, and get no keep-lock
+  hysteresis. `Targeting.aimTarget` stays null for those contacts, so primary
+  convergence, missile homing and the lead pip remain disabled. Losing the contact
+  hides its capture bracket immediately without a fade.
 - Target preview (top-left, `TargetPreview.ts`): edge-wireframe in the contact's
   REAL view-space orientation (nose-on when charging, tail-on when fleeing).
   Hostiles shade green→red by hull fraction; merchants are friendly green and
-  haulers neutral blue, with role/action text below the name.
-- Turrets: 340 u range, fire only with `hasLineOfSight` (terrain + big bodies,
-  own-mount excluded).
+  haulers neutral blue, with role/action text below the name. Aimed Ion/Scrap
+  formations use a neutral crystal wireframe but never become combat targets.
+- Batteries: cannon 60 hull / 340 m / 0.9 s; rotary 58 hull / 468 m / 0.11 s;
+  homing rocket 76 hull / 520 m /
+  3.4 s; fast rocket 70 hull / 470 u / 2.35 s. All fire only with world/terrain
+  LOS. Carrier mounts additionally require the player inside their outward
+  traverse hemisphere, so top/bottom batteries never shoot through the deck.
+- Carrier: 1600 hull plus 12 independently targetable batteries (6 top, 6 bottom;
+  3 cannon / 3 rotary / 3 homing / 3 fast). Batteries are individually lockable within
+  260 m; farther out the preview identifies the carrier as one high-level threat.
+  Its annihilator starts only 70–1400 u ahead
+  within a 12.9° half-angle and clear LOS, then charges for exactly 2 s. Once
+  committed it always fires: the aim follows the latest visible player position,
+  freezes on LOS loss, and clamps to the firing arc. The thick ray destroys ships
+  before its first asteroid; that one rock absorbs the ray and is the only rock
+  destroyed. Cooldown after firing is 11 s.
 - EMP stun: hostiles dead-stick (velocity decay, no fire). Cloak: brains go blind —
   patrollers keep patrolling, engaged ships drift on their personal offset vector.
 - Ramming, asteroid scrapes, terrain impacts: speed-scaled hull damage.
@@ -91,8 +129,9 @@ same planet.
 | **green double** | **merchant — marked at ANY range** + "⚖ Merchant" by sector readout |
 | gold | delivery-contract beacon |
 
-Locked hostile: orange box + lead pip + range chip. Informational civilians use a
-green/blue box and range chip with no lead pip. Every other visible contact gets a
+Locked hostiles keep the same range/type color (red in range, grey beyond reach,
+amber batteries) plus lead pip and range chip—locking never turns them orange.
+Informational civilians use a green/blue box and range chip with no lead pip. Every visible contact gets a
 bracket; off-screen hostiles get chevrons with range.
 
 ## Contracts (Quests.ts) — hail a hauler with R
@@ -117,6 +156,7 @@ Jumping voids in-sector deliveries; planetfall does NOT (sector persists).
   cells/upgrades, weapon amps.
 - **Flux Core**: rare — brutes/turrets/capital kills, stashes, contract pay,
   merchant (8 Scrap → 1 Flux). Sinks: **jumps (2)**, engine tune, shield matrix.
+  The jump-drive row displays required/held fuel (`Flux 2/10`) before spool.
 - Scrap, crystal, flux, nanobots and seekers share original inline SVG marks in
   HUD/hold/cost UI (`ResourceIcons.ts`); canvas/text-only feedback keeps compact
   fallback symbols.
@@ -124,7 +164,8 @@ Jumping voids in-sector deliveries; planetfall does NOT (sector persists).
   ore. Rocks ≥9 radius calve into 2–3 palette-matched children (reserved instance
   slots); smaller rocks pop. No calving on planets. The “Mine the vein” prompt
   attaches to the owning vein's centroid and is exponentially damped in screen
-  space, so aim moving between crystals does not jerk the label.
+  space, so aim moving between crystals does not jerk the label. Mining, stash,
+  merchant and planet actions all project beside their world object.
 - Stashes (`stash: true` bodies): mixed burst 3▲ 3◆ 2●. Found at bases, in caves,
   cave asteroids, wreck blackboxes.
 - Merchant stock (`Trade.ts`): buy Flux 1 = Scrap 8 · nano = Scrap 5 ·
@@ -150,7 +191,8 @@ nanobot-kit 6▲ (repeatable) · seekers ×2 3▲ (repeatable, refused without a
 shield-cell 5◆ (instant +40, refused at full) ·
 weapon-amp 8◆4▲ (+15% dmg ×3) · engine-tune 8▲1● (+8% spd ×3) · shield-matrix
 8◆1● (+25 max shield ×3). Per-run only. A successful craft rerenders the recipe
-state without changing the right-hand list's scroll position.
+  state without changing the right-hand list's scroll position. Any live hostile
+  within 180 m disables every recipe and the model transaction itself.
 
 ## Meta progression (MetaProgress.ts, localStorage, headless-disabled)
 
@@ -173,11 +215,12 @@ outward-convex interactive visor; drag any mouse button on empty space to orbit
 the showcase. Ship and difficulty selections are validated and written
 immediately to one-year `nebreck_ship` / `nebreck_difficulty` cookies, even
 before Engage. Valid `cleverspace_*` values are migrated on first read for
-backward compatibility. Enemy: raider (fast, 34 hull) /
-brute (110 hull, drops flux 60%). Capital: 1600 hull, 4 hull-mounted batteries
-(die with it, NOT individually targetable — its hull sphere eats the bolts, so
-lock and damage route to the ship), 2500 pts, projects jump suppression.
-Turret: 60 hull, 200 pts.
+  backward compatibility. Enemy roster: raider (34 hull / 16 shield / 100 pts),
+  brute (110 / 50 / 250), and broad-wing bomber (78 / 34 / 325) carrying either
+  seeker or fast rockets; selected raiders carry a visible rotary cluster. The
+  capital is worth 2500 pts, projects jump suppression,
+  exposes its 12 batteries as separate lock/damage targets, and destroys surviving
+  mounts when its own hull dies.
 
 ## Planet surface content (`PlanetSurface*.ts`)
 

@@ -29,8 +29,9 @@ const DIFF_DIR = join(__dirname, 'diff');
 
 const SCENES = [
   'nebula', 'ship', 'asteroids', 'combat', 'hud', 'menu', 'cockpit', 'hangar', 'loadout',
-  'boost', 'targeting', 'friendly-targeting', 'fx', 'cave', 'split', 'level', 'wreck', 'planet', 'base', 'trade', 'fleet',
+  'boost', 'targeting', 'friendly-targeting', 'resource-targeting', 'fx', 'cave', 'split', 'level', 'wreck', 'planet', 'base', 'trade', 'fleet',
   'cloak', 'controls',
+  'enemy-variety', 'missile-warning', 'capital-superweapon',
 ];
 const SEED = 7;
 const VIEWPORT = { width: 1280, height: 720 };

@@ -2,8 +2,15 @@ import type { Group, Sprite, Vector3 } from 'three';
 
 export type ShipKind =
   | 'kestrel' | 'vanta' | 'aegis'
-  | 'raider' | 'brute' | 'turret'
+  | 'raider' | 'brute' | 'bomber' | 'turret' | 'autogun-turret' | 'rocket-turret'
   | 'hauler' | 'capital';
+
+export interface ShipHitBox {
+  /** Ship-local center of a tight projectile/LOS volume. */
+  center: Vector3;
+  /** Ship-local half extents. */
+  half: Vector3;
+}
 
 export interface ShipMesh {
   group: Group;
@@ -14,6 +21,8 @@ export interface ShipMesh {
   /** Engine glow sprites — opacity is driven by throttle. */
   engineGlows: Sprite[];
   radius: number;
+  /** Optional compound hull used instead of the broad collision sphere. */
+  hitBoxes: ShipHitBox[];
 }
 
 export interface ShipStyle {
@@ -33,7 +42,10 @@ export const STYLES: Record<ShipKind, ShipStyle> = {
   aegis: { hull: 0xb9c2cc, panel: 0x6a7076, accent: 0xffd24a, engine: 0x4fa8ff, canopy: 0xffe9a8 },
   raider: { hull: 0x4a4348, panel: 0x2e2a30, accent: 0xff3b30, engine: 0xff5a2a, canopy: 0xff8080 },
   brute: { hull: 0x5a5f52, panel: 0x3a3e34, accent: 0xffa726, engine: 0xff7a1a, canopy: 0xffc060 },
+  bomber: { hull: 0x555064, panel: 0x302d3d, accent: 0xff5f45, engine: 0xff9b38, canopy: 0xffb27d },
   turret: { hull: 0x565c64, panel: 0x33383e, accent: 0xff3b30, engine: 0xff5a2a, canopy: 0xff8080 },
+  'autogun-turret': { hull: 0x555b63, panel: 0x30363d, accent: 0xffc85a, engine: 0xff6a2a, canopy: 0xffd98a },
+  'rocket-turret': { hull: 0x59525f, panel: 0x302d36, accent: 0xff8a32, engine: 0xff5a2a, canopy: 0xffb070 },
   hauler: { hull: 0x8f8c80, panel: 0x55544b, accent: 0x9fdcff, engine: 0x7ac9ff, canopy: 0xbfe8ff },
   capital: { hull: 0x3f4652, panel: 0x282d36, accent: 0xff3b30, engine: 0xff6a2a, canopy: 0xff9090 },
 };

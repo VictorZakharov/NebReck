@@ -176,6 +176,15 @@ export abstract class GameFoundation {
   protected readonly shootables: Ship[] = [];
   protected trailAccum = 0;
 
+  /** Query live populations directly so overlay actions never depend on frame scratch lists. */
+  protected hasNearbyHostile(range: number): boolean {
+    const rangeSq = range * range;
+    const nearby = (ship: Ship): boolean =>
+      ship.alive && ship.position.distanceToSquared(this.player.position) < rangeSq;
+    return this.enemies.some(nearby) || this.turrets.some(nearby) ||
+      (!!this.capital && nearby(this.capital));
+  }
+
   readonly renderer;
   protected readonly uiRoot: HTMLElement;
   /** Public for the test harness (controls-screen staging). */
@@ -266,6 +275,7 @@ export abstract class GameFoundation {
       loop: this.loop,
       targeting: this.targeting,
       weapons: this.weapons,
+      projectiles: this.projectiles,
       get player() {
         return game.player;
       },
@@ -314,7 +324,11 @@ export abstract class GameFoundation {
       get jumpSuppressed() {
         return game.jumpSuppressed;
       },
+      get jumpConsumesFlux() {
+        return game.worldFlow.jumpConsumesFlux;
+      },
       findAimedPlanet: () => game.findAimedPlanet(),
+      planetPosition: (index) => game.sector.planets[index]?.position ?? null,
       nearestNeutral: () => game.nearestNeutral(),
     });
     this.radar = this.hudPresenter.radar;

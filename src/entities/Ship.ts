@@ -1,10 +1,25 @@
-import { Group, Matrix4, Sprite, Vector3 } from 'three';
-import { buildShipMesh, ShipKind, ShipMesh } from './ShipMesh';
+import {
+  BufferGeometry,
+  Group,
+  Material,
+  Matrix4,
+  Quaternion,
+  Sprite,
+  Vector3,
+} from 'three';
+import { buildShipMesh, ShipHitBox, ShipKind, ShipMesh } from './ShipMesh';
 
 const faceMat = new Matrix4();
 const faceUp = new Vector3(0, 1, 0);
 const faceSide = new Vector3(1, 0, 0);
 const faceDir = new Vector3();
+const hitInverse = new Quaternion();
+const hitLocalA = new Vector3();
+const hitLocalB = new Vector3();
+const hitLocalPoint = new Vector3();
+const hitBestPoint = new Vector3();
+const hitSegment = new Vector3();
+const hitToCenter = new Vector3();
 
 export interface DamageResult {
   died: boolean;
@@ -25,6 +40,7 @@ export class Ship {
   readonly radius: number;
   readonly gunpoints: Vector3[];
   readonly enginePoints: Vector3[];
+  readonly hitBoxes: ShipHitBox[];
 
   hull: number;
   hullMax: number;
@@ -40,6 +56,7 @@ export class Ship {
 
   private shieldCooldown = 0;
   private readonly engineGlows: Sprite[];
+  private disposed = false;
 
   constructor(kind: ShipKind, hullMax: number, shieldMax: number, shieldRegenRate = 6, shieldRegenDelay = 4) {
     const mesh: ShipMesh = buildShipMesh(kind);
@@ -50,6 +67,7 @@ export class Ship {
     this.radius = mesh.radius;
     this.gunpoints = mesh.gunpoints;
     this.enginePoints = mesh.enginePoints;
+    this.hitBoxes = mesh.hitBoxes;
     this.engineGlows = mesh.engineGlows;
     this.hull = hullMax;
     this.hullMax = hullMax;
@@ -79,6 +97,34 @@ export class Ship {
     const hint = Math.abs(faceDir.y) > 0.85 ? faceSide : faceUp;
     faceMat.lookAt(this.position, point, hint);
     this.object.quaternion.setFromRotationMatrix(faceMat);
+  }
+
+  /**
+   * Swept world-space hit test. Most craft use their compact broad sphere;
+   * large compound hulls expose tight local boxes so nearby sub-targets stay
+   * shootable and the visible plating blocks line of sight accurately.
+   */
+  intersectSegment(a: Vector3, b: Vector3, out: Vector3, padding = 0): boolean {
+    if (this.hitBoxes.length === 0) {
+      return segmentHitsSphere(a, b, this.position, this.radius + padding, out);
+    }
+
+    hitInverse.copy(this.object.quaternion).invert();
+    hitLocalA.copy(a).sub(this.position).applyQuaternion(hitInverse);
+    hitLocalB.copy(b).sub(this.position).applyQuaternion(hitInverse);
+    let bestDistanceSq = Infinity;
+    let found = false;
+    for (const box of this.hitBoxes) {
+      if (!segmentHitsBox(hitLocalA, hitLocalB, box, hitLocalPoint, padding)) continue;
+      const distanceSq = hitLocalPoint.distanceToSquared(hitLocalA);
+      if (distanceSq >= bestDistanceSq) continue;
+      bestDistanceSq = distanceSq;
+      hitBestPoint.copy(hitLocalPoint);
+      found = true;
+    }
+    if (!found) return false;
+    out.copy(hitBestPoint).applyQuaternion(this.object.quaternion).add(this.position);
+    return true;
   }
 
   takeDamage(amount: number): DamageResult {
@@ -112,4 +158,75 @@ export class Ship {
       s.scale.setScalar(1.1 + this.throttle * 1.4);
     }
   }
+
+  /**
+   * Release the per-instance GPU buffers and materials created by ShipMesh.
+   * Cached procedural textures are deliberately retained because they are
+   * shared by every live hull. Safe to call more than once.
+   */
+  dispose(): void {
+    if (this.disposed) return;
+    this.disposed = true;
+    const geometries = new Set<BufferGeometry>();
+    const materials = new Set<Material>();
+    this.object.traverse((object) => {
+      const renderable = object as unknown as {
+        geometry?: BufferGeometry;
+        material?: Material | Material[];
+      };
+      if (renderable.geometry) geometries.add(renderable.geometry);
+      if (Array.isArray(renderable.material)) {
+        for (const material of renderable.material) materials.add(material);
+      } else if (renderable.material) {
+        materials.add(renderable.material);
+      }
+    });
+    for (const geometry of geometries) geometry.dispose();
+    for (const material of materials) material.dispose();
+  }
+}
+
+function segmentHitsSphere(
+  a: Vector3,
+  b: Vector3,
+  center: Vector3,
+  radius: number,
+  out: Vector3,
+): boolean {
+  hitSegment.copy(b).sub(a);
+  hitToCenter.copy(center).sub(a);
+  const lengthSq = hitSegment.lengthSq();
+  const t = lengthSq > 1e-8
+    ? Math.max(0, Math.min(1, hitToCenter.dot(hitSegment) / lengthSq))
+    : 0;
+  out.copy(a).addScaledVector(hitSegment, t);
+  return out.distanceToSquared(center) <= radius * radius;
+}
+
+function segmentHitsBox(
+  a: Vector3,
+  b: Vector3,
+  box: ShipHitBox,
+  out: Vector3,
+  padding: number,
+): boolean {
+  let tMin = 0;
+  let tMax = 1;
+  for (const axis of ['x', 'y', 'z'] as const) {
+    const half = box.half[axis] + padding;
+    const start = a[axis] - box.center[axis];
+    const delta = b[axis] - a[axis];
+    if (Math.abs(delta) < 1e-8) {
+      if (Math.abs(start) > half) return false;
+      continue;
+    }
+    let near = (-half - start) / delta;
+    let far = (half - start) / delta;
+    if (near > far) [near, far] = [far, near];
+    tMin = Math.max(tMin, near);
+    tMax = Math.min(tMax, far);
+    if (tMin > tMax) return false;
+  }
+  out.copy(a).lerp(b, tMin);
+  return true;
 }

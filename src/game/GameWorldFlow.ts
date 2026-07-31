@@ -110,6 +110,18 @@ function disposeGroup(root: Object3D): void {
   });
 }
 
+function disposeActors(
+  enemies: readonly EnemyShip[],
+  turrets: readonly Turret[],
+  neutrals: readonly NeutralShip[] = [],
+  capital: CapitalShip | null = null,
+): void {
+  for (const enemy of enemies) enemy.dispose();
+  for (const turret of turrets) turret.dispose();
+  for (const neutral of neutrals) neutral.dispose();
+  capital?.dispose();
+}
+
 /**
  * Owns travel state and swaps complete world populations in and out of Game.
  *
@@ -136,6 +148,11 @@ export class GameWorldFlow {
     );
   }
 
+  /** True only for a spooled sector jump; landing/lift-off never consumes Flux. */
+  get jumpConsumesFlux(): boolean {
+    return this.host.jumpSpool >= 0 && !this.host.surface && this.aimedPlanet === null;
+  }
+
   resetTravelState(): void {
     this.jumpAuto = false;
     this.aimedPlanet = null;
@@ -146,6 +163,7 @@ export class GameWorldFlow {
     for (const state of this.planetStates.values()) {
       this.host.scene.remove(state.surface.group);
       disposeGroup(state.surface.group);
+      disposeActors(state.enemies, state.turrets);
     }
     this.planetStates.clear();
   }
@@ -161,6 +179,14 @@ export class GameWorldFlow {
     host.scene.remove(activeSurface.group);
     disposeGroup(activeSurface.group);
     this.disposeStoredPlanets();
+    if (this.spaceStash) {
+      disposeActors(
+        this.spaceStash.enemies,
+        this.spaceStash.turrets,
+        this.spaceStash.neutrals,
+        this.spaceStash.capital,
+      );
+    }
     host.surface = null;
     host.scene.fog = null;
     host.scene.add(host.sector.group);
@@ -465,8 +491,10 @@ export class GameWorldFlow {
     const { host } = this;
     const hostileSector = host.sectorIndex > 1;
     if (hostileSector) {
-      for (const spawn of host.sector.turretSpawns) {
-        const turret = new Turret(host.rng.fork());
+      const turretMix = ['bolt', 'autogun', 'homing', 'fast'] as const;
+      for (let index = 0; index < host.sector.turretSpawns.length; index++) {
+        const spawn = host.sector.turretSpawns[index];
+        const turret = new Turret(host.rng.fork(), turretMix[index % turretMix.length]);
         turret.object.position.copy(spawn.position);
         turret.faceToward(spawn.lookAt);
         host.scene.add(turret.object);
@@ -487,12 +515,16 @@ export class GameWorldFlow {
     const plan = host.sector.plan;
     for (const patrol of includeHostiles ? plan.patrols : []) {
       for (let index = 0; index < patrol.size; index++) {
+        const kind = index === 0 && patrol.size > 2
+          ? 'brute'
+          : index === patrol.size - 1 ? 'bomber' : 'raider';
         const enemy = new EnemyShip(
-          index === 0 && patrol.size > 2 ? 'brute' : 'raider',
+          kind,
           host.rng.fork(),
           Math.min(0.5 * host.difficulty.aggression, 0.85),
           host.difficulty.enemyToughness * this.threatScale(),
           patrol.waypoints,
+          kind === 'raider' && index % 2 === 0 ? 'autogun' : undefined,
         );
         enemy.object.position.copy(patrol.waypoints[0]);
         enemy.position.x += index * 14;
@@ -535,11 +567,13 @@ export class GameWorldFlow {
       host.scene.add(host.capital.object);
       host.capitalTurrets = [];
       for (const mount of host.capital.turretMounts) {
-        const turret = new Turret(host.rng.fork());
-        const world = mount.clone();
-        host.capital.object.localToWorld(world);
+        const world = mount.position.clone()
+          .applyQuaternion(host.capital.object.quaternion)
+          .add(host.capital.position);
+        const normal = mount.normal.clone().applyQuaternion(host.capital.object.quaternion).normalize();
+        const turret = new Turret(host.rng.fork(), mount.weapon, normal);
         turret.object.position.copy(world);
-        turret.faceToward(world.clone().multiplyScalar(1.2));
+        turret.faceToward(world.clone().add(normal));
         host.scene.add(turret.object);
         host.turrets.push(turret);
         host.capitalTurrets.push(turret);
@@ -550,8 +584,10 @@ export class GameWorldFlow {
   private populateSurface(): void {
     const { host } = this;
     if (!host.surface) return;
-    for (const spawn of host.surface.turretSpawns) {
-      const turret = new Turret(host.rng.fork());
+    const turretMix = ['bolt', 'autogun', 'homing', 'fast'] as const;
+    for (let index = 0; index < host.surface.turretSpawns.length; index++) {
+      const spawn = host.surface.turretSpawns[index];
+      const turret = new Turret(host.rng.fork(), turretMix[index % turretMix.length]);
       turret.object.position.copy(spawn.position);
       turret.faceToward(spawn.lookAt);
       host.scene.add(turret.object);
@@ -559,12 +595,14 @@ export class GameWorldFlow {
     }
     for (const patrol of host.surface.patrols) {
       for (let index = 0; index < patrol.size; index++) {
+        const kind = index === patrol.size - 1 && patrol.size > 1 ? 'bomber' : 'raider';
         const enemy = new EnemyShip(
-          'raider',
+          kind,
           host.rng.fork(),
           Math.min(0.5 * host.difficulty.aggression, 0.85),
           host.difficulty.enemyToughness * this.threatScale(),
           patrol.waypoints,
+          kind === 'raider' && index % 2 === 0 ? 'autogun' : undefined,
         );
         enemy.object.position.copy(patrol.waypoints[0]);
         enemy.position.x += index * 12;

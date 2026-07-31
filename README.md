@@ -23,8 +23,9 @@ cave asteroids and wreck blackboxes, hail haulers (R) for **procedural contracts
 (bounties, procurement, beacon deliveries, cross-sector courier runs) — then spool
 the jump drive (J, 2 Flux Cores) into ever-meaner sectors. Vigil kills raise your
 **alert**; hunter wings come collecting. Death banks your score as **credits** for
-permanent Legacy upgrades. The capital ship suppresses your jump drive — kill it or
-outrun its field.
+permanent Legacy upgrades. The capital ship suppresses your jump drive, carries
+twelve individually destructible batteries, and threatens the frontal approach
+with a telegraphed annihilator beam — cripple it, destroy it, or outrun its field.
 
 ## Features
 
@@ -32,16 +33,23 @@ outrun its field.
   in an interactive convex-visor hangar, plus three difficulty tiers with real
   multipliers. The card click itself commits each selection to a one-year browser
   cookie; Engage or game entry is not required.
-- **Combat**: three energy weapons + lock-on seeker missiles, LOS-aware soft-targeting
-  with lead pip, enemy AI wings (approach/attack/break), escalating waves with story
-  comms. When no visible hostile is targetable, the HUD identifies merchants and
-  neutral haulers with relationship-colored wireframes but never aims weapons at them.
+- **Combat**: four primary weapon profiles + lock-on seeker missiles, LOS-aware
+  soft-targeting with lead pip, enemy AI wings (raiders, rotary interceptors, wardens
+  and missile bombers), mixed cannon / rotary / homing-rocket / fast-rocket batteries,
+  escalating waves and story comms. Seeker bombers can launch while pursuing from
+  1,200 m; live missiles raise lock and monotonic two-second impact warnings, while
+  a safely activated cloak breaks their tracking. Close hostiles retain range-weighted
+  aim assist; distant hostiles and sensor-only civilian contacts are selected strictly
+  by camera-crosshair angle. Civilians receive relationship-colored wireframes but
+  never autoaim.
 - **Mining & crafting**: shoot glowing ore veins on asteroids, tractor in salvage
   (Scrap / Ion Crystals / Flux Cores), spend it mid-run in the Tab Engineering screen
   on repairs, refills and three-rank per-run upgrades. A shared original SVG set
   identifies every material/consumable in the HUD, hold and cost chips. Vein hints
-  follow a stable, smoothly projected vein centroid; crafting purchases keep the
-  current scroll position. Ships without a seeker rack cannot craft or buy missiles.
+  and informational crystal wireframes follow a stable, smoothly projected centroid;
+  merchant, stash and landing prompts follow their world objects too. Crafting keeps
+  its scroll position, is safety-locked within 180 m of a hostile, and cannot produce
+  or buy missiles for a hull without a rack. The jump HUD shows required/held Flux.
 - **Planet dungeons**: broad, open-bottomed rock arches over carved cave routes,
   connected angular bases, patrols, turrets, stashes and crystals. Visible cave
   rock and its overlapping outward collision shell share one profile, while ground
@@ -108,7 +116,7 @@ The in-game **Field Manual** (main menu) documents every implemented mechanic.
 ```bash
 npm run test:architecture     # enforce controller line-size budgets
 npm run typecheck            # strict TS, no emit
-npm run test:visual          # compare 23 scenes with local, ignored baselines
+npm run test:visual          # compare 26 scenes with local, ignored baselines
 npm run test:visual:update   # re-capture local baselines after intentional changes
 npm run test:smoke           # end-to-end behavior + persistence regression suite
 ```
@@ -119,9 +127,10 @@ scene via `/?testScene=<name>&seed=7`, and diffs screenshots with pixelmatch.
 Scenes are staged deterministically (seeded RNG, fixed-step simulation, frozen CSS
 animations) — a same-machine re-render diffs at exactly 0.000%. Baselines are local
 generated artifacts and are intentionally not committed: the first run creates
-them, and subsequent runs compare against them. The 23 scenes cover world art,
+them, and subsequent runs compare against them. The 26 scenes cover world art,
 every major screen, targeting, combat/FX, caves, bases, trade, fleet connectivity,
-cloak and controls. Failure diffs land in `test/visual/diff/`.
+cloak, controls, enemy variants, missile warnings and the capital superweapon.
+Failure diffs land in `test/visual/diff/`.
 
 ## Documentation
 

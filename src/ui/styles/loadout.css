@@ -164,3 +164,4 @@
 .craft-btn:hover:not(:disabled) { border-color: var(--accent); box-shadow: 0 0 14px rgba(39, 232, 255, 0.3); }
 .craft-btn:disabled { opacity: 0.3; cursor: default; }
 .loadout-hint { margin-top: 20px; font-size: 10.5px; letter-spacing: 0.4em; text-transform: uppercase; opacity: 0.5; }
+.loadout-hint.unsafe { color: var(--danger); opacity: 0.85; }

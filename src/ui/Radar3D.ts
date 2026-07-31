@@ -190,13 +190,13 @@ export class Radar3D {
         : contact.kind === 'merchant' ? COLOR_MERCHANT
         : contact.kind === 'neutral' ? COLOR_NEUTRAL
         : contact.inRange === false ? COLOR_FAR
-        : contact.kind === 'turret' ? COLOR_TURRET
+        : (contact.kind === 'turret' || contact.kind === 'rocket-turret') ? COLOR_TURRET
         : COLOR_SHIP;
       (blip.material as MeshBasicMaterial).color.setHex(hex);
 
       blip.visible = true;
       blip.position.copy(toEnemy);
-      blip.scale.setScalar(contact.kind === 'brute' ? 1.5 : 1);
+      blip.scale.setScalar(contact.kind === 'brute' ? 1.5 : contact.kind === 'bomber' ? 1.3 : 1);
 
       // Stem from the blip straight down/up to the equator plane.
       this.stemColor.setHex(hex);

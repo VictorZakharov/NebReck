@@ -3,6 +3,7 @@ import { TargetInfo } from '../combat/Targeting';
 import { NeutralShip } from '../entities/NeutralShip';
 import { Ship } from '../entities/Ship';
 import { Turret } from '../entities/Turret';
+import { CAPITAL_TURRET_LOCK_RANGE_METERS } from './GameConstants';
 import {
   HudContactMarker,
   HudFrameState,
@@ -54,6 +55,8 @@ export class HudProjector {
       leadX: 0,
       leadY: 0,
       relationship: null,
+      kind: null,
+      inRange: false,
     };
     if (target) {
       targetState.relationship = target.aimAssist
@@ -61,6 +64,9 @@ export class HudProjector {
         : target.ship instanceof NeutralShip && target.ship.isMerchant
           ? 'friendly'
           : 'neutral';
+      targetState.kind = contactKind(target.ship);
+      targetState.inRange =
+        targetState.relationship !== 'hostile' || target.distance <= weaponReach;
       this.projected.copy(target.ship.position).project(camera);
       if (this.projected.z < 1) {
         targetState.visible = true;
@@ -86,15 +92,15 @@ export class HudProjector {
 
     for (const hostile of shootables) {
       const distance = hostile.position.distanceTo(playerPosition);
+      // From afar the carrier is one high-threat contact; exposing twelve
+      // overlapping battery markers makes it read as a turret cloud instead.
+      if (
+        hostile instanceof Turret && hostile.mountNormal &&
+        distance > CAPITAL_TURRET_LOCK_RANGE_METERS
+      ) continue;
       const neutral = hostile instanceof NeutralShip;
       const merchant = neutral && hostile.isMerchant;
-      const kind: HudContactMarker['kind'] = merchant
-        ? 'merchant'
-        : neutral
-          ? 'neutral'
-          : hostile instanceof Turret
-            ? 'turret'
-            : 'ship';
+      const kind = contactKind(hostile);
       const inRange = neutral || distance <= weaponReach;
       radarContacts.push({
         position: hostile.position,
@@ -230,4 +236,9 @@ export class HudProjector {
     }
     return this.relativeRotation;
   }
+}
+
+function contactKind(ship: Ship): HudContactMarker['kind'] {
+  if (ship instanceof NeutralShip) return ship.isMerchant ? 'merchant' : 'neutral';
+  return ship instanceof Turret ? 'turret' : 'ship';
 }

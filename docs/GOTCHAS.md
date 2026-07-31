@@ -1,6 +1,6 @@
 # Gotchas
 
-Last updated: 2026-07-30.
+Last updated: 2026-07-31.
 
 Real issues hit while building this game, kept here so they only get paid for once.
 
@@ -70,7 +70,8 @@ Real issues hit while building this game, kept here so they only get paid for on
   order (skybox → starfield → sun → planets → asteroids → dust). Inserting a new
   consumer earlier shifts every later stream → all world baselines change. Append new
   consumers last, or expect to `npm run test:visual:update` and re-eyeball.
-- DOM determinism comes from the injected freeze stylesheet in `TestScenes.ts`
+- DOM determinism comes from the injected freeze stylesheet in
+  `test-scenes/TestSceneShared.ts`
   (animations paused at t=1s, transitions off). New CSS animations are automatically
   covered; `setTimeout`-driven UI (comms fade-outs) is **not** — don't let a test
   scene depend on timer-driven DOM state.
@@ -111,14 +112,42 @@ Real issues hit while building this game, kept here so they only get paid for on
   The turret hit radius covers its armored center (not its long barrel tips), and
   `PlanetSurface` rejects every spawn whose complete hit sphere intersects terrain
   or any registered body after all bases/caves are built.
-- **Targeting must scan ALL hostiles** (`game.hostiles`: fighters + turrets +
-  capital), not `enemies` — turrets were simply unlockable. Score is
-  `(1-dot)*400 + dist*0.5` so a 10× closer turret beats a distant fighter at
-  similar angles; the hostiles list is rebuilt BEFORE `targeting.update` each tick.
+- **Targeting must scan the correct threat-resolution set** (`game.hostiles`),
+  not only `enemies`—independent turrets were otherwise unlockable. Distant
+  carrier mounts are intentionally omitted beyond 260 m so the hull reads as one
+  capital-level contact; they re-enter up close. `shootables` still contains every
+  mount at every range so this UI policy never changes physical hits. Inside the
+  active weapon reach, score is `(1-dot)*400 + dist*0.5`, so a 10× closer turret
+  beats a distant fighter at similar angles. When no in-range hostile qualifies,
+  enemies switch to pure camera-crosshair angle (range breaks exact ties only).
+  The hostiles list is rebuilt BEFORE `targeting.update` each tick.
 - **An informational contact is not an aim target.** Targeting tries LOS-clear
-  hostiles first, then civilians. HUD projection consumes `current`, but primary
-  convergence and seeker homing must consume `aimTarget`; feeding `current` to
-  weapons silently enables autoaim against merchants.
+  hostiles first, then sensor-only civilians. Civilians rank by camera-crosshair
+  angle (range breaks only an angular tie), are not erased by asteroid visual
+  clutter, and receive no wider keep-lock cone. HUD projection
+  consumes `current`, but primary convergence and seeker homing must consume
+  `aimTarget`; feeding `current` to weapons silently enables autoaim against
+  merchants. The capture bracket has no opacity transition so loss is immediate.
+- **Missile warnings count live projectiles, never launcher-equipped enemies.**
+  `ProjectileSystem.incomingThreat` includes only active homing ordnance whose
+  current target is the player; carried payloads, unguided rockets, released pool
+  entries, and seekers that lost lock contribute zero. ETA must solve the missile's
+  accelerating pursuit (plus a bounded turn penalty), not divide range by current
+  radial speed—that delayed the red warning until roughly 0.6 seconds. Cache a
+  per-projectile warning ETA with `min(previous,current)` so displayed time cannot
+  rise; clear it immediately when radial closing speed becomes non-positive.
+- **Removing an Object3D does not free its GPU allocations.** Every ship mesh is
+  procedurally instantiated, so kills, sector swaps, hangar hull changes, parked
+  planet visits, and an abandoned space stash must call `Ship.dispose()` after
+  detaching objects that will never return. Temporarily parked planet/space actors
+  are detached without disposal and released only when their visit/sortie is
+  discarded. Shared cached surface/glow textures are intentionally not disposed.
+- **Combat population and WebAudio graphs need hard ceilings.** Hunter dispatches
+  stop at 12 live reinforcements and pooled projectiles stop at 320. Synthesized
+  one-shots reserve one of 48 source slots and explicitly disconnect their graph
+  in `onended`; without those bounds, a long high-alert firefight could grow CPU,
+  GPU, DOM-contact, or audio resources until Chromium killed the tab. Rotary fire
+  additionally uses one globally rate-limited sound instead of a graph per bolt.
 
 ## HUD / secondary renderers
 
@@ -174,9 +203,10 @@ Real issues hit while building this game, kept here so they only get paid for on
   means the LATER rule wins, and a `position: relative` on `.hud-panel`
   silently flattened every corner panel into document flow (the "broken WIP
   HUD" report). Positioning belongs on the placement classes only.
-- The capital's radius-24 hull sphere sits in FRONT of its mounted turrets for
-  any incoming bolt — mounted batteries are unkillable while it lives. They're
-  excluded from `hostiles`/`shootables`; lock-on and damage go to the ship.
+- **A broad carrier sphere makes hull-mounted batteries unshootable.** The carrier
+  uses tight ship-local compound boxes for projectile and LOS intersection, while
+  every live mount remains in `hostiles`/`shootables`. Destroying one battery must
+  remove only that battery; destroying the carrier cleans up every survivor.
 - JS `%` returns NEGATIVE for negative operands: a big backward mouse-wheel
   delta indexed `loadout[-1]` and crashed weapon switching. Use
   `((i % n) + n) % n`.
@@ -221,6 +251,10 @@ Real issues hit while building this game, kept here so they only get paid for on
 - Ship-fit restrictions belong in both the screen callback and the mutation method.
   Disabling “Seeker Missiles” in Engineering/Trade is only presentation; `craft`
   and `executeTrade` must independently reject the transaction when missileRate=0.
+- Crafting safety is the same two-layer invariant. `LoadoutScreen` explains and
+  disables fabrication near a threat, while `GameScreens.craft` independently
+  checks `SYSTEM_LOCKOUT_RANGE_METERS`. Reusing the cloak constant prevents two
+  visually identical 180 m rules from drifting apart.
 
 ## Pointer lock / input
 
@@ -248,8 +282,22 @@ Real issues hit while building this game, kept here so they only get paid for on
 - **Turrets must gate FIRE on line-of-sight, not just tracking** — otherwise they
   blast their own mounting rock/roof or a hillside all day (this happened on
   planets, asteroids, and buildings simultaneously).
-  `GameCombat.hasLineOfSight` checks big bodies + planet terrain, skipping the
-  sphere that contains the shooter.
+  `GameCombat.hasLineOfSight` checks big bodies + planet terrain. Carrier mounts
+  start that ray three units outward along their deck normal: starting inside the
+  carrier collider and blindly skipping the first hit made the far-side hull
+  transparent. Traverse separately rejects targets behind the mount hemisphere.
+- **A homing missile's lock is its target reference, not merely its projectile
+  kind.** Fast rockets are visually missiles but never raise a lock warning.
+  `ProjectileSystem.incomingThreat` considers only active enemy homing ordnance
+  still targeting the player; the runtime's cloak predicate clears that reference.
+- Long-range weapons need long-range AI permission too. A 1,200 m seeker definition
+  is inert if `EnemyBrain.approach` only sets `wantsFire` inside its legacy 320 m
+  gun envelope. Pass the package attack range through `EnemyShip.update`.
+- **Committed carrier fire is a state machine, not a delayed callback.** Charge
+  begins only inside the forward cone with LOS. During the two-second charge the
+  last visible position updates and is clamped to the physical arc; losing LOS or
+  leaving the cone never cancels the shot. `traceCapitalBeam` stops at and destroys
+  only the nearest asteroid, protecting the player and further rocks behind it.
 - **Planetfall must DETACH the space world, never dispose it** — the sector has to
   be bit-identical on lift-off (destroyed rocks, live patrols, beacons). See
   `spaceStash` in `GameWorldFlow`; the smoke test scars a rock before landing to
@@ -307,6 +355,11 @@ Real issues hit while building this game, kept here so they only get paid for on
   aim test this frame. `InteractionTargeting` returns the owning body; Game uses
   its ore-point centroid and `HudProjector` applies exponential screen-space
   damping keyed by that body.
+- Ore preview and contact targeting must compete by the same camera-space angle.
+  Unconditionally clearing a distant/civilian contact whenever any vein is inside
+  the broad cone recreates the “merchant under crosshair, mining hint shown” bug.
+  Close combat always wins; otherwise the more centred candidate wins. Ore remains
+  informational: no `Targeting.current`, lead pip, convergence, or missile lock.
 - DOM holdings use `ResourceIcons.ts` inline SVGs and a fixed icon/label/count
   grid. Keep counts right-aligned with explicit right padding; a flex row lets
   labels and hover highlights shift as values change.

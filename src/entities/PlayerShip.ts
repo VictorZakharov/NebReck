@@ -120,6 +120,11 @@ export class PlayerShip extends Ship {
 
     this.updateCommon(dt);
   }
+
+  override dispose(): void {
+    this.displays.dispose();
+    super.dispose();
+  }
 }
 
 function clampRate(v: number, max: number): number {

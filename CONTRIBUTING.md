@@ -53,6 +53,8 @@ not receive deployment credentials.
   `Math.random()` or wall-clock time, for render-affecting behavior.
 - Keep per-frame code allocation-free where practical.
 - Add a regression assertion or visual scene for every bug fix.
+- Put new visual staging in the focused module under `src/game/test-scenes/`;
+  keep `TestScenes.ts` as the small name-to-stage dispatcher.
 - Update the relevant documentation when behavior or architecture changes.
 
 ## Licensing contributions

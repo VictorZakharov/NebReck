@@ -14,6 +14,9 @@ export class AudioEngine {
 
   private musicNodes: AudioNode[] = [];
   private musicPlaying = false;
+  private activeOneShots = 0;
+  private readonly maxOneShots = 48;
+  private lastEnemyAutogun = -Infinity;
 
   /** Call from a click/keydown handler; idempotent. */
   init(): void {
@@ -42,6 +45,15 @@ export class AudioEngine {
 
   get ready(): boolean {
     return this.ctx !== null;
+  }
+
+  /** Diagnostics used by the dense-combat smoke regression. */
+  get debugActiveOneShots(): number {
+    return this.activeOneShots;
+  }
+
+  get debugMaxOneShots(): number {
+    return this.maxOneShots;
   }
 
   // ---- continuous engine hum ------------------------------------------------
@@ -96,6 +108,13 @@ export class AudioEngine {
     this.zap(880 * pitch, 140 * pitch, 0.14, 0.16, 'square');
   }
 
+  /** Globally rate-limited chatter for dense rotary-fire encounters. */
+  enemyAutogun(): void {
+    if (!this.ctx || this.ctx.currentTime - this.lastEnemyAutogun < 0.045) return;
+    this.lastEnemyAutogun = this.ctx.currentTime;
+    this.zap(520, 170, 0.045, 0.055, 'square');
+  }
+
   scatter(): void {
     for (let i = 0; i < 3; i++) {
       setTimeout(() => this.zap(520, 90, 0.12, 0.1, 'sawtooth'), i * 12);
@@ -111,6 +130,29 @@ export class AudioEngine {
   missileLaunch(): void {
     this.noiseBurst(0.7, 900, 0.2, 0.35);
     this.zap(300, 90, 0.5, 0.08, 'triangle');
+  }
+
+  enemyMissileLaunch(): void {
+    this.noiseBurst(0.48, 720, 0.12, 0.03);
+    this.zap(210, 72, 0.42, 0.07, 'sawtooth');
+  }
+
+  missileWarning(imminent: boolean): void {
+    const pitch = imminent ? 1280 : 760;
+    const interval = imminent ? 78 : 150;
+    this.zap(pitch, pitch, 0.07, imminent ? 0.2 : 0.13, 'square');
+    setTimeout(() => this.zap(pitch, pitch, 0.07, imminent ? 0.2 : 0.13, 'square'), interval);
+  }
+
+  capitalCharge(): void {
+    this.zap(52, 1450, 1.95, 0.2, 'sawtooth');
+    this.zap(110, 2400, 1.95, 0.09, 'sine');
+  }
+
+  capitalBeam(): void {
+    this.noiseBurst(1.15, 3200, 0.55, 0.003);
+    this.zap(180, 28, 1.2, 0.62, 'sawtooth');
+    this.zap(2200, 120, 0.72, 0.28, 'square');
   }
 
   explosion(big = false): void {
@@ -222,6 +264,8 @@ export class AudioEngine {
     type: OscillatorType,
   ): void {
     if (!this.ctx || !this.master) return;
+    const release = this.reserveOneShot();
+    if (!release) return;
     const ctx = this.ctx;
     const t = ctx.currentTime;
     const osc = ctx.createOscillator();
@@ -232,12 +276,19 @@ export class AudioEngine {
     g.gain.setValueAtTime(volume, t);
     g.gain.exponentialRampToValueAtTime(0.001, t + duration);
     osc.connect(g).connect(this.master);
+    osc.onended = () => {
+      osc.disconnect();
+      g.disconnect();
+      release();
+    };
     osc.start(t);
     osc.stop(t + duration + 0.05);
   }
 
   private noiseBurst(duration: number, filterHz: number, volume: number, attack = 0.005): void {
     if (!this.ctx || !this.master || !this.noiseBuffer) return;
+    const release = this.reserveOneShot();
+    if (!release) return;
     const ctx = this.ctx;
     const t = ctx.currentTime;
     const src = ctx.createBufferSource();
@@ -251,7 +302,24 @@ export class AudioEngine {
     g.gain.exponentialRampToValueAtTime(volume, t + attack);
     g.gain.exponentialRampToValueAtTime(0.001, t + duration);
     src.connect(filter).connect(g).connect(this.master);
+    src.onended = () => {
+      src.disconnect();
+      filter.disconnect();
+      g.disconnect();
+      release();
+    };
     src.start(t);
     src.stop(t + duration + 0.05);
+  }
+
+  private reserveOneShot(): (() => void) | null {
+    if (this.activeOneShots >= this.maxOneShots) return null;
+    this.activeOneShots++;
+    let active = true;
+    return () => {
+      if (!active) return;
+      active = false;
+      this.activeOneShots--;
+    };
   }
 }

@@ -64,6 +64,13 @@ export class CockpitDisplays {
     this.right.needsUpdate = true;
   }
 
+  /** The three canvases are unique to one player hull, not shared caches. */
+  dispose(): void {
+    this.center.dispose();
+    this.left.dispose();
+    this.right.dispose();
+  }
+
   // ---- painters -------------------------------------------------------------
 
   private frame(ctx: CanvasRenderingContext2D, title: string): void {

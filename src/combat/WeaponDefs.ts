@@ -94,4 +94,44 @@ export const MISSILE = {
   color: new Color(1.0, 0.85, 0.3),
 } as const;
 
+export type EnemyRocketMode = 'homing' | 'fast';
+
+/** Vigil rotary cannon: low per-bolt damage, player-autogun cadence. */
+export const ENEMY_AUTOGUN = {
+  fireCooldown: 0.055,
+  damage: 2.6,
+  projectileSpeed: 390,
+  range: 468,
+  life: 1.2,
+  boltLength: 2.2,
+  boltWidth: 0.1,
+  color: new Color(1.0, 0.78, 0.28),
+} as const;
+
+/** Enemy ordnance deliberately trades tracking for speed between variants. */
+export const ENEMY_ROCKETS = {
+  homing: {
+    name: 'Vigil Seeker',
+    damage: 28,
+    speed: 92,
+    accel: 105,
+    maxSpeed: 205,
+    turnRate: 1.55,
+    life: 8,
+    attackRange: 1200,
+    color: new Color(1.0, 0.22, 0.08),
+  },
+  fast: {
+    name: 'Vigil Lance Rocket',
+    damage: 24,
+    speed: 285,
+    accel: 0,
+    maxSpeed: 285,
+    turnRate: 0,
+    life: 4.6,
+    attackRange: 320,
+    color: new Color(1.0, 0.58, 0.1),
+  },
+} as const;
+
 export const ENEMY_BOLT_COLOR = new Color(1.0, 0.28, 0.2);

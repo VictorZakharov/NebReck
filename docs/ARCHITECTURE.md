@@ -1,6 +1,6 @@
 # Architecture
 
-Last updated: 2026-07-30.
+Last updated: 2026-07-31.
 
 High-level map of how Nebula Reckoning is put together and why. Companion docs:
 [GOTCHAS.md](GOTCHAS.md) (things that will bite you), [EXTENDING.md](EXTENDING.md)
@@ -67,25 +67,27 @@ src/
     ShipMeshTypes.ts      hull/style/anchor data contracts
     ShipMeshBuilder.ts    shared materials, airfoils, nav lights and engine glow
     PlayerShipMeshes.ts   Kestrel, Vanta and Aegis geometry
-    NpcShipMeshes.ts      raider, brute, turret, hauler and capital geometry
+    NpcShipMeshes.ts      raider, brute, bomber, gun/rotary/rocket turret, hauler/capital geometry
     ShipMeshFactory.ts    hull dispatch + shared finishing pass
     ShipMeshAudit.ts      geometry-level connected-component QA
     CockpitMesh.ts        first-person interior built around the eye point
-    Ship.ts               base: transform, velocity, hull/shield/regen, engine glow, exterior group
+    Ship.ts               base state + swept sphere/compound-box hull intersection;
+                          per-instance geometry/material disposal on final detach
     PlayerShip.ts         arcade flight model driven by Input + PlayerShipDef stats
-    EnemyShip.ts          steering/firing shell around an EnemyBrain (patrol waypoints opt.)
-    Turret.ts             stationary emplacement (caves + capital batteries)
+    EnemyShip.ts          steering/firing + cannon/rotary/rocket packages around EnemyBrain
+    Turret.ts             cannon/rotary/rocket emplacements + carrier traverse hemispheres
     NeutralShip.ts        cargo hauler flying trade routes; quest giver via hail (R)
-    CapitalShip.ts        station-keeping Vigil capital; firepower = mounted Turrets;
-                          projects the jump-suppression field
+    CapitalShip.ts        carrier mount plan + committed, arc-clamped annihilator state/FX;
+                          also projects the jump-suppression field
     PickupSystem.ts       pooled resource drops with magnet-to-player + visit snapshots
   ai/
     EnemyBrain.ts         approach / attack / break state machine per enemy
   combat/
-    WeaponDefs.ts         data: player weapons, missile, enemy bolt color
+    WeaponDefs.ts         player weapons/seeker + enemy rotary/homing/fast packages
     WeaponSystem.ts       player firing, energy, switching, damageMult (upgrades)
-    ProjectileSystem.ts   pooled bolts+missiles, swept segment-vs-sphere collision
-    Targeting.ts          LOS-aware hostile-first lock + civilian info fallback
+    ProjectileSystem.ts   pooled bolts/ordnance, homing + lock threat query, swept hull collision
+    CapitalBeam.ts        thick-ray trace: first asteroid absorbs, ships before it are hit
+    Targeting.ts          range-weighted close lock + crosshair-ranked distant/civilian scan
   fx/
     ParticleSystem.ts     one pooled additive point-sprite system for everything
     ExplosionSystem.ts    flash + shockwave ring + sparks/embers + pooled point lights
@@ -106,17 +108,18 @@ src/
     styles.css            ordered import manifest
     styles/               foundation, screens, HUD clusters, hangar, loadout, manual
   audio/
-    AudioEngine.ts        procedural WebAudio: SFX one-shots, engine hum, ambient pad
+    AudioEngine.ts        procedural WebAudio: capped/cleaned SFX graph, engine hum,
+                          ambient pad
   game/
     Game.ts               public facade: constructs and initializes the controller stack
     GameFoundation.ts     shared state + subsystem construction/host wiring
     GameScreens.ts        menu/hangar/overlay transitions + sortie lifecycle/crafting
     GameInteractions.ts   travel, trade, contracts, devices, story and enemy spawning
-    GameRuntime.ts        input routing, continuous simulation, rendering and resize
-    GameCombat.ts         hits, drops, hostile fire/LOS and ship/body collisions
+    GameRuntime.ts        input, simulation, carrier mount LOS, missile-warning transitions
+    GameCombat.ts         hits, hostile ordnance/LOS, carrier-beam effects and collisions
     GameHudPresenter.ts   HUD frame assembly, projections, radar and pickup flyouts
     GameWorldFlow.ts      jump spool, sector population and persistent planet swaps
-    GameConstants.ts      shared travel constants + target relationship/role copy
+    GameConstants.ts      travel/system-safety constants + target relationship/role copy
     GamePreferences.ts    validated one-year ship/difficulty cookies
     InteractionTargeting.ts boresight loot/body + nearest-neutral queries
     HudProjection.ts      world→screen contacts/radar + dt-smoothed prompt anchors
@@ -127,8 +130,8 @@ src/
     Difficulty.ts         DIFFICULTIES multipliers
     Inventory.ts          resource wallet + RECIPES + craft bookkeeping
     EncounterDirector.ts  exploration threat pacing: alert heat from Vigil kills →
-                          hunter wings jump in from deep space; ambient scout pairs
-                          (gated off in the peaceful first sector)
+                          hunter wings jump in from deep space; ambient scout pairs;
+                          12-live-hunter ceiling (gated off in peaceful sector 1)
     Quests.ts             procedural contracts from hailed haulers (R): bounty /
                           collect / beacon delivery / cross-sector courier
     Devices.ts            cloak + EMP cooldown timers (effects applied by controller layers)
@@ -137,7 +140,8 @@ src/
     Trade.ts              merchant stock list + trade validation/execution
     Story.ts              title, intro, exploration comms beats (fired once on
                           first-contact / first-cave / capital-sighted / …), death lines
-    TestScenes.ts         deterministic staging for the visual harness
+    TestScenes.ts         small deterministic scene-name dispatcher
+    test-scenes/          shared stepping + focused UI, combat and world staging modules
 ```
 
 ## Game state machine
@@ -190,28 +194,38 @@ GameLoop.tick(dt)
     quest bookkeeping: collect progress, delivery-beacon proximity
     devices.update → CloakVisual.sync; planet terrain clamp + scrape damage
     story triggers (one-shot, space-side): first-contact/cave/capital…
-    hostiles[] / shootables[] scratch rebuild (+ capital, + neutrals)
+    hostiles[] targeting-resolution rebuild (distant carrier mounts collapse);
+    shootables[] physical-hit rebuild (all mounts + capital + neutrals)
     PlayerShip.update          ← Input
-    Targeting.update           → visible hostile lock, else civilian contact
+    Targeting.update           → close range-weighted hostile; else camera-angle contact
+    InteractionTargeting      → competing ore/stash boresight candidate (never aim assist)
     WeaponSystem.update        → spawns bolts/missiles from aimTarget only
     engine-trail particle emission (dt-accumulated)
     EnemyShip.update × N       ← EnemyBrain (patrol/approach/attack/break),
                                  stun + cloak-blind aware, fires via callback
-    Turret.update × N          → turretFire (gated by hasLineOfSight)
-    NeutralShip.update × N; CapitalShip.update
-    ProjectileSystem.update    → onHit → GameCombat.resolveHit
+    Turret.update × N          → traverse hemisphere + outward-offset LOS → turretFire
+    NeutralShip.update × N; CapitalShip.update → committed charge/fire state
+    ProjectileSystem.update    → homing (cloak can drop target) → resolveHit
+    ProjectileSystem threat    → live-seeker lock / monotonic ≤2 s impact countdown
        resolveHit: jump-disrupt · damage ships/turrets/capital/neutrals |
        rock: ore crack → pickups · hp → shatter (+calving) · stash burst
     PickupSystem.update        → GameCombat.collect → Inventory (+first-ore beat)
     GameCombat.resolveShipCollisions (active bodies, capital wall, rams)
     EncounterDirector.update   (space, sector ≥2) → hunter dispatches
     ChaseCamera.update         → third/first blend, FOV, shake
-    GameHudPresenter.update    → HudProjector (camera-space contacts, lead marker,
-                                 radar and world-attached prompt) → HudFrameState
-                                 (jump/devices/offer/quest log) → Hud + Radar3D
+    GameHudPresenter.update    → HudProjector (contacts, ore wireframe, lead marker,
+                                 radar and smoothed merchant/loot/planet prompt) →
+                                 HudFrameState (jump Flux/devices/offer/quest log) → Hud + Radar3D
   Sector.update | (planet: static) ; particles/explosions/shield/debris/pulses/warp
   PostFx.render
 ```
+
+Runtime resource ownership follows the same state graph. Projectile, particle,
+debris, pickup, explosion, and audio one-shot systems are bounded pools/graphs.
+Actors parked for planetfall remain live and undisposed because lift-off restores
+the exact objects; kills, sector/sortie teardown, discarded visit states, and
+replaced hangar hulls detach and then dispose their unique geometry/materials.
+Cached procedural surface/glow textures remain shared for the application's life.
 
 ## Rendering pipeline
 
@@ -233,9 +247,11 @@ Add new cross-system reactions by subscribing in
 
 ## Visual test harness
 
-See `test/visual/run.mjs` + `src/game/TestScenes.ts`. Deterministic because:
+See `test/visual/run.mjs`, `src/game/TestScenes.ts`, and
+`src/game/test-scenes/`. Deterministic because:
 seeded Rng, `GameLoop.stepManual` (no wall clock), frozen CSS animations
 (injected style pauses everything at t=1s), SwiftShader software GL in headless
-Chromium. Same machine → 0.000% pixel diff. The current 23 scenes cover world art,
-ships, combat/FX, hostile and civilian HUD targeting, every major screen, caves/bases/wrecks, trade,
-fleet connectivity, cloak and controls.
+Chromium. Same machine → 0.000% pixel diff. The current 26 scenes cover world art,
+ships, combat/FX, hostile and civilian HUD targeting, every major screen,
+caves/bases/wrecks, trade, fleet connectivity, cloak, controls, enemy ordnance,
+missile warnings and the carrier superweapon.

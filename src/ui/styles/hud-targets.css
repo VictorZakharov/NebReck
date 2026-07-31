@@ -3,28 +3,33 @@
   position: absolute;
   width: 46px; height: 46px;
   transform: translate(-50%, -50%);
-  border: 1.5px solid var(--warn);
+  border: 1.5px solid var(--danger);
   clip-path: polygon(0 0, 30% 0, 30% 8%, 8% 8%, 8% 30%, 0 30%,
                      70% 0, 100% 0, 100% 30%, 92% 30%, 92% 8%, 70% 8%,
                      100% 70%, 100% 100%, 70% 100%, 70% 92%, 92% 92%, 92% 70%,
                      0 70%, 8% 70%, 8% 92%, 30% 92%, 30% 100%, 0 100%);
-  box-shadow: 0 0 12px rgba(255, 179, 71, 0.4);
-  transition: opacity 0.15s;
+  box-shadow: 0 0 12px rgba(255, 59, 48, 0.4);
+  /* Losing a capture is a hard cut; a fading bracket reads as a stale lock. */
+  transition: none;
 }
 .target-box.friendly { border-color: #8aff9f; box-shadow: 0 0 12px rgba(138, 255, 159, 0.4); }
 .target-box.neutral { border-color: #9fdcff; box-shadow: 0 0 12px rgba(159, 220, 255, 0.36); }
+.target-box.turret { border-color: rgba(255, 167, 61, 0.9); box-shadow: 0 0 12px rgba(255, 167, 61, 0.4); }
+.target-box.far { border-color: rgba(150, 165, 175, 0.65); box-shadow: none; }
 .target-dist {
   position: absolute;
   transform: translate(-50%, 0);
-  font-size: 13px; font-weight: 600; letter-spacing: 0.18em; color: var(--warn);
+  font-size: 13px; font-weight: 600; letter-spacing: 0.18em; color: var(--danger);
   background: rgba(4, 10, 18, 0.7);
-  border: 1px solid rgba(255, 179, 71, 0.45);
+  border: 1px solid rgba(255, 59, 48, 0.45);
   padding: 2px 9px;
   white-space: nowrap;
-  text-shadow: 0 0 8px rgba(255, 179, 71, 0.6);
+  text-shadow: 0 0 8px rgba(255, 59, 48, 0.6);
 }
 .target-dist.friendly { color: #8aff9f; border-color: rgba(138, 255, 159, 0.5); }
 .target-dist.neutral { color: #9fdcff; border-color: rgba(159, 220, 255, 0.5); }
+.target-dist.turret { color: var(--warn); border-color: rgba(255, 167, 61, 0.5); text-shadow: 0 0 8px rgba(255, 167, 61, 0.6); }
+.target-dist.far { color: #96a5af; border-color: rgba(150, 165, 175, 0.45); text-shadow: none; }
 .lead-pip {
   position: absolute;
   width: 10px; height: 10px;

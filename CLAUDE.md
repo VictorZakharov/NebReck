@@ -1,6 +1,6 @@
 # Nebula Reckoning — agent guide
 
-Last updated: 2026-07-30.
+Last updated: 2026-07-31.
 
 Everspace-inspired exploration space-dogfighter. three.js + TypeScript + webpack,
 100% procedural (no binary assets). Read the docs before coding:
@@ -35,7 +35,14 @@ Everspace-inspired exploration space-dogfighter. three.js + TypeScript + webpack
    `GamePreferences`). Reuse
    `ui/ResourceIcons.ts` for material/consumable symbols;
    do not introduce one-off Unicode glyphs in DOM inventory UI.
+   Visual staging is likewise split by responsibility: `TestScenes.ts` is only
+   the dispatcher; UI, combat and world scenes live under `game/test-scenes/`.
 5. Pooled + allocation-free per frame; pooled lights idle at intensity 0.
+
+Targeting has two regimes: range-weighted hostile aim assist inside current weapon
+reach, then pure camera-crosshair ranking beyond reach; civilian and ore previews
+are informational only and must never enter `aimTarget`. All object prompts use a
+stable smoothed world anchor. Cloak and crafting share the 180 m system lockout.
 
 Planet cave geometry is an open-bottomed procedural arch whose sampled colliders
 come from the same profile. Preserve the non-self-intersecting control path, dense
@@ -46,12 +53,12 @@ closing-speed collision damage whenever surface generation changes.
 Hangar selection clicks are persistence commits. Save ship/difficulty synchronously
 inside the click callbacks; do not defer them to Engage or game entry.
 
-## Verify loop (run all three before claiming done)
+## Verify loop (run all four before claiming done)
 
 ```bash
 npm run test:architecture   # Game facade/controller size budgets
 npm run typecheck
-npm run test:visual          # 23 scenes vs local baselines; 0.000% on this machine
+npm run test:visual          # 26 scenes vs local baselines; 0.000% on this machine
 npm run test:smoke           # full loop: peace→contract→merchant→planet→jump→combat→devices
 ```
 

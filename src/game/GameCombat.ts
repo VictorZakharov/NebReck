@@ -1,15 +1,17 @@
 import { Scene, Vector3 } from 'three';
 import { AudioEngine } from '../audio/AudioEngine';
 import { ProjectileHit, ProjectileSystem } from '../combat/ProjectileSystem';
-import { ENEMY_BOLT_COLOR } from '../combat/WeaponDefs';
+import { traceCapitalBeam } from '../combat/CapitalBeam';
+import { ENEMY_AUTOGUN, ENEMY_BOLT_COLOR } from '../combat/WeaponDefs';
 import { EventBus } from '../core/EventBus';
 import { Rng } from '../core/Rng';
-import { CapitalShip } from '../entities/CapitalShip';
+import { CapitalBeamShot, CapitalShip } from '../entities/CapitalShip';
 import { EnemyShip } from '../entities/EnemyShip';
 import { NeutralShip } from '../entities/NeutralShip';
 import { PickupSystem, ResourceType } from '../entities/PickupSystem';
 import { PlayerShip } from '../entities/PlayerShip';
-import { Turret, TURRET_STATS } from '../entities/Turret';
+import { Ship } from '../entities/Ship';
+import { Turret } from '../entities/Turret';
 import { AsteroidDebris } from '../world/AsteroidDebris';
 import { AsteroidBody } from '../world/AsteroidField';
 import { PlanetSurface } from '../world/PlanetSurface';
@@ -29,6 +31,9 @@ const childOffset = new Vector3();
 const losDir = new Vector3();
 const losOff = new Vector3();
 const enemyRel = new Vector3();
+const fireDirection = new Vector3();
+const fireMuzzle = new Vector3();
+const capitalHullHit = new Vector3();
 
 export interface CombatWorld {
   bodies: AsteroidBody[];
@@ -98,25 +103,36 @@ export class GameCombat {
   enemyFire(enemy: EnemyShip): void {
     const host = this.host;
     if (!this.hasLineOfSight(enemy.position, host.player.position)) return;
-    const dir = new Vector3();
-    enemy.forward(dir);
+    enemy.forward(fireDirection);
     for (const gunpoint of enemy.gunpoints) {
-      const muzzle = gunpoint.clone();
-      enemy.object.localToWorld(muzzle);
+      fireMuzzle.copy(gunpoint).applyQuaternion(enemy.object.quaternion).add(enemy.position);
+      if (enemy.rocketMode) {
+        host.projectiles.spawnEnemyRocket(
+          fireMuzzle,
+          fireDirection,
+          host.player,
+          enemy.rocketMode,
+          host.difficulty.enemyDamage,
+        );
+        continue;
+      }
       host.projectiles.spawnBolt({
-        position: muzzle,
-        direction: dir,
-        speed: enemy.stats.projectileSpeed,
-        damage: enemy.stats.damage * host.difficulty.enemyDamage,
+        position: fireMuzzle,
+        direction: fireDirection,
+        speed: enemy.autoGun ? ENEMY_AUTOGUN.projectileSpeed : enemy.stats.projectileSpeed,
+        damage: (enemy.autoGun ? ENEMY_AUTOGUN.damage : enemy.stats.damage) *
+          host.difficulty.enemyDamage,
         faction: 'enemy',
-        color: ENEMY_BOLT_COLOR,
-        boltLength: 3.4,
-        boltWidth: 0.18,
-        life: 2.2,
+        color: enemy.autoGun ? ENEMY_AUTOGUN.color : ENEMY_BOLT_COLOR,
+        boltLength: enemy.autoGun ? ENEMY_AUTOGUN.boltLength : 3.4,
+        boltWidth: enemy.autoGun ? ENEMY_AUTOGUN.boltWidth : 0.18,
+        life: enemy.autoGun ? ENEMY_AUTOGUN.life : 2.2,
       });
     }
+    if (enemy.rocketMode) host.audio.enemyMissileLaunch();
     if (enemy.position.distanceTo(host.player.position) < 400) {
-      host.audio.laser(0.6);
+      if (enemy.autoGun) host.audio.enemyAutogun();
+      else if (!enemy.rocketMode) host.audio.laser(0.6);
     }
   }
 
@@ -215,6 +231,7 @@ export class GameCombat {
       host.explosions.spawn(turret.position, 1.1);
       host.debris.spawn(turret.position, 4, host.rng);
       host.scene.remove(turret.object);
+      turret.dispose();
     }
     host.turrets = host.turrets.filter((turret) => !host.capitalTurrets.includes(turret));
     host.capitalTurrets = [];
@@ -227,6 +244,7 @@ export class GameCombat {
     host.audio.explosion(true);
     host.debris.spawn(capital.position, 20, host.rng);
     host.scene.remove(capital.object);
+    capital.dispose();
     host.capital = null;
     host.score += Math.round(2500 * host.difficulty.scoreMult * host.threatScale());
     host.pickups.spawn(capital.position, 'scrap', 6, host.rng);
@@ -244,6 +262,7 @@ export class GameCombat {
     host.audio.explosion(true);
     host.debris.spawn(neutral.position, 8, host.rng);
     host.scene.remove(neutral.object);
+    neutral.dispose();
     host.neutrals = host.neutrals.filter((candidate) => candidate !== neutral);
     host.pickups.spawn(neutral.position, 'scrap', host.rng.int(3, 5), host.rng);
     host.events.emit('comms', {
@@ -258,9 +277,11 @@ export class GameCombat {
     host.audio.explosion(true);
     host.debris.spawn(turret.position, 5, host.rng);
     host.scene.remove(turret.object);
+    turret.dispose();
     host.turrets = host.turrets.filter((candidate) => candidate !== turret);
+    host.capitalTurrets = host.capitalTurrets.filter((candidate) => candidate !== turret);
     host.score += Math.round(
-      TURRET_STATS.score * host.difficulty.scoreMult * host.threatScale(),
+      turret.stats.score * host.difficulty.scoreMult * host.threatScale(),
     );
     host.encounters?.onVigilKill('turret');
     host.pickups.spawn(turret.position, 'scrap', 2, host.rng);
@@ -272,6 +293,7 @@ export class GameCombat {
     from: Vector3,
     to: Vector3,
     ignoredBody: AsteroidBody | null = null,
+    targetShip: Ship | null = null,
   ): boolean {
     const host = this.host;
     if (host.surface?.isCovered(from, to)) return false;
@@ -290,30 +312,88 @@ export class GameCombat {
       if (pointInsideBody(from, body, 4)) continue;
       return false;
     }
+    const capital = host.capital;
+    if (
+      capital?.alive && capital !== targetShip &&
+      capital.intersectSegment(from, to, capitalHullHit) &&
+      capitalHullHit.distanceToSquared(from) > 2.5 * 2.5
+    ) return false;
     return true;
   }
 
   turretFire(turret: Turret): void {
     const host = this.host;
     if (!this.hasLineOfSight(turret.position, host.player.position)) return;
-    const direction = new Vector3();
-    turret.forward(direction);
+    turret.forward(fireDirection);
     for (const gunpoint of turret.gunpoints) {
-      const muzzle = gunpoint.clone();
-      turret.object.localToWorld(muzzle);
+      fireMuzzle.copy(gunpoint).applyQuaternion(turret.object.quaternion).add(turret.position);
+      if (turret.weapon === 'homing' || turret.weapon === 'fast') {
+        host.projectiles.spawnEnemyRocket(
+          fireMuzzle,
+          fireDirection,
+          host.player,
+          turret.weapon,
+          host.difficulty.enemyDamage,
+        );
+        continue;
+      }
       host.projectiles.spawnBolt({
-        position: muzzle,
-        direction,
-        speed: TURRET_STATS.projectileSpeed,
-        damage: TURRET_STATS.damage * host.difficulty.enemyDamage,
+        position: fireMuzzle,
+        direction: fireDirection,
+        speed: turret.stats.projectileSpeed,
+        damage: turret.stats.damage * host.difficulty.enemyDamage,
         faction: 'enemy',
-        color: ENEMY_BOLT_COLOR,
-        boltLength: 3.0,
-        boltWidth: 0.18,
-        life: 2.0,
+        color: turret.weapon === 'autogun' ? ENEMY_AUTOGUN.color : ENEMY_BOLT_COLOR,
+        boltLength: turret.weapon === 'autogun' ? ENEMY_AUTOGUN.boltLength : 3.0,
+        boltWidth: turret.weapon === 'autogun' ? ENEMY_AUTOGUN.boltWidth : 0.18,
+        life: turret.weapon === 'autogun' ? ENEMY_AUTOGUN.life : 2.0,
       });
     }
-    if (turret.position.distanceTo(host.player.position) < 400) host.audio.laser(0.5);
+    if (turret.weapon === 'homing' || turret.weapon === 'fast') {
+      host.audio.enemyMissileLaunch();
+    } else if (turret.position.distanceTo(host.player.position) < 400) {
+      if (turret.weapon === 'autogun') host.audio.enemyAutogun();
+      else host.audio.laser(0.5);
+    }
+  }
+
+  /** Resolve the committed carrier ray and return its visually reached range. */
+  capitalBeamFire(shot: CapitalBeamShot): number {
+    const host = this.host;
+    const ships: Ship[] = [host.player];
+    for (const enemy of host.enemies) ships.push(enemy);
+    for (const turret of host.turrets) {
+      if (!host.capitalTurrets.includes(turret)) ships.push(turret);
+    }
+    for (const neutral of host.neutrals) ships.push(neutral);
+
+    const trace = traceCapitalBeam(
+      shot.origin,
+      shot.direction,
+      shot.range,
+      shot.radius,
+      host.world.bodies,
+      ships,
+    );
+    for (const hit of trace.ships) {
+      this.resolveHit({
+        ship: hit.ship,
+        asteroid: null,
+        point: hit.point,
+        damage: 1_000_000,
+        faction: 'enemy',
+        wasMissile: false,
+      });
+    }
+    if (trace.obstacle) {
+      const rock = trace.obstacle;
+      host.world.destroyRock(rock);
+      host.debris.spawn(rock.position, Math.min(18, rock.radius), host.rng);
+      host.explosions.spawn(rock.position, Math.min(3.2, 1.3 + rock.radius * 0.05));
+    }
+    host.audio.capitalBeam();
+    host.chaseCam.addTrauma(1);
+    return trace.stopDistance;
   }
 
   private killEnemy(enemy: EnemyShip): void {
@@ -322,6 +402,7 @@ export class GameCombat {
     host.audio.explosion(enemy.kind === 'brute');
     host.debris.spawn(enemy.position, enemy.kind === 'brute' ? 6 : 4, host.rng);
     host.scene.remove(enemy.object);
+    enemy.dispose();
     host.enemies = host.enemies.filter((candidate) => candidate !== enemy);
     host.score += Math.round(
       enemy.stats.score * host.difficulty.scoreMult * host.threatScale(),
