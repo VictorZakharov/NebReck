@@ -308,6 +308,7 @@ export abstract class GameRuntime extends GameInteractions {
       (ship) => this.combat.hasLineOfSight(player.position, ship.position, null, ship),
       weapon.projectileSpeed * weapon.life,
       aimForward,
+      this.enemies.some((enemy) => enemy.alive && enemy.pursuingPlayer),
     );
     const closeCombatTarget =
       this.targeting.current?.aimAssist === true &&

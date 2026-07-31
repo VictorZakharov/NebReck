@@ -54,17 +54,19 @@ same planet.
 - Difficulty multipliers (`Difficulty.ts`): Rookie ×0.6 dmg /0.8 tough /0.75 aggr;
   Veteran ×1; Reckoning ×1.45/1.3/1.3, score ×1.6.
 - Patrol wings detect the player at **380 u** (`PATROL_DETECT_RANGE`) or when shot.
-- Safe spawn: 48 candidates ≤750 u, max-min distance to hostiles **and patrol
-  waypoints**; planets: 40 candidates scored distance + 500 bonus if terrain blocks
-  every hostile sightline (`pickSpawn`).
+- Safe sector entry: `SpawnSafety` searches progressively wider shells for at least
+  **700 m** clearance from hostiles and every patrol waypoint, rejects asteroid
+  overlap, and has a guaranteed clear outer-shell fallback. Planets use 40 candidates
+  scored by distance + 500 when terrain blocks every hostile sightline (`pickSpawn`).
 
 ## Combat
 
 - Player weapons share one energy pool (regen × ship's `energyMult`); weapon reach =
   `projectileSpeed × life` (pulse ≈ 544, scatter ≈ 243, lance ≈ 774) — drives the
-  grey out-of-range markers. Missiles: soft-lock seekers, 1.35 s cooldown.
+  grey out-of-range markers. Missiles: 68-damage soft-lock seekers, 1.35 s cooldown,
+  hard 1,050 m traveled-path range with its final collision sweep clamped to range.
 - Enemy bombers and rocket batteries use two deterministic payload families:
-  **Seeker** (28 dmg, 92→205 u/s, 1.55 rad/s turn, 8 s life) or **Lance Rocket**
+  **Seeker** (56 dmg, 92→205 u/s, 1.55 rad/s turn, 8 s life) or **Lance Rocket**
   (24 dmg, unguided 285 u/s, 4.6 s life). Only a live seeker target raises the
   amber missile-lock warning; the count is active in-flight homing rockets, not
   enemies carrying launchers. Acceleration-aware pursuit ETA (with turn penalty)
@@ -85,21 +87,21 @@ same planet.
   world/terrain LOS. The carrier's twelve mounted batteries collapse into its
   whole-hull contact beyond 260 m; inside 260 m they become individual lock and
   HUD/radar contacts. Projectile collision still tests every mount at every range.
-  Inside weapon reach, score `(1-dot)*400 + dist*0.5` with a −60 keep-bonus lets a
-  much closer turret beat a distant fighter. Beyond reach, hostiles switch to the
-  same camera-crosshair ranking as informational contacts. Only when no hostile
-  qualifies does the acquire cone identify a merchant/hauler. Civilians are
-  sensor contacts (asteroid clutter does not suppress identification) and choose
-  the smallest crosshair angle regardless of world
-  distance, use range only as an exact-angle tie-break, and get no keep-lock
-  hysteresis. `Targeting.aimTarget` stays null for those contacts, so primary
+  During active pursuit, inside weapon reach score `(1-dot)*400 + dist*0.5` with a
+  −60 keep-bonus lets a much closer turret beat a distant fighter. With no pursuing
+  enemy, hostiles and civilians at **every distance** compete in one camera-crosshair
+  ranking; during pursuit, hostiles retain priority and distant hostiles still use
+  angular ranking. Civilians are sensor contacts (asteroid clutter does not suppress
+  identification), use range only as an exact-angle tie-break, and get no keep-lock
+  hysteresis. `Targeting.aimTarget` stays null for a winning civilian, so primary
   convergence, missile homing and the lead pip remain disabled. Losing the contact
   hides its capture bracket immediately without a fade.
 - Target preview (top-left, `TargetPreview.ts`): edge-wireframe in the contact's
   REAL view-space orientation (nose-on when charging, tail-on when fleeing).
-  Hostiles shade green→red by hull fraction; merchants are friendly green and
-  haulers neutral blue, with role/action text below the name. Aimed Ion/Scrap
-  formations use a neutral crystal wireframe but never become combat targets.
+  Hostile wireframes keep their green→amber→red hull-condition color inside a
+  separate red relationship outline. Merchants are friendly green and haulers
+  neutral blue, with role/action text below the name. Aimed formations match the
+  extracted resource (Ion teal, Scrap amber) but never become combat targets.
 - Batteries: cannon 60 hull / 340 m / 0.9 s; rotary 58 hull / 468 m / 0.11 s;
   homing rocket 76 hull / 520 m /
   3.4 s; fast rocket 70 hull / 470 u / 2.35 s. All fire only with world/terrain
@@ -108,7 +110,7 @@ same planet.
 - Carrier: 1600 hull plus 12 independently targetable batteries (6 top, 6 bottom;
   3 cannon / 3 rotary / 3 homing / 3 fast). Batteries are individually lockable within
   260 m; farther out the preview identifies the carrier as one high-level threat.
-  Its annihilator starts only 70–1400 u ahead
+  Its annihilator starts only 70–500 m ahead
   within a 12.9° half-angle and clear LOS, then charges for exactly 2 s. Once
   committed it always fires: the aim follows the latest visible player position,
   freezes on LOS loss, and clamps to the firing arc. The thick ray destroys ships
@@ -156,7 +158,8 @@ Jumping voids in-sector deliveries; planetfall does NOT (sector persists).
   cells/upgrades, weapon amps.
 - **Flux Core**: rare — brutes/turrets/capital kills, stashes, contract pay,
   merchant (8 Scrap → 1 Flux). Sinks: **jumps (2)**, engine tune, shield matrix.
-  The jump-drive row displays required/held fuel (`Flux 2/10`) before spool.
+  The jump-drive row reserves one non-wrapping line and displays compact
+  required/held fuel (`J · Flux 2/10`) before spool.
 - Scrap, crystal, flux, nanobots and seekers share original inline SVG marks in
   HUD/hold/cost UI (`ResourceIcons.ts`); canvas/text-only feedback keeps compact
   fallback symbols.
@@ -220,7 +223,9 @@ before Engage. Valid `cleverspace_*` values are migrated on first read for
   seeker or fast rockets; selected raiders carry a visible rotary cluster. The
   capital is worth 2500 pts, projects jump suppression,
   exposes its 12 batteries as separate lock/damage targets, and destroys surviving
-  mounts when its own hull dies.
+  mounts when its own hull dies. The complete battery bank represents 35% of the
+  carrier's maximum hull; each destroyed mount transfers its durability-weighted
+  share of that pool to the carrier, so tougher turret classes inflict more hull damage.
 
 ## Planet surface content (`PlanetSurface*.ts`)
 

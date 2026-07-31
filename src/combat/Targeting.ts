@@ -17,11 +17,10 @@ export interface TargetInfo {
 
 /**
  * LOS-aware soft lock over all hostiles (fighters, turrets, the capital).
- * When none qualifies, the same centre-screen scan exposes a civilian contact
- * for HUD identification only. Hostiles inside weapon reach retain
- * distance-weighted aim assist. Beyond weapon reach, enemies and civilians
- * both rank strictly by angular distance from the camera crosshair, with range
- * used only to break an effectively exact angular tie.
+ * While at least one enemy is pursuing the player, hostiles retain priority
+ * and those inside weapon reach receive distance-weighted aim assist. With no
+ * pursuit, hostiles and sensor-only civilians share one camera-crosshair scan
+ * so the player inspects whichever contact they are actually pointing at.
  */
 export class Targeting {
   current: TargetInfo | null = null;
@@ -40,6 +39,7 @@ export class Targeting {
     isVisible: (ship: Ship) => boolean = () => true,
     weaponRange = Infinity,
     crosshairForward?: Vector3,
+    pursuitActive = true,
   ): void {
     player.forward(fwd);
     scanFwd.copy(crosshairForward ?? fwd);
@@ -47,38 +47,60 @@ export class Targeting {
     else scanFwd.normalize();
 
     const closeRange = Math.max(0, weaponRange);
-    const closeHostile = this.bestCandidate(
-      player,
-      hostiles,
-      isVisible,
-      false,
-      fwd,
-      0,
-      closeRange,
-    );
-    const distantHostile = closeHostile
-      ? null
-      : this.bestCandidate(
-          player,
-          hostiles,
-          isVisible,
-          true,
-          scanFwd,
-          closeRange,
-          1500,
-        );
-    const hostile = closeHostile ?? distantHostile;
-    // Civilian identification is sensor-only and never bends weapons, so an
-    // asteroid need not erase a contact that the HUD/radar already exposes.
-    const best = hostile ?? this.bestCandidate(
-      player,
-      contacts,
-      () => true,
-      true,
-      scanFwd,
-      0,
-      1500,
-    );
+    let hostile: Ship | null;
+    let best: Ship | null;
+    if (!pursuitActive) {
+      hostile = this.bestCandidate(
+        player,
+        hostiles,
+        isVisible,
+        true,
+        scanFwd,
+        0,
+        1500,
+      );
+      const contact = this.bestCandidate(
+        player,
+        contacts,
+        () => true,
+        true,
+        scanFwd,
+        0,
+        1500,
+      );
+      best = this.crosshairWinner(player, hostile, contact, scanFwd);
+      if (best !== hostile) hostile = null;
+    } else {
+      const closeHostile = this.bestCandidate(
+        player,
+        hostiles,
+        isVisible,
+        false,
+        fwd,
+        0,
+        closeRange,
+      );
+      hostile = closeHostile ?? this.bestCandidate(
+        player,
+        hostiles,
+        isVisible,
+        true,
+        scanFwd,
+        closeRange,
+        1500,
+      );
+      // During combat, hostile aim assist retains priority. Civilian contacts
+      // remain a fallback only when no enemy qualifies in the acquire cone.
+      best = hostile ?? this.bestCandidate(
+        player,
+        contacts,
+        () => true,
+        true,
+        scanFwd,
+        0,
+        1500,
+      );
+    }
     if (!best) {
       this.current = null;
       return;
@@ -144,5 +166,25 @@ export class Targeting {
     }
 
     return best;
+  }
+
+  /** Compare already-filtered hostile/contact winners without per-frame arrays. */
+  private crosshairWinner(
+    player: PlayerShip,
+    hostile: Ship | null,
+    contact: Ship | null,
+    forward: Vector3,
+  ): Ship | null {
+    if (!hostile) return contact;
+    if (!contact) return hostile;
+    toTarget.copy(hostile.position).sub(player.position);
+    const hostileDistance = toTarget.length();
+    const hostileDot = forward.dot(toTarget.divideScalar(hostileDistance));
+    toTarget.copy(contact.position).sub(player.position);
+    const contactDistance = toTarget.length();
+    const contactDot = forward.dot(toTarget.divideScalar(contactDistance));
+    return contactDot > hostileDot + 1e-7 ||
+      (Math.abs(contactDot - hostileDot) <= 1e-7 && contactDistance < hostileDistance)
+      ? contact : hostile;
   }
 }

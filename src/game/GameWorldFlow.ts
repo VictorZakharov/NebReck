@@ -35,6 +35,7 @@ import {
 } from './GameConstants';
 import { Inventory } from './Inventory';
 import { Quest, QuestSystem } from './Quests';
+import { findSafeSectorEntry } from './SpawnSafety';
 
 interface SpaceStash {
   enemies: EnemyShip[];
@@ -619,42 +620,18 @@ export class GameWorldFlow {
    */
   placePlayerSafely(): void {
     const { host } = this;
-    const candidates = 48;
-    let bestPosition: Vector3 | null = null;
-    let bestScore = -Infinity;
-    for (let index = 0; index < candidates; index++) {
-      const [dx, dy, dz] = host.rng.unitSphere();
-      const position = new Vector3(dx, dy * 0.4, dz).multiplyScalar(host.rng.range(150, 750));
-      let insideRock = false;
-      for (const body of host.sector.asteroids.bodies) {
-        if (!body.destroyed && body.position.distanceToSquared(position) < (body.radius + 20) ** 2) {
-          insideRock = true;
-          break;
-        }
-      }
-      if (insideRock) continue;
-
-      let nearestHostile = Infinity;
-      for (const enemy of host.enemies) {
-        nearestHostile = Math.min(nearestHostile, enemy.position.distanceTo(position));
-      }
-      for (const turret of host.turrets) {
-        nearestHostile = Math.min(nearestHostile, turret.position.distanceTo(position));
-      }
-      if (host.capital) {
-        nearestHostile = Math.min(nearestHostile, host.capital.position.distanceTo(position));
-      }
-      for (const patrol of host.sector.plan.patrols) {
-        for (const waypoint of patrol.waypoints) {
-          nearestHostile = Math.min(nearestHostile, waypoint.distanceTo(position));
-        }
-      }
-      if (nearestHostile > bestScore) {
-        bestScore = nearestHostile;
-        bestPosition = position;
-      }
-    }
-    if (bestPosition) host.player.object.position.copy(bestPosition);
+    const hostilePositions = [
+      ...host.enemies.map((enemy) => enemy.position),
+      ...host.turrets.map((turret) => turret.position),
+      ...(host.capital ? [host.capital.position] : []),
+    ];
+    const patrolWaypoints = host.sector.plan.patrols.flatMap((patrol) => patrol.waypoints);
+    host.player.position.copy(findSafeSectorEntry(
+      host.rng,
+      host.sector.asteroids.bodies,
+      hostilePositions,
+      patrolWaypoints,
+    ));
   }
 
   private rebuildPostFx(): void {

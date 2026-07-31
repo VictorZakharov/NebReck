@@ -99,6 +99,11 @@ export class EnemyShip extends Ship {
     this.brain.onDamaged();
   }
 
+  /** Engaged AI is actively chasing/fighting rather than following a patrol route. */
+  get pursuingPlayer(): boolean {
+    return this.brain.state !== 'patrol';
+  }
+
   update(
     dt: number,
     playerPos: Vector3,

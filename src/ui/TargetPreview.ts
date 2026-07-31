@@ -14,7 +14,7 @@ import {
   WebGLRenderer,
 } from 'three';
 import { Rng } from '../core/Rng';
-import { CapitalShip } from '../entities/CapitalShip';
+import { RESOURCE_INFO, ResourceType } from '../entities/PickupSystem';
 import { buildShipMesh, ShipKind } from '../entities/ShipMesh';
 import { Turret } from '../entities/Turret';
 
@@ -63,10 +63,16 @@ export class TargetPreview {
     }
     if (!this.mounted) return;
     this.mounted.quaternion.copy(relQuat);
-    const f = Math.max(0, Math.min(1, hullFrac));
-    this.mat.color.setHSL(f * 0.34, 0.95, 0.55); // red → green
-    if (relationship === 'friendly') this.mat.color.setHex(0x8aff9f);
+    const resource = kind?.startsWith('ore-')
+      ? kind.slice(4) as ResourceType
+      : null;
+    if (resource && RESOURCE_INFO[resource]) this.mat.color.setHex(RESOURCE_INFO[resource].color);
+    else if (relationship === 'friendly') this.mat.color.setHex(0x8aff9f);
     else if (relationship === 'neutral') this.mat.color.setHex(0x9fdcff);
+    else {
+      const f = Math.max(0, Math.min(1, hullFrac));
+      this.mat.color.setHSL(f * 0.34, 0.95, 0.55); // red → green by remaining hull
+    }
     this.renderer.render(this.scene, this.camera);
   }
 
@@ -76,7 +82,6 @@ export class TargetPreview {
     let src: Object3D;
     if (kind === 'turret') src = new Turret(new Rng(7)).object;
     else if (kind === 'rocket-turret') src = new Turret(new Rng(7), 'homing').object;
-    else if (kind === 'capital') src = new CapitalShip().object;
     else if (kind.startsWith('ore-')) src = this.oreFormation();
     else src = buildShipMesh(kind as ShipKind).group;
     src.updateMatrixWorld(true);

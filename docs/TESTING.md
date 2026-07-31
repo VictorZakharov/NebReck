@@ -13,12 +13,15 @@ covered by one of the two.
 ## Commands
 
 ```bash
-npm run test:architecture     # controller line-size budgets
+npm run test:architecture     # controller + smoke-module line-size budgets
 npm run typecheck            # strict TS
 npm run test:visual          # 26 scenes vs local baselines (builds first)
 npm run test:visual:update   # re-capture local baselines (--scene=<name> for one)
 npm run test:smoke           # full gameplay loop in live headless Chromium
 ```
+
+Pass `-- --port=<number>` to either visual command when the default review port
+8123 is already occupied (for example, `npm run test:visual -- --port=8128`).
 
 ## Visual harness (`test/visual/run.mjs` + `src/game/TestScenes.ts` + `test-scenes/`)
 
@@ -63,7 +66,7 @@ behavior. The normal webpack dev-server default remains port 8080.
 
 ### Staging rules (hard-won)
 
-- Stage **relative to `game.player.position`** — the safe-spawn solver moves the
+- Stage **relative to `game.player.position`** — the 700 m safe-spawn solver moves the
   start point; absolute coordinates silently break (happened to `targeting`).
 - Sector 1 is peaceful: scenes needing hostiles call `jumpToSector2(game)`
   (auto-jump helper) — it also calls `game.settleWarpFx()`; without that the
@@ -83,7 +86,7 @@ behavior. The normal webpack dev-server default remains port 8080.
   bloom blowouts, floating geometry, buried screens, marker collisions, warp
   contamination, silhouetted ships.
 
-## Smoke test (test/smoke.mjs)
+## Smoke test (`test/smoke.mjs` + `test/smoke/`)
 
 Live build with explicit browser-frame settling for DOM/font checks and
 deterministic stepping for gameplay time, `/?seed=99&headless=1` (headless=1
@@ -95,6 +98,15 @@ otherwise plays through the user's speakers mid-test.
 SwiftShader runs ~4 FPS and dt clamps at 1/20, so sim time ≪ wall time: never
 "wait N seconds" for a state — fast-forward it (`jumpSpool = 0.01`, the two
 advance helpers, direct dispatch calls, fixed-step hunter AI/camera updates).
+
+`test/smoke.mjs` is only the ordered runner. Feature probes are split into
+`hangar`, `world`, `targeting`, `capital`, and `runtime` modules; shared server,
+browser-diagnostic, and artificial-time utilities live in `helpers.mjs`, while
+`assertions.mjs` converts their returned results into named failures. Keep probes
+with the system they exercise, return serializable result objects, and preserve
+the runner order when a later module intentionally consumes earlier staged state.
+`test:architecture` enforces the runner and per-module budgets so this split
+cannot silently collapse back into one oversized file.
 
 **Ship connectivity audit** runs first (`window.auditShips()` →
 `auditShipConnectivity` in `ShipMeshAudit.ts`, re-exported by `ShipMesh.ts`):
@@ -128,9 +140,11 @@ Asserted, in order:
 5. Engineering crafting preserves `.loadout-right.scrollTop`; hold icons are
    SVGs in an aligned icon/label/count grid with ≥10 px right inset. The mining
    prompt uses the stable rotating vein centroid and advances toward motion
-   without a one-frame screen-space snap. The same formation renders a neutral
-   wireframe without becoming an aim target; merchant and planet prompts are also
-   asserted as world-anchored.
+   without a one-frame screen-space snap. The same formation renders a wireframe
+   matching its Ion-teal or Scrap-amber resource without becoming an aim target;
+   merchant and planet prompts are also
+   asserted as world-anchored. Sector entry also asserts the 700 m safety envelope,
+   zero pursuing patrols, and no inherited missile warning.
 6. Planetfall creates a garrison ≥4 and stashes ≥3; spawn is >200 from hostiles
    ON the surface with **level attitude** (no random pitch/roll). Every segment
    of both dense cave approach routes clears terrain and the profile-matched
@@ -151,15 +165,21 @@ Asserted, in order:
    sector 2; dispatched hunters close from >20 u, the camera follows a teleport,
    overhead turret aim dot→1, and cloak/EMP/nanobots all function.
 10. Range-policy staging proves close hostiles are distance weighted, distant
-    hostiles are camera-angle ranked, and lock colors remain red/grey rather than
-    changing to orange. Explicit package staging proves a pursuing seeker bomber
+    hostiles are camera-angle ranked, and an on-crosshair civilian beats an off-axis
+    hostile only during peace; active pursuit restores hostile priority. Lock colors
+    remain red/grey rather than changing to orange. Hostile previews independently
+    assert a red relationship outline and green full-health wireframe. Explicit
+    package staging proves a pursuing seeker bomber
     fires at 1,050 m plus rapid rotary ship/battery cadence. Artificial projectile
-    time proves homing versus fast-unguided rockets, lock → ≤2 s imminent state,
+    time proves homing versus fast-unguided rockets, a 900 m player-seeker hit and
+    1,200 m expiry against the 1,050 m path budget, lock → ≤2 s imminent state,
     warning DOM classes and cloak target loss. Direct carrier stepping proves 12
     four-way mixed, independently destructible top/bottom mounts, outward
     traverse + self-hull LOS, whole-carrier preview with mounts hidden at 600 u,
     individual mount lock at 200 m, frontal-only charge initiation, committed arc
     clamping, and first-asteroid absorption with the player/second rock protected.
+    A synthetic `L-Ctrl + W` chord proves both movement keys stay active while the
+    browser shortcut default is consumed by immersive flight input.
 11. Cloak and crafting are both refused within the shared 180 m threat perimeter;
     Engineering buttons expose the safety lock without spending resources.
 12. Dense-combat stability initializes WebAudio, repeatedly fills the 12-hunter

@@ -13,6 +13,7 @@ import type { TurretWeapon } from './Turret';
 import { Ship } from './Ship';
 
 export const CAPITAL_BEAM_CHARGE_TIME = 2;
+export const CAPITAL_BEAM_ACTIVATION_RANGE = 500;
 export const CAPITAL_BEAM_RANGE = 1400;
 export const CAPITAL_BEAM_RADIUS = 7;
 export const CAPITAL_BEAM_HALF_ANGLE = Math.PI / 14; // 12.9 degrees
@@ -169,11 +170,15 @@ export class CapitalShip extends Ship {
 
   private canBeginCharge(context: CapitalBeamContext): boolean {
     if (!context.player.alive || !context.playerVisible) return false;
+    if (
+      context.player.position.distanceToSquared(this.position) >
+      CAPITAL_BEAM_ACTIVATION_RANGE ** 2
+    ) return false;
     this.worldMuzzle(beamOrigin);
     this.forward(beamForward);
     desiredAim.copy(context.player.position).sub(beamOrigin);
     const distance = desiredAim.length();
-    if (distance < 70 || distance > CAPITAL_BEAM_RANGE) return false;
+    if (distance < 70) return false;
     if (beamForward.dot(desiredAim.divideScalar(distance)) < Math.cos(CAPITAL_BEAM_HALF_ANGLE)) {
       return false;
     }

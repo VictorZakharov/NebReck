@@ -30,6 +30,7 @@
   font-size: 10.5px; letter-spacing: 0.3em; text-transform: uppercase;
   margin-bottom: 3px; opacity: 0.85;
 }
+.hud-drive .bar-label { gap: 10px; white-space: nowrap; }
 .bar {
   position: relative;
   height: 7px;

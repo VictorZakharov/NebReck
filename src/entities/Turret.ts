@@ -1,5 +1,5 @@
 import { Matrix4, Quaternion, Vector3 } from 'three';
-import { EnemyRocketMode } from '../combat/WeaponDefs';
+import { ENEMY_ROCKETS, EnemyRocketMode } from '../combat/WeaponDefs';
 import { Rng } from '../core/Rng';
 import { Ship } from './Ship';
 
@@ -24,7 +24,7 @@ export const TURRET_WEAPON_STATS = {
   },
   homing: {
     hull: 76, shield: 0, range: 520, turnRate: 1.0,
-    fireCooldown: 3.4, projectileSpeed: 92, damage: 28, score: 275,
+    fireCooldown: 3.4, projectileSpeed: 92, damage: ENEMY_ROCKETS.homing.damage, score: 275,
   },
   fast: {
     hull: 70, shield: 0, range: 470, turnRate: 1.2,
