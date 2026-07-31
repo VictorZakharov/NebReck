@@ -1,5 +1,7 @@
 # Testing
 
+All local and CI commands use Node.js 24.
+
 Last updated: 2026-07-30.
 
 The project rule (set by the owner, non-negotiable): **every reported visual issue
@@ -11,6 +13,7 @@ covered by one of the two.
 ## Commands
 
 ```bash
+npm run test:architecture     # controller line-size budgets
 npm run typecheck            # strict TS
 npm run test:visual          # 22 scenes vs local baselines (builds first)
 npm run test:visual:update   # re-capture local baselines (--scene=<name> for one)
@@ -78,13 +81,15 @@ behavior. The normal webpack dev-server default remains port 8080.
 
 ## Smoke test (test/smoke.mjs)
 
-Live build, real rAF loop, `/?seed=99&headless=1` (headless=1 is mandatory —
-headless Chromium grants-then-drops pointer lock, phantom-firing auto-pause).
+Live build, real rAF loop until the performance-sensitive engagement block,
+then deterministic direct stepping, `/?seed=99&headless=1` (headless=1 is
+mandatory — headless Chromium grants-then-drops pointer lock, phantom-firing
+auto-pause).
 Both harnesses launch Chromium with `--mute-audio` — the game's synth audio
 otherwise plays through the user's speakers mid-test.
 SwiftShader runs ~4 FPS and dt clamps at 1/20, so sim time ≪ wall time: never
 "wait N seconds" for a state — fast-forward it (`jumpSpool = 0.05`, direct
-dispatch calls).
+dispatch calls, fixed-step hunter AI and chase-camera updates).
 
 **Ship connectivity audit** runs first (`window.auditShips()` →
 `auditShipConnectivity` in `ShipMeshAudit.ts`, re-exported by `ShipMesh.ts`):
@@ -135,3 +140,12 @@ Behavioral assertions exist because screenshots once hid a months-worth bug:
 enemies steered away for four rounds (lookAt +Z inversion) while every static
 capture looked perfect. When a failure ships through tests, add the assertion
 that would have caught it.
+
+## GitHub Actions
+
+`.github/workflows/ci.yml` runs typecheck, a production build, and the smoke
+suite for every pull request and every push to `main`. Production Pages
+deployment is serialized with same-repository PR previews so concurrent runs
+cannot overwrite each other's generated `gh-pages` snapshot. Preview builds
+live under `/pr-preview/pr-<number>/` and are removed on PR close. Fork pull
+requests run CI only and never receive write, Pages, or OIDC deployment access.

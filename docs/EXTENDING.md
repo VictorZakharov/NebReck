@@ -7,6 +7,12 @@ especially the determinism and lookAt sections — and check
 [SYSTEMS.md](SYSTEMS.md) for the numbers a new feature must interlock with.
 Every visual addition needs a harness scene ([TESTING.md](TESTING.md)).
 
+Route controller changes by ownership: subsystem construction/host adapters go
+in `GameFoundation`, screens and sortie transitions in `GameScreens`,
+player-triggered travel/trade/contract/device commands in `GameInteractions`,
+and continuous input/simulation/render work in `GameRuntime`. Keep `Game.ts` as
+the public facade and run `npm run test:architecture` before opening a PR.
+
 ## Add a primary weapon
 1. Append a `WeaponDef` to `PLAYER_WEAPONS` (`combat/WeaponDefs.ts`). HUD slots,
    number keys, wheel cycling, and the grey out-of-reach markers all derive from it
@@ -19,8 +25,10 @@ Every visual addition needs a harness scene ([TESTING.md](TESTING.md)).
    to `entities/NpcShipMeshes.ts`, then dispatch it from `ShipMeshFactory.ts`;
    nose points along -Z. Keep `ShipMesh.ts` as the public compatibility facade.
 2. Stats in `ENEMY_STATS` (`entities/EnemyShip.ts`), widen its `kind` union.
-3. Spawn it: patrols (`Game.populateLevel`), hunters (`EncounterDirector`), or
-   planet garrisons (`enterPlanet`). Drops/score in `Game.killEnemy`.
+3. Spawn it: sector plans (`GameWorldFlow.populateLevel`), hunters
+   (`EncounterDirector`), or planet garrisons
+   (`GameWorldFlow.populateSurface`). Drops/score live in
+   `GameCombat.killEnemy`.
 4. Steering: parameterize `EnemyBrain` rather than forking it. NEVER `object.lookAt`
    — use `Ship.faceToward`.
 
@@ -38,13 +46,15 @@ copy the stat block in `PlayerShip`'s constructor — keep it that way.
    TTS script, write it speakable).
 2. Completion hook: kills → `onVigilKill`, position → `onPositionUpdate`, jumps →
    `onJump`, turn-ins → `tryTurnIn`. New trigger types get a method + a call from
-   the matching Game site, rewards flow through `Game.completeQuest`.
+   the matching controller site; rewards flow through
+   `GameInteractions.completeQuest`.
 3. If it has a world anchor, spawn/remove a beacon (`spawnQuestBeacon`) and decide
    its fate on jump AND on planetfall (sector persists through the latter).
 
 ## Add a device or consumable
 Timers in `game/Devices.ts` (state + `tryX` + `xState` for the HUD row); effects in
-a `Game.activateX` method bound to a key in `updatePlaying`; HUD chip in the
+a `GameInteractions.activateX` method bound to a key in
+`GameRuntime.updatePlaying`; HUD chip in the
 `device-row`; smoke assertion in the devices block. Consumables: count on
 `Inventory`, craft via a recipe case, optionally merchant stock.
 
@@ -99,9 +109,9 @@ Extend `HostileClass` (`ui/Hud.ts`), classify it in
 
 ## Add a sector-population element
 Plan data in `Sector`'s `popRng` block (**append after existing rng consumers**),
-instantiate in `Game.populateLevel`/`deploySectorEntities`, include in
-`placePlayerSafely` scoring if hostile, and in the planetfall `spaceStash` if it's
-an entity that must survive a landing.
+instantiate in `GameWorldFlow.populateLevel`/`deploySectorEntities`, include in
+`placePlayerSafely` scoring if hostile, and in the flow controller's
+`spaceStash` if it must survive a landing.
 
 ## Add a sector theme / story beat / test scene
 Theme: `THEMES` in `world/Sector.ts`. Beat: `EXPLORE_COMMS` key + a one-shot
@@ -125,9 +135,9 @@ preserve import order when selectors intentionally override earlier layers.
 
 ## Tuning knobs
 `game/Config.ts` (camera follow/boost pull/FOV kick, bloom, world densities) ·
-`game/Ships.ts` · `game/Difficulty.ts` · jump constants atop `game/Game.ts` ·
-threat scale in `Game.threatScale` · encounter pacing in `EncounterDirector` ·
-post stack in `rendering/PostFx.ts`.
+`game/Ships.ts` · `game/Difficulty.ts` · jump constants in
+`game/GameConstants.ts` · threat scale in `GameWorldFlow.threatScale` · encounter
+pacing in `EncounterDirector` · post stack in `rendering/PostFx.ts`.
 
 ## Performance rules
 Pooled + allocation-free per frame (module-level scratch vectors); pooled lights

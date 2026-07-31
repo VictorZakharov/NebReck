@@ -1,0 +1,140 @@
+name: Deploy PR preview
+
+on:
+  pull_request:
+    types:
+      - opened
+      - synchronize
+      - reopened
+      - closed
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+  pull-requests: write
+
+concurrency:
+  group: pages-publisher
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    name: Update PR preview artifact
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Check out pull request
+        uses: actions/checkout@v7
+
+      - name: Set up Node.js
+        if: github.event.action != 'closed'
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install dependencies
+        if: github.event.action != 'closed'
+        run: npm ci
+
+      - name: Build preview
+        if: github.event.action != 'closed'
+        run: npm run build
+
+      - name: Stage or remove PR preview
+        shell: bash
+        env:
+          PR_NUMBER: ${{ github.event.number }}
+          PR_ACTION: ${{ github.event.action }}
+        run: |
+          set -euo pipefail
+          pages_dir="${RUNNER_TEMP}/pages"
+          preview_dir="${pages_dir}/pr-preview/pr-${PR_NUMBER}"
+
+          if git ls-remote --exit-code --heads origin gh-pages >/dev/null 2>&1; then
+            git fetch origin gh-pages:refs/remotes/origin/gh-pages
+            git worktree add --detach "${pages_dir}" origin/gh-pages
+          else
+            git worktree add --detach "${pages_dir}"
+            git -C "${pages_dir}" switch --orphan gh-pages
+            git -C "${pages_dir}" rm -rf --ignore-unmatch .
+          fi
+
+          if [[ "${PR_ACTION}" == "closed" ]]; then
+            rm -rf "${preview_dir}"
+          else
+            mkdir -p "${preview_dir}"
+            find "${preview_dir}" -mindepth 1 -maxdepth 1 -exec rm -rf {} +
+            cp -a dist/. "${preview_dir}/"
+          fi
+          touch "${pages_dir}/.nojekyll"
+
+          git -C "${pages_dir}" config user.name "github-actions[bot]"
+          git -C "${pages_dir}" config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git -C "${pages_dir}" add -A
+          if ! git -C "${pages_dir}" diff --cached --quiet; then
+            git -C "${pages_dir}" commit -m "Preview PR #${PR_NUMBER}: ${PR_ACTION}"
+            git -C "${pages_dir}" push origin HEAD:gh-pages
+          fi
+
+      - name: Upload aggregated Pages artifact
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: ${{ runner.temp }}/pages
+
+  deploy:
+    name: Publish PR preview
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    needs: publish
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
+
+      - name: Add or update preview link
+        uses: actions/github-script@v9
+        env:
+          PREVIEW_URL: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/pr-preview/pr-${{ github.event.number }}/
+          PR_ACTION: ${{ github.event.action }}
+        with:
+          script: |
+            const marker = '<!-- cleverspace-pages-preview -->';
+            const removed = process.env.PR_ACTION === 'closed';
+            const body = removed
+              ? `${marker}\n🧹 This PR preview has been removed.`
+              : `${marker}\n🚀 Preview: ${process.env.PREVIEW_URL}`;
+            const { owner, repo } = context.repo;
+            const issue_number = context.issue.number;
+            const comments = await github.paginate(github.rest.issues.listComments, {
+              owner,
+              repo,
+              issue_number,
+              per_page: 100,
+            });
+            const previous = comments.find((comment) =>
+              comment.user?.type === 'Bot' && comment.body?.includes(marker)
+            );
+            if (previous) {
+              await github.rest.issues.updateComment({
+                owner,
+                repo,
+                comment_id: previous.id,
+                body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner,
+                repo,
+                issue_number,
+                body,
+              });
+            }

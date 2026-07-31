@@ -607,6 +607,11 @@ console.log('sector 2 (must be hostile):', JSON.stringify(postJump));
 // 4. Hunter dispatch + engagement.
 await page.evaluate(() => {
   const g = window.game;
+  // From this point onward use deterministic stepping. Hosted SwiftShader can
+  // render only a handful of rAF frames during an eight-second wall-clock wait,
+  // which used to make both this movement check and the following camera check
+  // report failures unrelated to gameplay.
+  g.loop.stop();
   g.encounters.dispatchWing(3, g.player.position);
 });
 const avgDist = () =>
@@ -617,14 +622,38 @@ const avgDist = () =>
     return hunters.reduce((s, e) => s + e.position.distanceTo(g.player.position), 0) / hunters.length;
   });
 const distBefore = await avgDist();
-await page.waitForTimeout(8000);
+await page.evaluate(() => {
+  const g = window.game;
+  const hunters = g.enemies.filter((enemy) => enemy.hunter);
+  for (let frame = 0; frame < 240; frame++) {
+    for (const hunter of hunters) {
+      hunter.update(
+        1 / 30,
+        g.player.position,
+        g.player.velocity,
+        () => {},
+        true,
+      );
+    }
+  }
+});
 const distAfter = await avgDist();
 const closed = distBefore - distAfter;
 console.log(`engagement: hunters ${distBefore.toFixed(0)} → ${distAfter.toFixed(0)} (closed ${closed.toFixed(0)}, must be > 20)`);
 
 // 5. Chase camera follows across a teleport.
-await page.evaluate(() => window.game.player.position.set(0, 0, -400));
-await page.waitForTimeout(4000);
+await page.evaluate(() => {
+  const g = window.game;
+  g.player.position.set(0, 0, -400);
+  for (let frame = 0; frame < 120; frame++) {
+    g.chaseCam.update(
+      1 / 30,
+      g.player.object,
+      g.player.speedFrac,
+      g.player.boosting,
+    );
+  }
+});
 const camDist = await page.evaluate(() =>
   window.game.chaseCam.camera.position.distanceTo(window.game.player.position),
 );

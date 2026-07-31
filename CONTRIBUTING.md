@@ -11,7 +11,8 @@ Thanks for helping improve the game.
 
 ## Local setup
 
-Use a current Node.js LTS release, then install the locked dependency set:
+Use Node.js 24 (the repository `.nvmrc` pins the major), then install the
+locked dependency set:
 
 ```bash
 npm ci
@@ -25,6 +26,7 @@ The development server is available at <http://localhost:8080>.
 Run the checks relevant to your change before opening a pull request:
 
 ```bash
+npm run test:architecture
 npm run typecheck
 npm run test:smoke
 npm run test:visual
@@ -39,6 +41,11 @@ generated PNGs or `dist/`.
 Read [docs/TESTING.md](docs/TESTING.md) for the complete test contract and
 [docs/GOTCHAS.md](docs/GOTCHAS.md) before changing world generation, cameras,
 AI, or rendering.
+
+Pull requests run the same typecheck/build/smoke gate in GitHub Actions.
+Branches in this repository also receive a GitHub Pages preview; a bot posts the
+URL on the PR and removes the preview when the PR closes. Fork pull requests do
+not receive deployment credentials.
 
 ## Code and documentation
 

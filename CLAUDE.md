@@ -8,7 +8,7 @@ Everspace-inspired exploration space-dogfighter. three.js + TypeScript + webpack
 - `docs/SYSTEMS.md` — gameplay rules and the actual balance numbers (start here
   for any feature; most systems interlock through flux/alert/contracts).
 - `docs/ARCHITECTURE.md` — module map, state machine, frame flow, space↔planet
-  environment duality (`Game.world` accessor, `spaceStash` persistence).
+  environment duality (`Game.world` accessor, `GameWorldFlow` persistence).
 - `docs/GOTCHAS.md` — real bugs that shipped and their root causes. The lookAt/+Z,
   light-count-recompile, and rng-fork-order entries WILL bite again if unread.
 - `docs/EXTENDING.md` — per-feature recipes (weapon, quest kind, device, base
@@ -24,10 +24,16 @@ Everspace-inspired exploration space-dogfighter. three.js + TypeScript + webpack
    `Math.random()` or wall-clock in anything render-affecting; new world-gen rng
    consumers are APPENDED after existing `fork()` calls.
 3. Ships nose along **-Z**: use `Ship.faceToward`, never `Object3D.lookAt`.
-4. Single-responsibility files; only `game/Game.ts` wires systems together. Its
-   render/input helpers live beside it (`CloakVisual`, `HudProjection`,
-   `InteractionTargeting`, `WorldCollision`, `GamePreferences`), not back inside
-   the orchestrator. Reuse `ui/ResourceIcons.ts` for material/consumable symbols;
+4. Single-responsibility files; `game/Game.ts` is a deliberately tiny public
+   facade. Controller ownership is layered through `GameFoundation` (state +
+   subsystem construction), `GameScreens` (menus/sorties), `GameInteractions`
+   (travel/trade/contracts/devices), and `GameRuntime` (input/frame/render).
+   Combat, HUD presentation and environment swapping remain delegated to
+   `GameCombat`, `GameHudPresenter` and `GameWorldFlow` through explicit host
+   interfaces. Smaller helpers stay beside them (`CloakVisual`,
+   `HudProjection`, `InteractionTargeting`, `WorldCollision`,
+   `GamePreferences`). Reuse
+   `ui/ResourceIcons.ts` for material/consumable symbols;
    do not introduce one-off Unicode glyphs in DOM inventory UI.
 5. Pooled + allocation-free per frame; pooled lights idle at intensity 0.
 
@@ -43,6 +49,7 @@ inside the click callbacks; do not defer them to Engage or game entry.
 ## Verify loop (run all three before claiming done)
 
 ```bash
+npm run test:architecture   # Game facade/controller size budgets
 npm run typecheck
 npm run test:visual          # 22 scenes vs local baselines; 0.000% on this machine
 npm run test:smoke           # full loop: peace→contract→merchant→planet→jump→combat→devices

@@ -12,10 +12,14 @@
   "bugs": {
     "url": "https://github.com/VictorZakharov/CleverSpace/issues"
   },
-  "homepage": "https://github.com/VictorZakharov/CleverSpace#readme",
+  "homepage": "https://victorzakharov.github.io/CleverSpace/",
+  "engines": {
+    "node": ">=24 <25"
+  },
   "scripts": {
     "dev": "webpack serve --mode development",
     "build": "webpack --mode production",
+    "test:architecture": "node test/architecture.mjs",
     "typecheck": "tsc --noEmit",
     "test:visual": "node test/visual/run.mjs",
     "test:visual:update": "node test/visual/run.mjs --update",

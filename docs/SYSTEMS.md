@@ -18,7 +18,7 @@ ever-meaner sectors (or dive onto planets) → death banks score÷10 as **credit
 
 | | Space sector | Planet surface |
 |---|---|---|
-| Built by | `Sector` (seeded from `Game.sectorRng.fork()`) | `PlanetSurface` |
+| Built by | `Sector` (seeded from the `GameFoundation` RNG stream) | `PlanetSurface` |
 | Bodies list | `sector.asteroids.bodies` | `surface.bodies` |
 | Routed via | `Game.world` accessor (bodies/destroyRock/depleteOre/spawnChild) | same |
 | Hostiles | patrols, cave turrets, capital + batteries, hunters | base turrets + patrols (scaled by sector threat) |
@@ -31,7 +31,7 @@ Leaving the sector/sortie disposes its cached planet visits. A harvested node,
 destroyed enemy, or moved pickup otherwise stays changed when returning to that
 same planet.
 
-## Travel (Game.startJump / completeJump)
+## Travel (GameInteractions.startJump / GameWorldFlow.completeJump)
 
 - HOLD J: 5 s spool (`JUMP_SPOOL_TIME`); release cancels; **any player hit cancels**.
 - Sector jump: costs **2 Flux** (`JUMP_FLUX_COST`, charged at completion), requires
@@ -137,7 +137,7 @@ Jumping voids in-sector deliveries; planetfall does NOT (sector persists).
 | Nanobots | H | hull heal (crafted consumable) | +35 hull, stock via crafting/merchant |
 | Seekers | RMB | homing missiles, AMMO-gated | start ×8; restock: merchant ▲5→×4, craft ▲3→×2; Vanta has NO rack, Aegis fires at 2× rate |
 
-## Crafting (Inventory.ts RECIPES → Game.craft)
+## Crafting (Inventory.ts RECIPES → GameScreens.craft)
 
 nanobot-kit 6▲ (repeatable) · shield-cell 5◆ (instant +40, refused at full) ·
 weapon-amp 8◆4▲ (+15% dmg ×3) · engine-tune 8▲1● (+8% spd ×3) · shield-matrix
