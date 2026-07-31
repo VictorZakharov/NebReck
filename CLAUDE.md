@@ -51,7 +51,7 @@ inside the click callbacks; do not defer them to Engage or game entry.
 ```bash
 npm run test:architecture   # Game facade/controller size budgets
 npm run typecheck
-npm run test:visual          # 22 scenes vs local baselines; 0.000% on this machine
+npm run test:visual          # 23 scenes vs local baselines; 0.000% on this machine
 npm run test:smoke           # full loop: peace→contract→merchant→planet→jump→combat→devices
 ```
 

@@ -17,6 +17,18 @@
   font-size: 11px; letter-spacing: 0.28em; text-transform: uppercase;
   color: var(--accent); margin-bottom: 5px;
 }
+.preview-detail {
+  margin: -1px 0 6px;
+  color: rgba(220, 230, 238, 0.78);
+  font-size: 10px;
+  line-height: 1.35;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.target-preview.friendly .preview-name,
+.target-preview.friendly .preview-detail { color: #8aff9f; }
+.target-preview.neutral .preview-name,
+.target-preview.neutral .preview-detail { color: #9fdcff; }
 .preview-hullbar i { display: block; height: 100%; transition: width 0.15s ease; }
 
 .hud-corner, .target-preview { z-index: 3; } /* panels above contact markers */

@@ -9,6 +9,7 @@ import {
   Vector3,
 } from 'three';
 import { HullBuildResult, ShipBuildContext } from './ShipMeshBuilder';
+import { TURRET_COLLISION_RADIUS } from './ShipMeshTypes';
 
 export function buildTurretHull(
   context: ShipBuildContext,
@@ -32,7 +33,10 @@ export function buildTurretHull(
 
     gunpoints = [new Vector3(0.4, 0.5, -2.5), new Vector3(-0.4, 0.5, -2.5)];
     enginePoints = [];
-    radius = 2.4;
+    // Keep the hit sphere on the armored body. Including the long barrels in
+    // a 2.4 m sphere pushed rooftop batteries into their support colliders,
+    // so incoming fire struck the building while outgoing muzzle fire escaped.
+    radius = TURRET_COLLISION_RADIUS;
   return { gunpoints, enginePoints, radius };
 }
 

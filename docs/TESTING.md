@@ -15,7 +15,7 @@ covered by one of the two.
 ```bash
 npm run test:architecture     # controller line-size budgets
 npm run typecheck            # strict TS
-npm run test:visual          # 22 scenes vs local baselines (builds first)
+npm run test:visual          # 23 scenes vs local baselines (builds first)
 npm run test:visual:update   # re-capture local baselines (--scene=<name> for one)
 npm run test:smoke           # full gameplay loop in live headless Chromium
 ```
@@ -41,7 +41,8 @@ actual regression check. Never commit generated PNGs.
 | nebula / asteroids / ship | environment art, half-clipped solar emitter, palette clusters, rounded/textured rocks, hull greeble |
 | combat / fx / split | staged battle FX, explosion quality, rock calving |
 | hud | full HUD: panels, jump spool + warp streaks, contract OFFER panel, quest tracker, merchant note |
-| targeting | marker semantics: lock box + range chip, red/amber/grey/neutral contacts, edge chevrons, radar blips, live enemy fire |
+| targeting | hostile marker semantics: lock box + lead/range, red/amber/grey contacts, edge chevrons, radar, live fire |
+| friendly-targeting | merchant fallback lock: green box/wireframe, relationship+role copy, no lead pip |
 | menu / hangar / loadout / cockpit | each screen; cockpit = live-data MFDs + frame |
 | boost | camera framing at full boost (ship large, visible) |
 | cave / wreck / level / planet | POIs: cave asteroid, derelict+blackbox, capital+hauler; planet stages the outside approach looking through the broad natural arch |
@@ -81,15 +82,16 @@ behavior. The normal webpack dev-server default remains port 8080.
 
 ## Smoke test (test/smoke.mjs)
 
-Live build, real rAF loop until the performance-sensitive engagement block,
-then deterministic direct stepping, `/?seed=99&headless=1` (headless=1 is
-mandatory — headless Chromium grants-then-drops pointer lock, phantom-firing
-auto-pause).
+Live build with explicit browser-frame settling for DOM/font checks and
+deterministic stepping for gameplay time, `/?seed=99&headless=1` (headless=1
+is mandatory — headless Chromium grants-then-drops pointer lock,
+phantom-firing auto-pause). `advanceGameTime` drives the full loop;
+`advanceProjectileTime` isolates swept collision without moving other actors.
 Both harnesses launch Chromium with `--mute-audio` — the game's synth audio
 otherwise plays through the user's speakers mid-test.
 SwiftShader runs ~4 FPS and dt clamps at 1/20, so sim time ≪ wall time: never
-"wait N seconds" for a state — fast-forward it (`jumpSpool = 0.05`, direct
-dispatch calls, fixed-step hunter AI and chase-camera updates).
+"wait N seconds" for a state — fast-forward it (`jumpSpool = 0.01`, the two
+advance helpers, direct dispatch calls, fixed-step hunter AI/camera updates).
 
 **Ship connectivity audit** runs first (`window.auditShips()` →
 `auditShipConnectivity` in `ShipMeshAudit.ts`, re-exported by `ShipMesh.ts`):
@@ -107,15 +109,19 @@ Asserted, in order:
    reload, restore the selected card, and construct the matching preview hull.
 2. Hangar actions remain aligned with the ship-card baseline through fullscreen;
    hardpoints/no-rack slots do not shift.
-3. Sector-1 peace (0 hostiles, ≥2 neutrals, 2 flux) → hail → offer → accept
+3. Vanta-style `missileRate=0` rejects craft/buy calls without changing the wallet
+   and both overlay buttons are disabled with “No rack”. An occluded hostile plus
+   visible merchant selects the merchant as an informational contact, renders the
+   friendly wireframe/role, exposes no `aimTarget`, and hides the lead pip.
+4. Sector-1 peace (0 hostiles, ≥2 neutrals, 2 flux) → hail → offer → accept
    (active=1) → merchant dock + engine silence + buy-flux. Trade verifies all
    five SVG hold icons, structured cost/gain icons, column alignment, symmetric
    padding, and the Trade/subtitle left guide.
-4. Engineering crafting preserves `.loadout-right.scrollTop`; hold icons are
+5. Engineering crafting preserves `.loadout-right.scrollTop`; hold icons are
    SVGs in an aligned icon/label/count grid with ≥10 px right inset. The mining
    prompt uses the stable rotating vein centroid and advances toward motion
    without a one-frame screen-space snap.
-5. Planetfall creates a garrison ≥4 and stashes ≥3; spawn is >200 from hostiles
+6. Planetfall creates a garrison ≥4 and stashes ≥3; spawn is >200 from hostiles
    ON the surface with **level attitude** (no random pitch/roll). Every segment
    of both dense cave approach routes clears terrain and the profile-matched
    shell by the player's radius; interior/exterior guards are outside all
@@ -124,13 +130,14 @@ Asserted, in order:
    geology lobes remain within the aspect-ratio guard. A zero-speed shell overlap
    deals zero damage while a controlled 55 m/s inward impact deals proportional
    damage.
-6. A rooftop turret is **destructible** (tight building AABBs, not fat
-   broadphase spheres), and soft-lock picks the near turret at ~120 m.
-7. Lift/revisit reuses the exact `PlanetSurface`: harvested bodies stay gone,
+7. **Every** generated surface turret has a hit sphere clear of terrain/bodies and
+   takes damage from its intended open firing arc; soft-lock picks a visible near
+   turret at ~120 m.
+8. Lift/revisit reuses the exact `PlanetSurface`: harvested bodies stay gone,
    moved pickups persist, and a zero-garrison planet remains cleared. Lift-off
    also restores the space sector bit-identically (a pre-landing scarred rock is
    checked).
-8. A controlled hold-jump (straight up, high, clear corridor) reaches hostile
+9. A controlled hold-jump (straight up, high, clear corridor) reaches hostile
    sector 2; dispatched hunters close from >20 u, the camera follows a teleport,
    overhead turret aim dot→1, and cloak/EMP/nanobots all function.
 

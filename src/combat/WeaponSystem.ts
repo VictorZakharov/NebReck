@@ -135,8 +135,9 @@ export class WeaponSystem {
     muzzleWorld.copy(player.gunpoints[this.muzzleToggle]);
     player.object.localToWorld(muzzleWorld);
 
-    if (targeting.current) {
-      aimDir.copy(targeting.current.leadPoint).sub(muzzleWorld).normalize();
+    const target = targeting.aimTarget;
+    if (target) {
+      aimDir.copy(target.leadPoint).sub(muzzleWorld).normalize();
     } else {
       player.forward(aimDir);
     }
@@ -181,6 +182,6 @@ export class WeaponSystem {
     muzzleWorld.set(0, -0.5, 0);
     player.object.localToWorld(muzzleWorld);
     player.forward(aimDir);
-    this.projectiles.spawnMissile(muzzleWorld, aimDir, targeting.current?.ship ?? null);
+    this.projectiles.spawnMissile(muzzleWorld, aimDir, targeting.aimTarget?.ship ?? null);
   }
 }

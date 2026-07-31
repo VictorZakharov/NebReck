@@ -85,7 +85,7 @@ src/
     WeaponDefs.ts         data: player weapons, missile, enemy bolt color
     WeaponSystem.ts       player firing, energy, switching, damageMult (upgrades)
     ProjectileSystem.ts   pooled bolts+missiles, swept segment-vs-sphere collision
-    Targeting.ts          soft lock in a boresight cone + lead point computation
+    Targeting.ts          LOS-aware hostile-first lock + civilian info fallback
   fx/
     ParticleSystem.ts     one pooled additive point-sprite system for everything
     ExplosionSystem.ts    flash + shockwave ring + sparks/embers + pooled point lights
@@ -116,7 +116,7 @@ src/
     GameCombat.ts         hits, drops, hostile fire/LOS and ship/body collisions
     GameHudPresenter.ts   HUD frame assembly, projections, radar and pickup flyouts
     GameWorldFlow.ts      jump spool, sector population and persistent planet swaps
-    GameConstants.ts      shared travel constants + target display names
+    GameConstants.ts      shared travel constants + target relationship/role copy
     GamePreferences.ts    validated one-year ship/difficulty cookies
     InteractionTargeting.ts boresight loot/body + nearest-neutral queries
     HudProjection.ts      world→screen contacts/radar + dt-smoothed prompt anchors
@@ -190,15 +190,15 @@ GameLoop.tick(dt)
     quest bookkeeping: collect progress, delivery-beacon proximity
     devices.update → CloakVisual.sync; planet terrain clamp + scrape damage
     story triggers (one-shot, space-side): first-contact/cave/capital…
+    hostiles[] / shootables[] scratch rebuild (+ capital, + neutrals)
     PlayerShip.update          ← Input
-    Targeting.update           → lock + lead point
-    WeaponSystem.update        → spawns bolts/missiles
+    Targeting.update           → visible hostile lock, else civilian contact
+    WeaponSystem.update        → spawns bolts/missiles from aimTarget only
     engine-trail particle emission (dt-accumulated)
     EnemyShip.update × N       ← EnemyBrain (patrol/approach/attack/break),
                                  stun + cloak-blind aware, fires via callback
     Turret.update × N          → turretFire (gated by hasLineOfSight)
     NeutralShip.update × N; CapitalShip.update
-    hostiles[] / shootables[] scratch rebuild (+ capital, + neutrals)
     ProjectileSystem.update    → onHit → GameCombat.resolveHit
        resolveHit: jump-disrupt · damage ships/turrets/capital/neutrals |
        rock: ore crack → pickups · hp → shatter (+calving) · stash burst
@@ -236,6 +236,6 @@ Add new cross-system reactions by subscribing in
 See `test/visual/run.mjs` + `src/game/TestScenes.ts`. Deterministic because:
 seeded Rng, `GameLoop.stepManual` (no wall clock), frozen CSS animations
 (injected style pauses everything at t=1s), SwiftShader software GL in headless
-Chromium. Same machine → 0.000% pixel diff. The current 22 scenes cover world art,
-ships, combat/FX, HUD/targeting, every major screen, caves/bases/wrecks, trade,
+Chromium. Same machine → 0.000% pixel diff. The current 23 scenes cover world art,
+ships, combat/FX, hostile and civilian HUD targeting, every major screen, caves/bases/wrecks, trade,
 fleet connectivity, cloak and controls.

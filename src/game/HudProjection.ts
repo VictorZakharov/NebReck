@@ -53,8 +53,14 @@ export class HudProjector {
       leadVisible: false,
       leadX: 0,
       leadY: 0,
+      relationship: null,
     };
     if (target) {
+      targetState.relationship = target.aimAssist
+        ? 'hostile'
+        : target.ship instanceof NeutralShip && target.ship.isMerchant
+          ? 'friendly'
+          : 'neutral';
       this.projected.copy(target.ship.position).project(camera);
       if (this.projected.z < 1) {
         targetState.visible = true;
@@ -62,11 +68,13 @@ export class HudProjector {
         targetState.y = (-this.projected.y * 0.5 + 0.5) * height;
         targetState.distance = target.distance;
       }
-      this.projected.copy(target.leadPoint).project(camera);
-      if (this.projected.z < 1) {
-        targetState.leadVisible = true;
-        targetState.leadX = (this.projected.x * 0.5 + 0.5) * width;
-        targetState.leadY = (-this.projected.y * 0.5 + 0.5) * height;
+      if (target.aimAssist) {
+        this.projected.copy(target.leadPoint).project(camera);
+        if (this.projected.z < 1) {
+          targetState.leadVisible = true;
+          targetState.leadX = (this.projected.x * 0.5 + 0.5) * width;
+          targetState.leadY = (-this.projected.y * 0.5 + 0.5) * height;
+        }
       }
     }
 

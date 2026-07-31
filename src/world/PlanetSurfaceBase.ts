@@ -454,7 +454,7 @@ class SurfaceBaseBuilder {
         gauge.position.set(bx + ox, gy + 5, bz + 4.5);
         deco(gauge, false);
         pipe(bx + ox, gy + 12.5, bz, bx + ox, topY + 5.4, bz, 0.4);
-        if (i === 1) this.addTurretPost(bx + ox, gy + 10.5, bz, bx + ox, bz - 200);
+        if (i === 1) this.addTurretPost(bx + ox, gy + 14.5, bz, bx + ox, bz - 200);
       }
       pipe(bx - 18, topY + 5.4, bz, bx + 18, topY + 5.4, bz, 0.6);
       const pump = new Mesh(new BoxGeometry(8, 5, 6), wallMat);

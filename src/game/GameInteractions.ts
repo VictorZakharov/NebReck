@@ -106,6 +106,7 @@ export abstract class GameInteractions extends GameScreens {
     this.input.exitPointerLock();
     this.tradeScreen = new TradeScreen(this.uiRoot, this.inventory, {
       onTrade: (id) => this.executeTrade(id),
+      isAvailable: (id) => id !== 'buy-missiles' || this.weapons.missileRate > 0,
       onClose: () => this.closeTrade(),
       onHover: () => this.audio.uiHover(),
       onClick: () => this.audio.pickup(),
@@ -123,6 +124,7 @@ export abstract class GameInteractions extends GameScreens {
   }
 
   executeTrade(id: string): boolean {
+    if (id === 'buy-missiles' && this.weapons.missileRate <= 0) return false;
     if (!canTrade(id, this.inventory)) return false;
     applyTrade(id, this.inventory);
     return true;

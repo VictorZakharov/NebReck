@@ -8,6 +8,7 @@ export interface HudTargetState {
   leadVisible: boolean;
   leadX: number;
   leadY: number;
+  relationship: 'hostile' | 'friendly' | 'neutral' | null;
 }
 
 export type HostileClass = 'ship' | 'turret' | 'neutral' | 'merchant' | 'objective';
@@ -66,7 +67,12 @@ export interface HudFrameState {
   merchantPresent: boolean;
   onPlanet: boolean;
   /** Wireframe target readout (top-left), or null when nothing is locked. */
-  targetPreview: { name: string; hullFrac: number } | null;
+  targetPreview: {
+    name: string;
+    detail: string;
+    relationship: 'hostile' | 'friendly' | 'neutral';
+    hullFrac: number;
+  } | null;
   fps: number;
   target: HudTargetState;
   /** Visible hostiles that are not the locked target — every one gets a bracket. */
@@ -156,9 +162,10 @@ export class Hud {
         <div class="quest-tracker" data-el="questTracker"></div>
       </div>
       <div class="target-preview hud-panel" data-el="targetPreview">
-        <div class="panel-title">Target</div>
+        <div class="panel-title" data-el="previewTitle">Target</div>
         <div class="preview-wrap" data-el="previewWrap"></div>
         <div class="preview-name" data-el="previewName"></div>
+        <div class="preview-detail" data-el="previewDetail"></div>
         <div class="bar preview-hullbar"><i data-el="previewHullBar"></i></div>
       </div>
       <div class="interact-prompt" data-el="interactPrompt"></div>
@@ -277,10 +284,18 @@ export class Hud {
 
     e.targetPreview.classList.toggle('show', s.targetPreview !== null);
     if (s.targetPreview) {
+      e.targetPreview.classList.toggle('friendly', s.targetPreview.relationship === 'friendly');
+      e.targetPreview.classList.toggle('neutral', s.targetPreview.relationship === 'neutral');
+      e.previewTitle.textContent = s.targetPreview.relationship === 'hostile' ? 'Target' : 'Contact';
       e.previewName.textContent = s.targetPreview.name;
+      e.previewDetail.textContent = s.targetPreview.detail;
       const f = Math.max(0, Math.min(1, s.targetPreview.hullFrac));
       e.previewHullBar.style.width = `${f * 100}%`;
-      e.previewHullBar.style.background = `hsl(${f * 120}, 90%, 52%)`;
+      e.previewHullBar.style.background = s.targetPreview.relationship === 'friendly'
+        ? '#8aff9f'
+        : s.targetPreview.relationship === 'neutral'
+          ? '#9fdcff'
+          : `hsl(${f * 120}, 90%, 52%)`;
     }
     e.fps.textContent = `${Math.round(s.fps)} FPS`;
 
@@ -322,6 +337,10 @@ export class Hud {
 
     // Target box + lead pip + range readout.
     const t = s.target;
+    e.targetBox.classList.toggle('friendly', t.relationship === 'friendly');
+    e.targetBox.classList.toggle('neutral', t.relationship === 'neutral');
+    e.targetDist.classList.toggle('friendly', t.relationship === 'friendly');
+    e.targetDist.classList.toggle('neutral', t.relationship === 'neutral');
     e.targetBox.style.opacity = t.visible ? '1' : '0';
     e.targetDist.style.opacity = t.visible ? '1' : '0';
     if (t.visible) {

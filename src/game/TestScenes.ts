@@ -65,6 +65,9 @@ export function runTestScene(game: Game, name: string): void {
     case 'targeting':
       stageTargeting(game);
       break;
+    case 'friendly-targeting':
+      stageFriendlyTargeting(game);
+      break;
     case 'fx':
       stageFx(game);
       break;
@@ -273,6 +276,35 @@ function stageTargeting(game: Game): void {
   for (const e of game.enemies) if (e.hunter) e.faceToward(game.player.position);
   // Long enough for D to align and open fire — bolts must be visible.
   steps(game, 80);
+}
+
+/** Civilian fallback lock: green merchant wireframe/contact box, no lead pip. */
+function stageFriendlyTargeting(game: Game): void {
+  game.startMission();
+  game.hud.clearComms();
+  const merchant = game.neutrals.find((neutral) => neutral.isMerchant);
+  if (!merchant) throw new Error('friendly-targeting scene expects a merchant');
+  const origin = game.player.position.clone();
+  game.player.object.rotation.set(0, 0, 0);
+  game.player.velocity.set(0, 0, 0);
+  merchant.object.position.copy(origin).add(new Vector3(0, 0, -145));
+  merchant.velocity.set(0, 0, 0);
+  merchant.faceToward(origin.clone().add(new Vector3(120, 0, -300)));
+  for (const neutral of game.neutrals) {
+    if (neutral !== merchant) neutral.object.position.copy(origin).add(new Vector3(320, 30, -400));
+  }
+  game.chaseCam.snapTo(game.player.object);
+  game.chaseCam.camera.updateMatrixWorld(true);
+  game.targeting.update(
+    game.player,
+    [],
+    [merchant],
+    game.weapons.weapon.projectileSpeed,
+    () => true,
+  );
+  game.renderHudOnce();
+  game.state = 'test';
+  steps(game, 2);
 }
 
 /** FX quality plate: explosions at two life stages, exhaust trail, debris. */

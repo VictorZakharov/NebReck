@@ -84,8 +84,10 @@ Real issues hit while building this game, kept here so they only get paid for on
 
 - **dt is clamped to 1/20 s** (`GameLoop.MAX_DT`). Below 20 FPS, simulated time runs
   slower than wall time — in the SwiftShader smoke test (~4 FPS) 8 wall-seconds ≈ 2
-  sim-seconds. Don't "wait N seconds" in headless tests; fast-forward state instead
-  (e.g. `waveDirector.countdown = 0.01`).
+  sim-seconds. Don't "wait N seconds" in headless tests; use `advanceGameTime` or
+  the isolated `advanceProjectileTime` helper, or fast-forward state directly
+  (e.g. `waveDirector.countdown = 0.01`). Browser layout synchronization waits
+  for fonts plus actual animation frames instead of arbitrary millisecond sleeps.
 - Smoothing everywhere uses `1 - Math.exp(-k*dt)` — copy that form, never a bare
   `0.1` lerp factor (frame-rate dependent).
 - Projectiles use swept segment-vs-sphere tests (`ProjectileSystem`) — a naive
@@ -103,10 +105,20 @@ Real issues hit while building this game, kept here so they only get paid for on
   `hasLineOfSight` confirms sphere candidates against the box. Two extra guards:
   a bolt that STARTS inside a body's bound is exiting its own mount and skips that
   body; keep AABB'd blocks axis-aligned (no random yaw) so collider = visual.
+- **A tight building collider is not enough if the turret's own hit sphere overlaps
+  it.** Outgoing bolts skip the containing mount, which can disguise the overlap,
+  while incoming bolts hit the mount first and make the turret seem invulnerable.
+  The turret hit radius covers its armored center (not its long barrel tips), and
+  `PlanetSurface` rejects every spawn whose complete hit sphere intersects terrain
+  or any registered body after all bases/caves are built.
 - **Targeting must scan ALL hostiles** (`game.hostiles`: fighters + turrets +
   capital), not `enemies` — turrets were simply unlockable. Score is
   `(1-dot)*400 + dist*0.5` so a 10× closer turret beats a distant fighter at
   similar angles; the hostiles list is rebuilt BEFORE `targeting.update` each tick.
+- **An informational contact is not an aim target.** Targeting tries LOS-clear
+  hostiles first, then civilians. HUD projection consumes `current`, but primary
+  convergence and seeker homing must consume `aimTarget`; feeding `current` to
+  weapons silently enables autoaim against merchants.
 
 ## HUD / secondary renderers
 
@@ -206,6 +218,9 @@ Real issues hit while building this game, kept here so they only get paid for on
 - Crafting repaints replace the right-hand recipe list. Save and restore
   `.loadout-right.scrollTop` across a successful purchase or every click jumps
   the player back to the first recipe.
+- Ship-fit restrictions belong in both the screen callback and the mutation method.
+  Disabling “Seeker Missiles” in Engineering/Trade is only presentation; `craft`
+  and `executeTrade` must independently reject the transaction when missileRate=0.
 
 ## Pointer lock / input
 

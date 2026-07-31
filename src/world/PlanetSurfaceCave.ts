@@ -446,12 +446,12 @@ class SurfaceCaveBuilder {
         const candidate = candidateCenter
           .clone()
           .addScaledVector(candidateSide, tunnelRadius * lateral);
-        candidate.y = this.heightAt(candidate.x, candidate.z) + 1.8;
+        candidate.y = this.heightAt(candidate.x, candidate.z) + 2.0;
         interiorCandidates.push(candidate);
       }
     }
     const interiorGuard = this.clearest(interiorCandidates);
-    const interiorGround = interiorGuard.y - 1.8;
+    const interiorGround = interiorGuard.y - 2.0;
     this.addTurretPost(
       interiorGuard.x,
       interiorGround,
@@ -467,12 +467,12 @@ class SurfaceCaveBuilder {
           .clone()
           .addScaledVector(mouthSide, tunnelRadius * sideFactor)
           .addScaledVector(mouthTangent, tunnelRadius * alongFactor);
-        candidate.y = this.heightAt(candidate.x, candidate.z) + 1.8;
+        candidate.y = this.heightAt(candidate.x, candidate.z) + 2.0;
         exteriorCandidates.push(candidate);
       }
     }
     const exteriorGuard = this.clearest(exteriorCandidates);
-    const exteriorGround = exteriorGuard.y - 1.8;
+    const exteriorGround = exteriorGuard.y - 2.0;
     this.addTurretPost(
       exteriorGuard.x,
       exteriorGround,

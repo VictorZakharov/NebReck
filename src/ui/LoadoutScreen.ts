@@ -128,8 +128,13 @@ export class LoadoutScreen {
     });
     const btn = document.createElement('button');
     btn.className = 'craft-btn';
-    btn.textContent = maxed ? 'Maxed' : 'Craft';
-    btn.disabled = maxed || !affordable || !this.callbacks.isUseful(recipe.id);
+    const useful = this.callbacks.isUseful(recipe.id);
+    btn.textContent = maxed
+      ? 'Maxed'
+      : recipe.id === 'missile-rack' && !useful
+        ? 'No rack'
+        : 'Craft';
+    btn.disabled = maxed || !affordable || !useful;
     btn.addEventListener('mouseenter', this.callbacks.onHover);
     btn.addEventListener('click', () => {
       if (this.callbacks.onCraft(recipe.id)) {

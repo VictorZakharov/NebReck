@@ -32,20 +32,23 @@ outrun its field.
   in an interactive convex-visor hangar, plus three difficulty tiers with real
   multipliers. The card click itself commits each selection to a one-year browser
   cookie; Engage or game entry is not required.
-- **Combat**: three energy weapons + lock-on seeker missiles, soft-targeting with lead
-  pip, enemy AI wings (approach/attack/break), escalating waves with story comms.
+- **Combat**: three energy weapons + lock-on seeker missiles, LOS-aware soft-targeting
+  with lead pip, enemy AI wings (approach/attack/break), escalating waves with story
+  comms. When no visible hostile is targetable, the HUD identifies merchants and
+  neutral haulers with relationship-colored wireframes but never aims weapons at them.
 - **Mining & crafting**: shoot glowing ore veins on asteroids, tractor in salvage
   (Scrap / Ion Crystals / Flux Cores), spend it mid-run in the Tab Engineering screen
   on repairs, refills and three-rank per-run upgrades. A shared original SVG set
   identifies every material/consumable in the HUD, hold and cost chips. Vein hints
   follow a stable, smoothly projected vein centroid; crafting purchases keep the
-  current scroll position.
+  current scroll position. Ships without a seeker rack cannot craft or buy missiles.
 - **Planet dungeons**: broad, open-bottomed rock arches over carved cave routes,
   connected angular bases, patrols, turrets, stashes and crystals. Visible cave
   rock and its overlapping outward collision shell share one profile, while ground
   collision interpolates the exact rendered terrain triangles. Cave paths cannot
   fold through themselves, entrances stay clear, rock formations use bounded
-  lobes instead of needle spires, and impact damage scales with closing speed.
+  lobes instead of needle spires, impact damage scales with closing speed, and every
+  surface turret mount is collider-cleared so the battery remains exposed to fire.
   Revisiting the same planet in a sortie restores the exact terrain, harvested
   loot, surviving enemies and cleared garrison state.
 - **Two cameras**: banked chase cam and a first-person cockpit with glowing MFDs,
@@ -105,7 +108,7 @@ The in-game **Field Manual** (main menu) documents every implemented mechanic.
 ```bash
 npm run test:architecture     # enforce controller line-size budgets
 npm run typecheck            # strict TS, no emit
-npm run test:visual          # compare 22 scenes with local, ignored baselines
+npm run test:visual          # compare 23 scenes with local, ignored baselines
 npm run test:visual:update   # re-capture local baselines after intentional changes
 npm run test:smoke           # end-to-end behavior + persistence regression suite
 ```
@@ -116,7 +119,7 @@ scene via `/?testScene=<name>&seed=7`, and diffs screenshots with pixelmatch.
 Scenes are staged deterministically (seeded RNG, fixed-step simulation, frozen CSS
 animations) — a same-machine re-render diffs at exactly 0.000%. Baselines are local
 generated artifacts and are intentionally not committed: the first run creates
-them, and subsequent runs compare against them. The 22 scenes cover world art,
+them, and subsequent runs compare against them. The 23 scenes cover world art,
 every major screen, targeting, combat/FX, caves, bases, trade, fleet connectivity,
 cloak and controls. Failure diffs land in `test/visual/diff/`.
 

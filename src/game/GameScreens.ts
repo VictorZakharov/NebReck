@@ -231,6 +231,9 @@ export abstract class GameScreens extends GameFoundation {
       {
         onCraft: (id) => this.craft(id),
         isUseful: (id) => {
+          if (id === 'missile-rack') {
+            return this.weapons.missileRate > 0;
+          }
           if (id === 'shield-cell') {
             return this.player.shield < this.player.shieldMax;
           }
@@ -256,6 +259,7 @@ export abstract class GameScreens extends GameFoundation {
   craft(recipeId: string): boolean {
     const recipe = RECIPES.find((candidate) => candidate.id === recipeId);
     if (!recipe || !this.inventory.canCraft(recipe)) return false;
+    if (recipeId === 'missile-rack' && this.weapons.missileRate <= 0) return false;
     const player = this.player;
     if (recipeId === 'patch-hull' && player.hull >= player.hullMax) return false;
     if (recipeId === 'shield-cell' && player.shield >= player.shieldMax) return false;
