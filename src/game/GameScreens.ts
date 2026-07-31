@@ -164,6 +164,7 @@ export abstract class GameScreens extends GameFoundation {
     this.storyFired.clear();
     this.difficulty = getDifficulty(this.selectedDifficultyId);
     this.inventory = new Inventory();
+    this.inventory.missiles = shipDef.startingMissiles;
     this.devices = new DeviceSystem();
     this.quests = new QuestSystem(this.rng.fork());
     this.pendingOffer = null;

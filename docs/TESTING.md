@@ -15,7 +15,7 @@ covered by one of the two.
 ```bash
 npm run test:architecture     # controller + smoke-module line-size budgets
 npm run typecheck            # strict TS
-npm run test:visual          # 26 scenes vs local baselines (builds first)
+npm run test:visual          # 30 scenes vs local baselines (builds first)
 npm run test:visual:update   # re-capture local baselines (--scene=<name> for one)
 npm run test:smoke           # full gameplay loop in live headless Chromium
 ```
@@ -46,6 +46,8 @@ actual regression check. Never commit generated PNGs.
 | hud | full HUD: panels, jump spool + warp streaks, contract OFFER panel, quest tracker, merchant note |
 | targeting | hostile marker semantics: lock box + lead/range, red/amber/grey contacts, edge chevrons, radar, live fire |
 | distant-targeting | no-pursuit angular scan beyond 1.5 km: centred 1,847 m hostile selected over a nearer off-axis contact |
+| turret-targeting | dormant independent turret selected by peaceful crosshair scan; green health edges inside a red perimeter-only glow |
+| capital-targeting | far whole-carrier lock and a readable nose-on fitted wireframe rather than an empty transparent preview |
 | friendly-targeting | merchant fallback lock: green box/wireframe, relationship+role copy, no lead pip |
 | menu / hangar / loadout / cockpit | each screen; cockpit = live-data MFDs + frame |
 | boost | camera framing at full boost (ship large, visible) |
@@ -126,8 +128,8 @@ Asserted, in order:
 2. Hangar actions remain aligned with the ship-card baseline through fullscreen;
    hardpoints/no-rack slots do not shift.
 3. Vanta-style `missileRate=0` rejects craft/buy calls without changing the wallet
-   and both overlay buttons are disabled with “No rack”. An occluded hostile plus
-   far camera-centered merchant plus a nearer ship-forward civilian selects the merchant as
+   and both overlay buttons are disabled with “No rack”. A far camera-centered
+   merchant plus nearer off-axis hostile/civilian contacts selects the merchant as
    an informational contact, renders the friendly wireframe/role, exposes no
    `aimTarget`, hides the lead pip, and hard-cuts the bracket on focus loss.
    Enemy-ordnance coverage separately proves launcher-equipped enemies count zero
@@ -145,7 +147,8 @@ Asserted, in order:
    matching its Ion-teal or Scrap-amber resource without becoming an aim target;
    merchant and planet prompts are also
    asserted as world-anchored. Sector entry also asserts the 700 m safety envelope,
-   zero pursuing patrols, and no inherited missile warning.
+   zero pursuing patrols, no inherited missile warning, and an equal-weight
+   majority-contact arrival bearing. Lift-off asserts the same bearing rule.
 6. Planetfall creates a garrison ≥4 and stashes ≥3; spawn is >200 from hostiles
    ON the surface with **level attitude** (no random pitch/roll). Every segment
    of both dense cave approach routes clears terrain and the profile-matched
@@ -163,16 +166,20 @@ Asserted, in order:
    also restores the space sector bit-identically (a pre-landing scarred rock is
    checked).
 9. A controlled hold-jump shows required/held Flux, then (straight up, high, clear corridor) reaches hostile
-   sector 2; dispatched hunters close from >20 u, the camera follows a teleport,
+   sector 2. Every cave-asteroid battery root clears every rock body by its full
+   hit radius; dispatched hunters close from >20 u, the camera follows a teleport,
    overhead turret aim dot→1, and cloak/EMP/nanobots all function.
 10. Range-policy staging proves close hostiles are distance weighted, distant
     hostiles are camera-angle ranked, and an on-crosshair civilian beats an off-axis
     hostile only during peace; active pursuit restores hostile priority. The
     exact live regression is staged separately: a centred 1,847 m hostile
     must beat a 1,444 m off-axis hostile despite both lying beyond/near the old
-    1,500 m sensor cutoff. Weapon reach never caps inspection. Lock colors remain
+    1,500 m sensor cutoff. The same centered target remains selected behind a
+    staged asteroid instead of falling through to its visible offset neighbor.
+    Weapon reach never caps inspection. Lock colors remain
     red/grey rather than changing to orange. Hostile previews independently assert
-    a red relationship outline and green full-health wireframe. Explicit
+    a red silhouette-perimeter glow and green full-health internal wireframe;
+    dormant independent turrets are also selected by the peaceful scan. Explicit
     package staging proves a pursuing seeker bomber
     fires at 1,050 m plus rapid rotary ship/battery cadence. Artificial projectile
     time proves homing versus fast-unguided rockets, a 900 m player-seeker hit and
@@ -180,6 +187,7 @@ Asserted, in order:
     warning DOM classes and cloak target loss. Direct carrier stepping proves 12
     four-way mixed, independently destructible top/bottom mounts, outward
     traverse + self-hull LOS, whole-carrier preview with mounts hidden at 600 u,
+    and a nonempty 2D pixel footprint for the nose-on wireframe,
     individual mount lock at 200 m, frontal-only charge initiation, committed arc
     clamping, and first-asteroid absorption with the player/second rock protected.
     A synthetic `L-Ctrl + W` chord proves both movement keys stay active while the
@@ -192,6 +200,10 @@ Asserted, in order:
     fails immediately; direct scene children plus renderer geometry/texture counts
     must return to their exact pre-stress baseline after every temporary wing is
     disposed.
+13. The Aegis begins a sortie with 16 seekers and crosses its first fabrication
+    boundary at exactly 10 seconds; a Kestrel definition explicitly disables
+    regeneration. The test seeds 9.98 seconds directly, then advances one runtime
+    tick so CI never waits on wall time.
 
 Exit code enforces every assertion.
 

@@ -435,6 +435,17 @@ export async function runWorldSmoke(page) {
     game.enemies = [];
     game.turrets = [];
     game.exitPlanet();
+    const arrivalContacts = [...game.enemies, ...game.turrets.filter(
+      (turret) => !game.capitalTurrets.includes(turret),
+    ), ...game.neutrals, ...(game.capital ? [game.capital] : [])];
+    const arrivalMean = game.player.position.clone().set(0, 0, 0);
+    for (const contact of arrivalContacts) {
+      arrivalMean.add(contact.position.clone().sub(game.player.position).normalize());
+    }
+    const arrivalForward = arrivalMean.clone();
+    game.player.forward(arrivalForward);
+    const orbitFacesMajority = arrivalMean.lengthSq() < 1e-4 ||
+      arrivalForward.dot(arrivalMean.normalize()) > 0.999;
     game.player.hull = game.player.hullMax;
     const persisted =
       game.sector.asteroids.bodies.length === window.__smoke.bodiesBefore &&
@@ -453,6 +464,7 @@ export async function runWorldSmoke(page) {
       lockDist,
       lockedNear,
       backInSpace: !game.surface && game.sectorIndex === 1,
+      orbitFacesMajority,
       persisted,
       revisit,
     };
@@ -496,11 +508,32 @@ export async function runWorldSmoke(page) {
         min = Math.min(min, hostile.position.distanceTo(game.player.position));
       }
       const incoming = game.projectiles.incomingThreat(game.player);
+      const contacts = [...game.enemies, ...game.turrets.filter(
+        (turret) => !game.capitalTurrets.includes(turret),
+      ), ...game.neutrals, ...(game.capital ? [game.capital] : [])];
+      const mean = game.player.position.clone().set(0, 0, 0);
+      for (const contact of contacts) {
+        mean.add(contact.position.clone().sub(game.player.position).normalize());
+      }
+      const facing = mean.clone();
+      game.player.forward(facing);
+      const caveTurretCount = game.sector.turretSpawns.length;
+      const spaceTurretsClear = game.sector.turretSpawns.every((spawn, index) => {
+        const turret = game.turrets[index];
+        if (!turret || turret.position.distanceToSquared(spawn.position) > 0.001) return false;
+        return game.sector.asteroids.bodies.every((body) =>
+          body.destroyed ||
+          turret.position.distanceTo(body.position) >= body.radius + turret.radius + 0.12
+        );
+      });
       return {
         safeDist: Math.round(min),
         entrySafe: min >= 700,
         pursuers: game.enemies.filter((enemy) => enemy.pursuingPlayer).length,
         missileWarning: incoming.locked || incoming.imminent,
+        facesMajority: mean.lengthSq() < 1e-4 || facing.dot(mean.normalize()) > 0.999,
+        caveTurretCount,
+        spaceTurretsClear,
       };
     })(),
   }));

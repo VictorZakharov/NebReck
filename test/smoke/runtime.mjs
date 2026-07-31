@@ -243,5 +243,29 @@ export async function runRuntimeSmoke(page) {
   });
   console.log('dense combat stability:', JSON.stringify(combatStability));
 
-  return { closed, camDist, turretAim, dev, combatStability };
+  const aegisMissiles = await page.evaluate(() => {
+    const game = window.game;
+    game.selectedShipId = 'kestrel';
+    game.startMission();
+    const kestrelRegenDisabled = game.player.def.missileRegenSeconds === null;
+    game.selectedShipId = 'aegis';
+    game.startMission();
+    game.loop.stop();
+    const initial = game.inventory.missiles;
+    game.inventory.missiles = 0;
+    const interval = game.player.def.missileRegenSeconds;
+    game.inventory.regenerateMissiles(9.98, interval);
+    const beforeTenSeconds = game.inventory.missiles;
+    game.loop.stepManual(0.02);
+    return {
+      initial,
+      kestrelRegenDisabled,
+      beforeTenSeconds,
+      afterTenSeconds: game.inventory.missiles,
+      interval,
+    };
+  });
+  console.log('Aegis seeker fabricator:', JSON.stringify(aegisMissiles));
+
+  return { closed, camDist, turretAim, dev, combatStability, aegisMissiles };
 }

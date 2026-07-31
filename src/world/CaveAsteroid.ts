@@ -14,6 +14,7 @@ import {
   Vector3,
 } from 'three';
 import { Rng } from '../core/Rng';
+import { TURRET_COLLISION_RADIUS } from '../entities/ShipMeshTypes';
 import { getGlowTexture } from '../fx/textures';
 import { getSurfaceTexture } from '../rendering/SurfaceTextures';
 import { AsteroidBody, makeBody } from './AsteroidField';
@@ -57,7 +58,7 @@ export class CaveAsteroid {
     const axis = new Vector3(ax, ay, az).normalize();
 
     // Boulder shell: big displaced rocks on a sphere, skipping the axis caps.
-    const shell: { position: Vector3; radius: number }[] = [];
+    const shell: { position: Vector3; radius: number; mesh: Mesh }[] = [];
     const boulderCount = 10;
     let placed = 0;
     let guard = 0;
@@ -86,7 +87,11 @@ export class CaveAsteroid {
         solo: mesh,
         hero: true,
       }));
-      shell.push({ position: mesh.position.clone(), radius: boulderRadius });
+      shell.push({
+        position: mesh.position.clone(),
+        radius: boulderRadius * 1.02,
+        mesh,
+      });
       placed++;
     }
 
@@ -156,14 +161,24 @@ export class CaveAsteroid {
       }
       // Surface point on the boulder facing the mouth.
       const normal = mouth.clone().sub(nearest.position).normalize();
-      const surface = nearest.position.clone().addScaledVector(normal, nearest.radius * 0.92);
-      // Mounting pad flush with the rock.
-      const pad = new Mesh(new CylinderGeometry(2.2, 2.8, 1.2, 10), padMat);
-      pad.position.copy(surface);
+      const surfaceDistance = supportDistance(nearest.mesh, normal);
+      const surface = nearest.position.clone().addScaledVector(normal, surfaceDistance);
+      const rootDistance = Math.max(surfaceDistance, nearest.radius) +
+        TURRET_COLLISION_RADIUS + 0.35;
+      const worldPos = clearTurretSpawn(
+        nearest.position.clone().add(center).addScaledVector(normal, rootDistance),
+        normal,
+        bodies,
+      );
+      // Stretch the mounting pedestal from the real displaced surface to the
+      // collision-clear root. This avoids both embedded and visibly floating guns.
+      const finalRootDistance = worldPos.clone().sub(center).sub(surface).dot(normal);
+      const padLength = Math.max(1.2, finalRootDistance - 0.65);
+      const pad = new Mesh(new CylinderGeometry(2.2, 2.8, padLength, 10), padMat);
+      pad.position.copy(surface).addScaledVector(normal, padLength * 0.5);
       pad.quaternion.setFromUnitVectors(new Vector3(0, 1, 0), normal);
       this.group.add(pad);
 
-      const worldPos = surface.clone().addScaledVector(normal, 1.6).add(center);
       this.turretSpawns.push({
         position: worldPos,
         lookAt: axis.clone().multiplyScalar(sign * 500).add(center),
@@ -184,6 +199,47 @@ export class CaveAsteroid {
     haze.scale.setScalar(cavityRadius * 2.2);
     this.group.add(haze);
   }
+}
+
+/** Furthest actual mesh vertex in a world-local direction after scale/rotation. */
+function supportDistance(mesh: Mesh, direction: Vector3): number {
+  const positions = mesh.geometry.attributes.position;
+  const vertex = new Vector3();
+  let distance = 0;
+  for (let index = 0; index < positions.count; index++) {
+    vertex.fromBufferAttribute(positions, index)
+      .multiply(mesh.scale)
+      .applyQuaternion(mesh.quaternion);
+    distance = Math.max(distance, vertex.dot(direction));
+  }
+  return distance;
+}
+
+/** Push a mount outward until its complete hit sphere clears every rock body. */
+function clearTurretSpawn(
+  position: Vector3,
+  outward: Vector3,
+  bodies: readonly AsteroidBody[],
+): Vector3 {
+  const result = position.clone();
+  const radius = TURRET_COLLISION_RADIUS + 0.18;
+  const offset = new Vector3();
+  for (let pass = 0; pass < 8; pass++) {
+    let requiredPush = 0;
+    for (const body of bodies) {
+      if (body.destroyed) continue;
+      offset.copy(result).sub(body.position);
+      const minimum = body.radius + radius;
+      const along = offset.dot(outward);
+      const perpendicularSq = Math.max(0, offset.lengthSq() - along * along);
+      if (perpendicularSq >= minimum * minimum) continue;
+      const exit = -along + Math.sqrt(minimum * minimum - perpendicularSq) + 0.08;
+      requiredPush = Math.max(requiredPush, exit);
+    }
+    if (requiredPush <= 0) break;
+    result.addScaledVector(outward, requiredPush);
+  }
+  return result;
 }
 
 function displaceGeo(geo: IcosahedronGeometry, rng: Rng, amount: number): void {

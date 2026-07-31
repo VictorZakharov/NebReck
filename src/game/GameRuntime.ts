@@ -161,6 +161,7 @@ export abstract class GameRuntime extends GameInteractions {
       this.completeQuest(completed);
     }
     this.missionTime += dt;
+    this.inventory.regenerateMissiles(dt, player.def.missileRegenSeconds);
 
     this.updateDevices(dt);
     if (this.worldFlow.updateJumpSpool(dt)) return;
@@ -305,10 +306,10 @@ export abstract class GameRuntime extends GameInteractions {
       this.hostiles,
       this.neutrals,
       weapon.projectileSpeed,
-      (ship) => this.combat.hasLineOfSight(player.position, ship.position, null, ship),
       weapon.projectileSpeed * weapon.life,
       aimForward,
       this.enemies.some((enemy) => enemy.alive && enemy.pursuingPlayer),
+      this.chaseCam.camera.position,
     );
     const closeCombatTarget =
       this.targeting.current?.aimAssist === true &&

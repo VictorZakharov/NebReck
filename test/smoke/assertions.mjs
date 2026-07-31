@@ -28,7 +28,7 @@ export function collectSmokeFailures(results) {
     playerSeekerRange,
     flightKeyChord,
   } = targeting;
-  const { closed, camDist, turretAim, dev, combatStability } = runtime;
+  const { closed, camDist, turretAim, dev, combatStability, aegisMissiles } = runtime;
 
   if (errors.length > 0) failures.push('browser errors');
   if (!preferencesPersist) failures.push('hangar preferences');
@@ -140,6 +140,7 @@ export function collectSmokeFailures(results) {
     !planetB.allSurfaceTurretsDamageable ||
     !planetB.lockedNear ||
     !planetB.backInSpace ||
+    !planetB.orbitFacesMajority ||
     !planetB.persisted ||
     !planetB.revisit.sameSurface ||
     !planetB.revisit.harvested ||
@@ -153,7 +154,10 @@ export function collectSmokeFailures(results) {
     !postJump.entrySafe ||
     postJump.safeDist < 700 ||
     postJump.pursuers !== 0 ||
-    postJump.missileWarning
+    postJump.missileWarning ||
+    !postJump.facesMajority ||
+    postJump.caveTurretCount < 2 ||
+    !postJump.spaceTurretsClear
   ) failures.push('safe hostile-sector entry');
 
   if (
@@ -162,6 +166,7 @@ export function collectSmokeFailures(results) {
     !targetingPolicy.farGrey ||
     !targetingPolicy.unlimitedScanSelectedCentred ||
     !targetingPolicy.unpursuedSelectedCentred ||
+    !targetingPolicy.unpursuedTurretSelected ||
     !targetingPolicy.pursuedSelectedCloser ||
     !targetingPolicy.nearRed ||
     !targetingPolicy.peaceSelectedCentredContact ||
@@ -213,6 +218,9 @@ export function collectSmokeFailures(results) {
     !capitalSystems.farPreviewHull ||
     !capitalSystems.farPreviewHostileOutline ||
     !capitalSystems.farPreviewHealthColor ||
+    capitalSystems.farPreviewVisiblePixels < 100 ||
+    capitalSystems.farPreviewPixelWidth < 24 ||
+    capitalSystems.farPreviewPixelHeight < 24 ||
     capitalSystems.previewHullBreadthRatio < 0.15 ||
     !capitalSystems.nearMountsAvailable ||
     !capitalSystems.nearMountLock ||
@@ -264,6 +272,13 @@ export function collectSmokeFailures(results) {
     combatStability.final.geometries > combatStability.baseline.geometries + 2 ||
     combatStability.final.textures > combatStability.baseline.textures
   ) failures.push('dense combat stability');
+  if (
+    aegisMissiles.initial !== 16 ||
+    !aegisMissiles.kestrelRegenDisabled ||
+    aegisMissiles.beforeTenSeconds !== 0 ||
+    aegisMissiles.afterTenSeconds !== 1 ||
+    aegisMissiles.interval !== 10
+  ) failures.push('Aegis seeker loadout and regeneration');
 
   return failures;
 }

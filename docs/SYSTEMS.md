@@ -37,7 +37,9 @@ same planet.
 - Sector jump: costs **2 Flux** (`JUMP_FLUX_COST`, charged at completion), requires
   clear 340 u forward corridor (`jumpPathBlocked`), blocked inside 600 u of a live
   capital (`JUMP_SUPPRESS_RANGE`). Arrival: fresh sector, +15%/sector threat
-  (`threatScale`), glide-in at 55 u/s, alert −2 tiers of heat.
+  (`threatScale`), glide-in at 55 u/s, alert −2 tiers of heat. Both sector arrival
+  and planetary lift-off face the equal-weight mean bearing of live targetable
+  contacts; mounted carrier batteries are excluded so the hull counts once.
 - Planet dive: free, no suppression/corridor check; triggers when a planet is inside
   the crosshair cone (`findAimedPlanet`: angular radius + 0.04 rad).
 - Warp FX: `WarpTunnel` (camera-parented) intensity = spool progress; aberration punch.
@@ -82,17 +84,20 @@ same planet.
   the available slots and emits its actual arrival count; if the cap is full the
   cadence timers continue normally without allocating another wing. Sector patrols
   and fixed batteries are separate from this reinforcement budget.
-- Targeting soft-lock: 18° acquire cone / ~28° close-combat keep, with no
-  sensor-distance cap, over ALL
-  hostiles (fighters + independent turrets + capital), filtered through
-  world/terrain LOS. The carrier's twelve mounted batteries collapse into its
+- Targeting soft-lock: 18° acquire / ~28° keep only for in-range close-combat
+  aim assist. Out-of-range and peaceful inspection instead use the chase-camera
+  origin with a ~2.6° reticle margin plus the target's apparent angular radius,
+  with no sensor-distance cap, over ALL
+  hostiles (fighters + independent turrets + capital). Acquisition ignores
+  world/terrain LOS so cover cannot redirect the lock to a visible neighbor;
+  projectiles and enemy firing still collide with that cover. The carrier's twelve mounted batteries collapse into its
   whole-hull contact beyond 260 m; inside 260 m they become individual lock and
   HUD/radar contacts. Projectile collision still tests every mount at every range.
   During active pursuit, inside weapon reach score `(1-dot)*400 + dist*0.5` with a
   −60 keep-bonus lets a much closer turret beat a distant fighter. With no pursuing
   enemy, hostiles and civilians at **every distance** compete in one camera-crosshair
   ranking; during pursuit, hostiles retain priority and distant hostiles still use
-  angular ranking. Weapon reach controls combat weighting and marker color, never
+  tight angular ranking. Weapon reach controls combat weighting and marker color, never
   whether a contact can be inspected. Civilians are sensor contacts (asteroid clutter
   does not suppress identification), use range only as an exact-angle tie-break, and get no keep-lock
   hysteresis. `Targeting.aimTarget` stays null for a winning civilian, so primary
@@ -101,7 +106,11 @@ same planet.
 - Target preview (top-left, `TargetPreview.ts`): edge-wireframe in the contact's
   REAL view-space orientation (nose-on when charging, tail-on when fleeing).
   Hostile wireframes keep their green→amber→red hull-condition color inside a
-  separate red relationship outline. Merchants are friendly green and haulers
+  separate GPU-derived red silhouette-perimeter glow. The glow is composited from
+  a solid alpha mask before the wireframe, so no internal health edge turns red.
+  Geometry is centered in normalized coordinates (`-center * scale`), and a
+  carrier receives uniform view-aware zoom so a nose-on hull stays readable.
+  Merchants are friendly green and haulers
   neutral blue, with role/action text below the name. Aimed formations match the
   extracted resource (Ion teal, Scrap amber) but never become combat targets.
 - Batteries: cannon 60 hull / 340 m / 0.9 s; rotary 58 hull / 468 m / 0.11 s;
@@ -109,6 +118,10 @@ same planet.
   3.4 s; fast rocket 70 hull / 470 u / 2.35 s. All fire only with world/terrain
   LOS. Carrier mounts additionally require the player inside their outward
   traverse hemisphere, so top/bottom batteries never shoot through the deck.
+  Cave-asteroid mounts sample the actual displaced rock surface, then push the
+  complete turret hit sphere clear of every body and extend the visible pedestal
+  across that offset. Dormant independent batteries remain eligible for peaceful
+  crosshair inspection.
 - Carrier: 1600 hull plus 12 independently targetable batteries (6 top, 6 bottom;
   3 cannon / 3 rotary / 3 homing / 3 fast). Batteries are individually lockable within
   260 m; farther out the preview identifies the carrier as one high-level threat.
@@ -188,7 +201,7 @@ Jumping voids in-sector deliveries; planetfall does NOT (sector persists).
 | Cloak | F | untargetable, brains blind; predator glass visual (hull 0.045 opacity + iridescent rim shell, engine glow ×0.12) | ≤12 s / 30 s cd; DRAINS weapon energy 2.5/s idle · 7/s moving · 16/s boosting — dry bank or FIRING breaks it |
 | EMP | G | stuns hostiles in radius | 250 u, 4 s stun / 25 s cd |
 | Nanobots | H | hull heal (crafted consumable) | +35 hull, stock via crafting/merchant |
-| Seekers | RMB | homing missiles, AMMO-gated | start ×8; restock: merchant ▲5→×4, craft ▲3→×2; Vanta has NO rack, Aegis fires at 2× rate |
+| Seekers | RMB | homing missiles, AMMO-gated | Vanta: 0/no rack; Kestrel: start ×8/no regen; Aegis: start ×16, +1 every 10 s, fires at 2× rate; restock: merchant ▲5→×4, craft ▲3→×2 |
 
 ## Crafting (Inventory.ts RECIPES → GameScreens.craft)
 
@@ -213,7 +226,8 @@ drives HUD slots, digit keys and wheel), energy banks and missile racks:
   lance, energy bank 55, NO seeker rack, energyMult 0.9.
 - **Kestrel** (balanced): pulse + lance, bank 100, standard rack, mult 1.0.
 - **Aegis** (gunship): ROTARY AUTOGUN (0.055 s cd, 2.6 dmg) + Fragment Storm
-  (Aegis-exclusive), bank 140, DOUBLE-rate rack, mult 1.35.
+  (Aegis-exclusive), bank 140, DOUBLE-rate rack, 16 starting seekers and an
+  onboard 10-second seeker fabricator, mult 1.35.
 Ion Lance: 0.28 s cd, 16 energy/shot — burst weapon, gated hard by the bank.
 Hangar shows hardpoint chips + a top-left numeric spec panel on one shared,
 outward-convex interactive visor; drag any mouse button on empty space to orbit

@@ -106,7 +106,9 @@ export class MainMenu {
          <p>The reticle soft-locks the hostile nearest your crosshair and projects a
             <b>lead pip</b> — put your shots on the pip, not the ship. <b>Seeker missiles</b>
             (RMB) chase whatever you have locked. Enemy seekers raise a lock warning;
-            inside two seconds it turns red. A safely activated cloak breaks their lock.</p>
+            inside two seconds it turns red. Sensors can retain contacts through cover,
+            but weapons still strike the intervening terrain. A safely activated cloak
+            breaks enemy missile lock.</p>
         <p>The <b>sphere radar</b> at the bottom of the HUD shows every contact in
            your ship's frame: up on the sphere is above you, the stem shows height
            over your wing plane, the bright tick marks dead ahead.</p>

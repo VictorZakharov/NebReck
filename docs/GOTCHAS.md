@@ -124,11 +124,31 @@ Real issues hit while building this game, kept here so they only get paid for on
   inspection target swaps to whichever contact is actually under the reticle.
   Do not add a fixed sensor-distance cap: the 1,500 m legacy cutoff silently
   discarded a centred 1,847 m contact and selected a 1,435 m off-axis contact.
+  Compute that scan from the chase-camera position, not the player position, and
+  use the reticle margin plus each target's apparent radius. The old shared 18°
+  acquire cone could still select an offset visible contact when the centered one
+  was occluded, even though the bracket plainly disagreed with the crosshair.
+  More importantly, targeting is a sensor operation and must not call world/terrain
+  LOS at all: cover blocks ordnance and hostile firing, not contact selection.
   Weapon range divides close combat from angular inspection; it does not bound
   the latter.
   The hostiles list is rebuilt BEFORE `targeting.update` each tick.
+- **Relationship outline and hull condition need separate render passes.** A CSS
+  `drop-shadow` on the wireframe canvas outlines every internal edge red. Render a
+  solid target silhouette into a tiny alpha mask, dilate only outside that mask,
+  composite the red perimeter glow, then draw the health-colored edges on top.
+- **Normalize preview translation and scale in the same coordinate space.** After
+  baking source-world mesh transforms, `position = -center` followed by a small
+  parent scale does not center the object; it leaves an asymmetric capital hull
+  outside the preview camera and produces an apparently empty canvas. Translate by
+  `-center * scale`. Long ships also need a bounded, uniform projected-size zoom
+  when nose-on; never distort axes or replace the true relative quaternion.
+- **A nominal asteroid radius is not its displaced visual surface.** Cave batteries
+  placed at a fixed fraction of the generator radius can land inside scaled rock.
+  Project the actual transformed vertices along the mount normal, clear the full
+  turret hit sphere against every body, and stretch the pedestal to the final root.
 - **An informational contact is not an aim target.** During active pursuit,
-  targeting tries LOS-clear hostiles first, then sensor-only civilians. During
+  targeting tries hostiles first, then sensor-only civilians. During
   peace, both relationship sets share the angular comparison, but a winning
   civilian remains informational. Civilians are not erased by asteroid visual
   clutter and receive no wider keep-lock cone. HUD projection
@@ -147,6 +167,10 @@ Real issues hit while building this game, kept here so they only get paid for on
   seekers have a 1,050 m budget. Clamp the final swept segment to the remaining
   budget before collision tests, then release it; checking after collision allows
   a last-frame hit beyond range, while displacement lets curved seekers overfly it.
+- **Arrival bearing must weight contacts, not implementation objects.** Average
+  normalized bearings so range does not dominate, and omit `capitalTurrets` when
+  the capital hull is already included; otherwise one carrier's twelve mounts turn
+  the intended majority direction into a carrier-only direction.
 - **Chrome reserves Ctrl+W before ordinary page key handling.** Flight enters
   JavaScript fullscreen and locks physical `KeyW`, which forwards every modifier
   chord to `Input`; the handler must still `preventDefault()` while retaining both

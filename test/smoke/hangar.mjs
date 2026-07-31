@@ -165,9 +165,9 @@ export async function runHangarSmoke(page) {
       [blocked],
       [nearby, merchant],
       game.weapons.weapon.projectileSpeed,
-      () => false,
       500,
       cameraForward,
+      false,
     );
     game.renderHudOnce();
     const current = game.targeting.current;
@@ -191,9 +191,9 @@ export async function runHangarSmoke(page) {
       [blocked],
       [nearby, merchant],
       game.weapons.weapon.projectileSpeed,
-      () => false,
       500,
       cameraForward,
+      false,
     );
     game.renderHudOnce();
     const targetBox = document.querySelector('.target-box');
@@ -282,7 +282,8 @@ export async function runHangarSmoke(page) {
     const expectedPreviewColor = ore === 'crystal' ? 0x2ee6c8 : 0xffa040;
     const resourceColorMatched =
       game.hudPresenter.targetPreview.mat.color.getHex() === expectedPreviewColor;
-    const previewRotation = game.hudPresenter.targetPreview.mounted.quaternion.clone();
+    const previewRotation =
+      game.hudPresenter.targetPreview.mounted.wireframe.quaternion.clone();
     game.hudPresenter.targetPreview.update('ore-scrap', 1, previewRotation, 'neutral');
     const scrapPreviewMatched =
       game.hudPresenter.targetPreview.mat.color.getHex() === 0xffa040;
