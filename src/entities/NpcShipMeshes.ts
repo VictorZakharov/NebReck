@@ -40,6 +40,58 @@ export function buildTurretHull(
   return { gunpoints, enginePoints, radius };
 }
 
+/** Twin three-barrel rotary clusters distinguish rapid batteries at a glance. */
+export function buildAutogunTurretHull(
+  context: ShipBuildContext,
+): HullBuildResult {
+  const { add, hullMat, panelMat, accentMat, darkMat } = context;
+  add(new Mesh(new CylinderGeometry(1.5, 1.8, 0.7, 8), panelMat), 0, -0.6, 0);
+  add(new Mesh(new SphereGeometry(0.9, 12, 8), hullMat), 0, 0.1, 0);
+  add(new Mesh(new BoxGeometry(1.65, 0.62, 1.15), hullMat), 0, 0.5, 0.05);
+  const barrel = new CylinderGeometry(0.07, 0.075, 2.35, 6);
+  for (const clusterX of [-0.48, 0.48]) {
+    for (let index = 0; index < 3; index++) {
+      const angle = (index / 3) * Math.PI * 2;
+      add(
+        new Mesh(barrel, darkMat),
+        clusterX + Math.cos(angle) * 0.11,
+        0.5 + Math.sin(angle) * 0.11,
+        -1.2,
+        Math.PI / 2,
+      );
+    }
+    add(new Mesh(new CylinderGeometry(0.2, 0.2, 0.2, 10), accentMat), clusterX, 0.5, -2.38, Math.PI / 2);
+  }
+  add(new Mesh(new BoxGeometry(0.14, 0.55, 0.14), panelMat), 0, 1.06, 0.35);
+  return {
+    gunpoints: [new Vector3(-0.48, 0.5, -2.55), new Vector3(0.48, 0.5, -2.55)],
+    enginePoints: [],
+    radius: TURRET_COLLISION_RADIUS,
+  };
+}
+
+/** Armored box launchers make missile batteries readable at combat range. */
+export function buildRocketTurretHull(
+  context: ShipBuildContext,
+): HullBuildResult {
+  const { add, hullMat, panelMat, accentMat, darkMat } = context;
+  add(new Mesh(new CylinderGeometry(1.5, 1.8, 0.7, 8), panelMat), 0, -0.6, 0);
+  add(new Mesh(new SphereGeometry(0.9, 12, 8), hullMat), 0, 0.05, 0);
+  add(new Mesh(new BoxGeometry(2.35, 0.95, 1.8), hullMat), 0, 0.62, -0.4);
+  const cell = new CylinderGeometry(0.19, 0.19, 0.35, 8);
+  for (const x of [-0.72, -0.24, 0.24, 0.72]) {
+    for (const y of [0.38, 0.82]) {
+      add(new Mesh(cell.clone(), darkMat), x, y, -1.38, Math.PI / 2);
+    }
+  }
+  add(new Mesh(new BoxGeometry(1.8, 0.08, 0.12), accentMat), 0, 1.14, -0.32);
+  return {
+    gunpoints: [new Vector3(0, 0.62, -1.55)],
+    enginePoints: [],
+    radius: TURRET_COLLISION_RADIUS,
+  };
+}
+
 export function buildHaulerHull(
   context: ShipBuildContext,
 ): HullBuildResult {
@@ -93,6 +145,9 @@ export function buildCapitalHull(
     add(new Mesh(new BoxGeometry(10, 6, 26), hullMat), 0, 0, 2);
     add(new Mesh(new BoxGeometry(8.4, 5, 14), hullMat), 0, 0.2, -16);
     add(new Mesh(new ConeGeometry(4, 10, 4), hullMat), 0, 0.4, -27, -Math.PI / 2, Math.PI / 4);
+    // Superweapon iris at the prow. Charge and beam FX live on CapitalShip.
+    add(new Mesh(new CylinderGeometry(1.55, 1.15, 0.75, 16), panelMat), 0, 0.4, -32.15, Math.PI / 2);
+    add(new Mesh(new CylinderGeometry(0.72, 0.72, 0.16, 20), accentMat), 0, 0.4, -32.56, Math.PI / 2);
     // Forward prongs framing the prow.
     add(new Mesh(new BoxGeometry(1.3, 1.3, 9), panelMat), 3.2, 1.2, -26, 0, -0.08, 0);
     add(new Mesh(new BoxGeometry(1.3, 1.3, 9), panelMat), -3.2, 1.2, -26, 0, 0.08, 0);
@@ -142,7 +197,24 @@ export function buildCapitalHull(
     gunpoints = [];
     enginePoints = [new Vector3(-3, 0, 22.2), new Vector3(0, 0, 22.2), new Vector3(3, 0, 22.2)];
     radius = 24;
-  return { gunpoints, enginePoints, radius };
+  return {
+    gunpoints,
+    enginePoints,
+    radius,
+    // Tight compound volumes expose mounted batteries while keeping the
+    // carrier hull itself solid to bolts and line-of-sight checks.
+    hitBoxes: [
+      { center: new Vector3(0, 0, 2), half: new Vector3(5, 3, 13) },
+      { center: new Vector3(0, 0.2, -16), half: new Vector3(4.2, 2.5, 7) },
+      { center: new Vector3(0, 0.4, -26), half: new Vector3(4, 2.4, 6) },
+      { center: new Vector3(0, -3.6, 1), half: new Vector3(2, 1.5, 14) },
+      { center: new Vector3(6, -0.4, 2), half: new Vector3(1.5, 1.7, 9) },
+      { center: new Vector3(-6, -0.4, 2), half: new Vector3(1.5, 1.7, 9) },
+      { center: new Vector3(0, 4.8, 8), half: new Vector3(2.2, 1.6, 4) },
+      { center: new Vector3(0, 7.6, 9.5), half: new Vector3(1.5, 1.3, 2.5) },
+      { center: new Vector3(0, 0, 18), half: new Vector3(4.5, 2.7, 3) },
+    ],
+  };
 }
 
 export function buildRaiderHull(
@@ -197,4 +269,30 @@ export function buildBruteHull(
     enginePoints = [new Vector3(1.8, -0.2, 2.5), new Vector3(-1.8, -0.2, 2.5)];
     radius = 3.2;
   return { gunpoints, enginePoints, radius };
+}
+
+/** Missile bomber: broad manta planform with four obvious ordnance pods. */
+export function buildBomberHull(
+  context: ShipBuildContext,
+): HullBuildResult {
+  const { add, hullMat, panelMat, accentMat, canopyMat, darkMat } = context;
+  add(new Mesh(new BoxGeometry(2.8, 0.85, 5.6), hullMat), 0, 0, 0);
+  add(new Mesh(new ConeGeometry(1.35, 3.2, 4), hullMat), 0, 0, -4.25, -Math.PI / 2, Math.PI / 4);
+  add(new Mesh(new SphereGeometry(0.72, 14, 8), canopyMat), 0, 0.62, -1.45);
+  const wing = new BoxGeometry(4.2, 0.18, 2.4);
+  add(new Mesh(wing, panelMat), 3.0, -0.05, 0.7, 0, -0.22, -0.08);
+  add(new Mesh(wing.clone(), panelMat), -3.0, -0.05, 0.7, 0, 0.22, 0.08);
+  const pod = new CylinderGeometry(0.42, 0.5, 3.1, 10);
+  for (const x of [-3.8, -2.1, 2.1, 3.8]) {
+    add(new Mesh(pod.clone(), darkMat), x, -0.38, 0.35, Math.PI / 2);
+    add(new Mesh(new CylinderGeometry(0.22, 0.22, 0.2, 10), accentMat), x, -0.38, -1.28, Math.PI / 2);
+  }
+  const nozzle = new CylinderGeometry(0.48, 0.36, 0.35, 10);
+  add(new Mesh(nozzle, accentMat), 0.82, 0, 3.0, Math.PI / 2);
+  add(new Mesh(nozzle.clone(), accentMat), -0.82, 0, 3.0, Math.PI / 2);
+  return {
+    gunpoints: [new Vector3(-2.1, -0.38, -1.5), new Vector3(2.1, -0.38, -1.5)],
+    enginePoints: [new Vector3(-0.82, 0, 3.25), new Vector3(0.82, 0, 3.25)],
+    radius: 4.5,
+  };
 }

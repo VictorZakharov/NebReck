@@ -8,6 +8,8 @@ export interface LoadoutCallbacks {
   onCraft: (recipeId: string) => boolean;
   /** False when a consumable would be wasted (e.g. hull patch at full hull). */
   isUseful: (recipeId: string) => boolean;
+  /** Field fabrication is disabled while a hostile is inside the safety perimeter. */
+  canCraftSafely: () => boolean;
   onClose: () => void;
   onHover: () => void;
   onClick: () => void;
@@ -88,9 +90,13 @@ export class LoadoutScreen {
     // teleport the pilot back to the first recipe they already scrolled past.
     right.scrollTop = previousScrollTop;
 
+    const safeToCraft = this.callbacks.canCraftSafely();
     const hint = document.createElement('div');
     hint.className = 'loadout-hint';
-    hint.textContent = 'TAB or ESC to return to flight';
+    if (!safeToCraft) hint.classList.add('unsafe');
+    hint.textContent = safeToCraft
+      ? 'TAB or ESC to return to flight'
+      : 'Hostile within 180 m · crafting locked · TAB or ESC to return';
     this.root.appendChild(hint);
   }
 
@@ -99,6 +105,7 @@ export class LoadoutScreen {
     row.className = 'recipe-row';
     const maxed = recipe.maxLevel !== null && this.inventory.levelOf(recipe) >= recipe.maxLevel;
     const affordable = this.inventory.canAfford(recipe);
+    const safeToCraft = this.callbacks.canCraftSafely();
 
     const cost = (Object.entries(recipe.cost) as [ResourceType, number][])
       .map(([t, n]) => {
@@ -133,8 +140,8 @@ export class LoadoutScreen {
       ? 'Maxed'
       : recipe.id === 'missile-rack' && !useful
         ? 'No rack'
-        : 'Craft';
-    btn.disabled = maxed || !affordable || !useful;
+        : !safeToCraft ? 'Threat close' : 'Craft';
+    btn.disabled = maxed || !affordable || !useful || !safeToCraft;
     btn.addEventListener('mouseenter', this.callbacks.onHover);
     btn.addEventListener('click', () => {
       if (this.callbacks.onCraft(recipe.id)) {

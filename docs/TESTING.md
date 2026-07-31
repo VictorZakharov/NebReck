@@ -2,7 +2,7 @@
 
 All local and CI commands use Node.js 24.
 
-Last updated: 2026-07-30.
+Last updated: 2026-07-31.
 
 The project rule (set by the owner, non-negotiable): **every reported visual issue
 gets its own harness scene, and renders are iterated on — by actually viewing the
@@ -15,12 +15,12 @@ covered by one of the two.
 ```bash
 npm run test:architecture     # controller line-size budgets
 npm run typecheck            # strict TS
-npm run test:visual          # 23 scenes vs local baselines (builds first)
+npm run test:visual          # 26 scenes vs local baselines (builds first)
 npm run test:visual:update   # re-capture local baselines (--scene=<name> for one)
 npm run test:smoke           # full gameplay loop in live headless Chromium
 ```
 
-## Visual harness (test/visual/run.mjs + src/game/TestScenes.ts)
+## Visual harness (`test/visual/run.mjs` + `src/game/TestScenes.ts` + `test-scenes/`)
 
 Headless Chromium on SwiftShader (software GL → GPU-independent pixels), 1280×720,
 `/?testScene=<name>&seed=7`. Deterministic because: seeded `Rng` streams, manual
@@ -51,6 +51,9 @@ actual regression check. Never commit generated PNGs.
 | fleet | all three playable hulls, CLOSE low rear-quarter above the field plane, HUD off — the range+angle where floating-part "ship slop" shows |
 | cloak | predator cloak engaged: glass hull + iridescent rim shell, dimmed engines |
 | controls | keyboard/mouse control reference and device bindings |
+| enemy-variety | raider/warden/bomber silhouettes, cannon and rocket batteries, both rocket families |
+| missile-warning | red imminent-impact warning, countdown and in-flight seeker |
+| capital-superweapon | mixed top/bottom carrier batteries and the 75%-charged annihilator telegraph |
 
 For interactive hangar review, use
 `http://127.0.0.1:8123/?testScene=hangar-live&seed=7` after starting the dev
@@ -111,8 +114,13 @@ Asserted, in order:
    hardpoints/no-rack slots do not shift.
 3. Vanta-style `missileRate=0` rejects craft/buy calls without changing the wallet
    and both overlay buttons are disabled with “No rack”. An occluded hostile plus
-   visible merchant selects the merchant as an informational contact, renders the
-   friendly wireframe/role, exposes no `aimTarget`, and hides the lead pip.
+   far camera-centered merchant plus a nearer ship-forward civilian selects the merchant as
+   an informational contact, renders the friendly wireframe/role, exposes no
+   `aimTarget`, hides the lead pip, and hard-cuts the bracket on focus loss.
+   Enemy-ordnance coverage separately proves launcher-equipped enemies count zero
+   before launch, only the active homing projectile contributes to the lock, and
+   acceleration-aware impact warning begins between 1.5 and 2.0 seconds, never
+   increases, and disappears when the missile becomes outbound.
 4. Sector-1 peace (0 hostiles, ≥2 neutrals, 2 flux) → hail → offer → accept
    (active=1) → merchant dock + engine silence + buy-flux. Trade verifies all
    five SVG hold icons, structured cost/gain icons, column alignment, symmetric
@@ -120,7 +128,9 @@ Asserted, in order:
 5. Engineering crafting preserves `.loadout-right.scrollTop`; hold icons are
    SVGs in an aligned icon/label/count grid with ≥10 px right inset. The mining
    prompt uses the stable rotating vein centroid and advances toward motion
-   without a one-frame screen-space snap.
+   without a one-frame screen-space snap. The same formation renders a neutral
+   wireframe without becoming an aim target; merchant and planet prompts are also
+   asserted as world-anchored.
 6. Planetfall creates a garrison ≥4 and stashes ≥3; spawn is >200 from hostiles
    ON the surface with **level attitude** (no random pitch/roll). Every segment
    of both dense cave approach routes clears terrain and the profile-matched
@@ -137,9 +147,27 @@ Asserted, in order:
    moved pickups persist, and a zero-garrison planet remains cleared. Lift-off
    also restores the space sector bit-identically (a pre-landing scarred rock is
    checked).
-9. A controlled hold-jump (straight up, high, clear corridor) reaches hostile
+9. A controlled hold-jump shows required/held Flux, then (straight up, high, clear corridor) reaches hostile
    sector 2; dispatched hunters close from >20 u, the camera follows a teleport,
    overhead turret aim dot→1, and cloak/EMP/nanobots all function.
+10. Range-policy staging proves close hostiles are distance weighted, distant
+    hostiles are camera-angle ranked, and lock colors remain red/grey rather than
+    changing to orange. Explicit package staging proves a pursuing seeker bomber
+    fires at 1,050 m plus rapid rotary ship/battery cadence. Artificial projectile
+    time proves homing versus fast-unguided rockets, lock → ≤2 s imminent state,
+    warning DOM classes and cloak target loss. Direct carrier stepping proves 12
+    four-way mixed, independently destructible top/bottom mounts, outward
+    traverse + self-hull LOS, whole-carrier preview with mounts hidden at 600 u,
+    individual mount lock at 200 m, frontal-only charge initiation, committed arc
+    clamping, and first-asteroid absorption with the player/second rock protected.
+11. Cloak and crafting are both refused within the shared 180 m threat perimeter;
+    Engineering buttons expose the safety lock without spending resources.
+12. Dense-combat stability initializes WebAudio, repeatedly fills the 12-hunter
+    and 320-projectile ceilings across five rendered kill cycles, and asserts the
+    one-shot graph never exceeds 48 sources. A browser crash or WebGL context loss
+    fails immediately; direct scene children plus renderer geometry/texture counts
+    must return to their exact pre-stress baseline after every temporary wing is
+    disposed.
 
 Exit code enforces every assertion.
 

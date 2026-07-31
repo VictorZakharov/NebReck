@@ -16,6 +16,7 @@ import { getSurfaceTexture } from '../rendering/SurfaceTextures';
 import {
   NAV_LIGHTS,
   ShipKind,
+  ShipHitBox,
   ShipMesh,
   ShipStyle,
   STYLES,
@@ -25,6 +26,7 @@ export interface HullBuildResult {
   gunpoints: Vector3[];
   enginePoints: Vector3[];
   radius: number;
+  hitBoxes?: ShipHitBox[];
 }
 
 export interface ShipBuildContext {
@@ -244,5 +246,12 @@ export function finishShipBuild(
     engineGlows.push(sprite);
   }
 
-  return { group, gunpoints, enginePoints, engineGlows, radius };
+  return {
+    group,
+    gunpoints,
+    enginePoints,
+    engineGlows,
+    radius,
+    hitBoxes: result.hitBoxes ?? [],
+  };
 }

@@ -9,6 +9,9 @@ export interface HudTargetState {
   leadX: number;
   leadY: number;
   relationship: 'hostile' | 'friendly' | 'neutral' | null;
+  kind: HostileClass | null;
+  /** Hostile is within the current primary weapon's physical reach. */
+  inRange: boolean;
 }
 
 export type HostileClass = 'ship' | 'turret' | 'neutral' | 'merchant' | 'objective';
@@ -46,6 +49,12 @@ export interface HudFrameState {
   /** The selected hull's hardpoint fit — slots render from this. */
   weaponNames: string[];
   missileReadyFrac: number; // 1 = ready
+  missileThreat: {
+    locked: boolean;
+    imminent: boolean;
+    timeToImpact: number;
+    count: number;
+  };
   /** Seeker ammo remaining; null = this hull carries no launcher. */
   missiles: number | null;
   score: number;
@@ -116,6 +125,10 @@ export class Hud {
         </g>
       </svg>
       <div class="center-seeker" data-el="centerSeeker"><i data-el="centerSeekerFill"></i><span data-el="centerSeekerText"></span></div>
+      <div class="missile-warning" data-el="missileWarning">
+        <strong data-el="missileWarningTitle">Missile lock</strong>
+        <span data-el="missileWarningDetail"></span>
+      </div>
       <div class="hitmarker" data-el="hitmarker"></div>
       <div class="target-box" data-el="targetBox" style="opacity:0"></div>
       <div class="target-dist" data-el="targetDist" style="opacity:0"></div>
@@ -216,6 +229,15 @@ export class Hud {
     e.energyBar.style.width = `${(s.energy / s.energyMax) * 100}%`;
     e.boostBar.style.width = `${(s.boost / s.boostMax) * 100}%`;
 
+    e.missileWarning.classList.toggle('show', s.missileThreat.locked);
+    e.missileWarning.classList.toggle('imminent', s.missileThreat.imminent);
+    e.missileWarningTitle.textContent = s.missileThreat.imminent
+      ? 'Impact imminent'
+      : 'Missile lock';
+    e.missileWarningDetail.textContent = s.missileThreat.imminent
+      ? `${Math.max(0, s.missileThreat.timeToImpact).toFixed(1)} seconds`
+      : `${s.missileThreat.count} active seeker${s.missileThreat.count === 1 ? '' : 's'} tracking`;
+
     e.speedValue.textContent = `${Math.round(s.speed)} m/s`;
 
     // Center arcs: 120° shield/hull arcs below the reticle, boost above.
@@ -308,7 +330,7 @@ export class Hud {
     e.devCloak.classList.toggle('cooling', !d.cloak.active && d.cloak.frac < 1);
     e.devEmp.textContent = `EMP ${d.emp.label}`;
     e.devEmp.classList.toggle('cooling', d.emp.frac < 1);
-    e.devNano.textContent = `Nano ×${d.nano}`;
+    e.devNano.textContent = `Nano H ×${d.nano}`;
     e.devNano.classList.toggle('cooling', d.nano === 0);
 
     // Interaction prompt + contract tracker.
@@ -339,8 +361,12 @@ export class Hud {
     const t = s.target;
     e.targetBox.classList.toggle('friendly', t.relationship === 'friendly');
     e.targetBox.classList.toggle('neutral', t.relationship === 'neutral');
+    e.targetBox.classList.toggle('turret', t.relationship === 'hostile' && t.kind === 'turret');
+    e.targetBox.classList.toggle('far', t.relationship === 'hostile' && !t.inRange);
     e.targetDist.classList.toggle('friendly', t.relationship === 'friendly');
     e.targetDist.classList.toggle('neutral', t.relationship === 'neutral');
+    e.targetDist.classList.toggle('turret', t.relationship === 'hostile' && t.kind === 'turret');
+    e.targetDist.classList.toggle('far', t.relationship === 'hostile' && !t.inRange);
     e.targetBox.style.opacity = t.visible ? '1' : '0';
     e.targetDist.style.opacity = t.visible ? '1' : '0';
     if (t.visible) {

@@ -1,5 +1,6 @@
 import { Vector3 } from 'three';
 import { Targeting } from '../combat/Targeting';
+import { ProjectileSystem } from '../combat/ProjectileSystem';
 import { WeaponSystem } from '../combat/WeaponSystem';
 import { GameLoop } from '../core/GameLoop';
 import { NeutralShip } from '../entities/NeutralShip';
@@ -9,7 +10,7 @@ import { Ship } from '../entities/Ship';
 import { AsteroidBody } from '../world/AsteroidField';
 import { PlanetSurface } from '../world/PlanetSurface';
 import { ChaseCamera } from '../rendering/ChaseCamera';
-import { Hud, HudFrameState } from '../ui/Hud';
+import { Hud } from '../ui/Hud';
 import { Radar3D } from '../ui/Radar3D';
 import { TargetPreview } from '../ui/TargetPreview';
 import { DeviceSystem } from './Devices';
@@ -28,6 +29,7 @@ export interface GameHudHost {
   readonly player: PlayerShip;
   readonly targeting: Targeting;
   readonly weapons: WeaponSystem;
+  readonly projectiles: ProjectileSystem;
   readonly shootables: Ship[];
   readonly quests: QuestSystem;
   readonly inventory: Inventory;
@@ -43,7 +45,9 @@ export interface GameHudHost {
   readonly sectorIndex: number;
   readonly jumpSpool: number;
   readonly jumpSuppressed: boolean;
+  readonly jumpConsumesFlux: boolean;
   findAimedPlanet(): number | null;
+  planetPosition(index: number): Vector3 | null;
   nearestNeutral(): NeutralShip | null;
 }
 
@@ -83,6 +87,7 @@ export class GameHudPresenter {
     const target = host.targeting.current;
     const weapon = host.weapons.weapon;
     const weaponReach = weapon.projectileSpeed * weapon.life;
+    const missileThreat = host.projectiles.incomingThreat(player);
     const objectives = host.quests.active
       .filter((quest) => quest.kind === 'delivery' && quest.destination)
       .map((quest) => quest.destination!);
@@ -102,42 +107,53 @@ export class GameHudPresenter {
       height,
     );
 
-    let promptAnchor: HudFrameState['promptAnchor'] = null;
-    if (host.lootAimed === 'vein' && host.lootAimPoint && host.lootAimBody) {
-      promptAnchor = this.projector.projectSmoothedAnchor(
-        host.lootAimPoint,
-        host.lootAimBody,
-        camera,
-        width,
-        height,
-        dt,
-        1.05,
-      );
-    } else {
-      this.projector.resetPromptAnchor();
-    }
-
     const nearHauler = host.nearestNeutral();
-    const veinPromptActive =
-      !host.pendingOffer &&
-      !nearHauler &&
-      host.lootAimed === 'vein' &&
-      promptAnchor !== null;
-    const prompt = host.pendingOffer
+    const aimedPlanetIndex = !host.surface ? host.findAimedPlanet() : null;
+    const aimedPlanetPosition = aimedPlanetIndex === null
       ? null
-      : nearHauler
-        ? nearHauler.isMerchant
+      : host.planetPosition(aimedPlanetIndex);
+    let objectPrompt: { text: string; point: Vector3; key: object } | null = null;
+    if (!host.pendingOffer && nearHauler) {
+      objectPrompt = {
+        text: nearHauler.isMerchant
           ? 'R · Dock & trade'
           : host.quests.hasTurnIn(host.inventory.counts)
             ? 'R · Deliver goods'
-            : 'R · Hail hauler'
-        : host.lootAimed === 'stash'
+            : 'R · Hail hauler',
+        point: nearHauler.position,
+        key: nearHauler.object,
+      };
+    } else if (
+      !host.pendingOffer && host.lootAimed &&
+      host.lootAimPoint && host.lootAimBody
+    ) {
+      objectPrompt = {
+        text: host.lootAimed === 'stash'
           ? 'Shoot · Crack the stash open'
-          : veinPromptActive
-            ? 'Shoot · Mine the vein'
-            : !host.surface && host.findAimedPlanet() !== null
-              ? 'Hold J · Land on planet'
-              : null;
+          : 'Shoot · Mine the vein',
+        point: host.lootAimPoint,
+        key: host.lootAimBody,
+      };
+    } else if (!host.pendingOffer && aimedPlanetPosition) {
+      objectPrompt = {
+        text: 'Hold J · Land on planet',
+        point: aimedPlanetPosition,
+        key: aimedPlanetPosition,
+      };
+    }
+    const promptAnchor = objectPrompt
+      ? this.projector.projectSmoothedAnchor(
+          objectPrompt.point,
+          objectPrompt.key,
+          camera,
+          width,
+          height,
+          dt,
+          1.05,
+        )
+      : null;
+    if (!objectPrompt) this.projector.resetPromptAnchor();
+    const prompt = promptAnchor ? objectPrompt!.text : null;
 
     const pendingOffer = host.pendingOffer;
     const offer = pendingOffer
@@ -158,16 +174,30 @@ export class GameHudPresenter {
     const targetInfo = target
       ? targetPresentation(target.ship, target.aimAssist)
       : null;
-    if (target) {
-      this.targetPreview.update(
-        target.ship.kind,
-        target.ship.hull / target.ship.hullMax,
-        targetRotation,
-        targetInfo!.relationship,
-      );
-    } else {
-      this.targetPreview.update(null, 0, targetRotation);
-    }
+    const ore = !target && host.lootAimed === 'vein' ? host.lootAimBody?.ore : null;
+    const previewInfo = target
+      ? {
+          kind: target.ship.kind,
+          name: targetInfo!.name,
+          detail: targetInfo!.detail,
+          relationship: targetInfo!.relationship,
+          hullFrac: target.ship.hull / target.ship.hullMax,
+        }
+      : ore
+        ? {
+            kind: `ore-${ore}`,
+            name: ore === 'crystal' ? 'Ion Crystal Vein' : 'Scrap Alloy Vein',
+            detail: 'Mineable · Exposed formation · Fire to extract',
+            relationship: 'neutral' as const,
+            hullFrac: 1,
+          }
+        : null;
+    this.targetPreview.update(
+      previewInfo?.kind ?? null,
+      previewInfo?.hullFrac ?? 0,
+      targetRotation,
+      previewInfo?.relationship,
+    );
 
     host.hud.update({
       hull: player.hull,
@@ -183,6 +213,12 @@ export class GameHudPresenter {
       weaponIndex: host.weapons.weaponIndex,
       weaponNames: host.weapons.weaponNames,
       missileReadyFrac: 1 - host.weapons.missileCooldown / 1.35,
+      missileThreat: {
+        locked: missileThreat.locked,
+        imminent: missileThreat.imminent,
+        timeToImpact: missileThreat.timeToImpact,
+        count: missileThreat.count,
+      },
       missiles: host.weapons.missileRate > 0 ? host.inventory.missiles : null,
       score: host.score,
       alert: host.encounters?.alert ?? 0,
@@ -194,7 +230,7 @@ export class GameHudPresenter {
         nano: host.inventory.nanobots,
       },
       prompt,
-      promptAnchor: veinPromptActive ? promptAnchor : null,
+      promptAnchor,
       questLog: host.quests.active.map((quest) => ({
         title: quest.title,
         progress: quest.progress,
@@ -202,12 +238,12 @@ export class GameHudPresenter {
       offer,
       merchantPresent: host.neutrals.some((neutral) => neutral.alive && neutral.isMerchant),
       onPlanet: host.surface !== null,
-      targetPreview: target
+      targetPreview: previewInfo
         ? {
-            name: targetInfo!.name,
-            detail: targetInfo!.detail,
-            relationship: targetInfo!.relationship,
-            hullFrac: target.ship.hull / target.ship.hullMax,
+            name: previewInfo.name,
+            detail: previewInfo.detail,
+            relationship: previewInfo.relationship,
+            hullFrac: previewInfo.hullFrac,
           }
         : null,
       fps: host.loop.fps,
@@ -224,9 +260,13 @@ export class GameHudPresenter {
 
   private jumpStatus(): { label: string; frac: number } {
     const host = this.host;
+    const fluxStatus = `Flux ${JUMP_FLUX_COST}/${host.inventory.counts.flux}`;
     if (host.jumpSpool >= 0) {
       const fraction = 1 - host.jumpSpool / JUMP_SPOOL_TIME;
-      return { label: `Spooling ${Math.round(fraction * 100)}%`, frac: fraction };
+      return {
+        label: `Spooling ${Math.round(fraction * 100)}%${host.jumpConsumesFlux ? ` · ${fluxStatus}` : ''}`,
+        frac: fraction,
+      };
     }
     if (host.surface) {
       host.player.forward(jumpDirection);
@@ -237,8 +277,8 @@ export class GameHudPresenter {
     if (host.findAimedPlanet() !== null) return { label: 'Hold J — LAND', frac: 1 };
     if (host.jumpSuppressed) return { label: 'Suppressed', frac: 0 };
     if (host.inventory.counts.flux < JUMP_FLUX_COST) {
-      return { label: `Need ${JUMP_FLUX_COST} ✦ flux`, frac: 0 };
+      return { label: `${fluxStatus} · insufficient`, frac: 0 };
     }
-    return { label: 'Hold J', frac: 1 };
+    return { label: `Hold J · ${fluxStatus}`, frac: 1 };
   }
 }

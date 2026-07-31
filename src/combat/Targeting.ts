@@ -3,6 +3,7 @@ import { PlayerShip } from '../entities/PlayerShip';
 import { Ship } from '../entities/Ship';
 
 const fwd = new Vector3();
+const scanFwd = new Vector3();
 const toTarget = new Vector3();
 
 export interface TargetInfo {
@@ -17,8 +18,10 @@ export interface TargetInfo {
 /**
  * LOS-aware soft lock over all hostiles (fighters, turrets, the capital).
  * When none qualifies, the same centre-screen scan exposes a civilian contact
- * for HUD identification only. Distance is weighted heavily and hysteresis
- * keeps the current contact from flickering between nearby ships.
+ * for HUD identification only. Hostiles inside weapon reach retain
+ * distance-weighted aim assist. Beyond weapon reach, enemies and civilians
+ * both rank strictly by angular distance from the camera crosshair, with range
+ * used only to break an effectively exact angular tie.
  */
 export class Targeting {
   current: TargetInfo | null = null;
@@ -35,10 +38,47 @@ export class Targeting {
     contacts: readonly Ship[],
     projectileSpeed: number,
     isVisible: (ship: Ship) => boolean = () => true,
+    weaponRange = Infinity,
+    crosshairForward?: Vector3,
   ): void {
     player.forward(fwd);
-    const hostile = this.bestCandidate(player, hostiles, isVisible);
-    const best = hostile ?? this.bestCandidate(player, contacts, isVisible);
+    scanFwd.copy(crosshairForward ?? fwd);
+    if (scanFwd.lengthSq() < 1e-8) scanFwd.copy(fwd);
+    else scanFwd.normalize();
+
+    const closeRange = Math.max(0, weaponRange);
+    const closeHostile = this.bestCandidate(
+      player,
+      hostiles,
+      isVisible,
+      false,
+      fwd,
+      0,
+      closeRange,
+    );
+    const distantHostile = closeHostile
+      ? null
+      : this.bestCandidate(
+          player,
+          hostiles,
+          isVisible,
+          true,
+          scanFwd,
+          closeRange,
+          1500,
+        );
+    const hostile = closeHostile ?? distantHostile;
+    // Civilian identification is sensor-only and never bends weapons, so an
+    // asteroid need not erase a contact that the HUD/radar already exposes.
+    const best = hostile ?? this.bestCandidate(
+      player,
+      contacts,
+      () => true,
+      true,
+      scanFwd,
+      0,
+      1500,
+    );
     if (!best) {
       this.current = null;
       return;
@@ -59,10 +99,15 @@ export class Targeting {
     player: PlayerShip,
     candidates: readonly Ship[],
     isVisible: (ship: Ship) => boolean,
+    crosshairPriority: boolean,
+    forward: Vector3,
+    minRangeExclusive: number,
+    maxRangeInclusive: number,
   ): Ship | null {
     let best: Ship | null = null;
     let bestScore = Infinity;
-    const maxRange = 1500;
+    let bestDot = -Infinity;
+    let bestDistance = Infinity;
     const cosCone = Math.cos(0.32); // ~18°
     const keepCosCone = Math.cos(0.5); // wider cone to *keep* a lock
 
@@ -70,12 +115,26 @@ export class Targeting {
       if (!h.alive) continue;
       toTarget.copy(h.position).sub(player.position);
       const dist = toTarget.length();
-      if (dist < 1e-5 || dist > maxRange) continue;
+      if (
+        dist < 1e-5 || dist <= minRangeExclusive ||
+        dist > Math.min(1500, maxRangeInclusive)
+      ) continue;
       toTarget.divideScalar(dist);
-      const dot = fwd.dot(toTarget);
+      const dot = forward.dot(toTarget);
       const isCurrent = this.current?.ship === h;
-      if (dot < (isCurrent ? keepCosCone : cosCone)) continue;
+      // Informational contacts do not get combat-lock hysteresis: once they
+      // leave the ordinary crosshair cone, their bracket disappears at once.
+      if (dot < (!crosshairPriority && isCurrent ? keepCosCone : cosCone)) continue;
       if (!isVisible(h)) continue;
+      if (crosshairPriority) {
+        const dotDelta = dot - bestDot;
+        if (dotDelta > 1e-7 || (Math.abs(dotDelta) <= 1e-7 && dist < bestDistance)) {
+          bestDot = dot;
+          bestDistance = dist;
+          best = h;
+        }
+        continue;
+      }
       // Angle matters, but a 10× closer target must win at similar angles.
       const score = (1 - dot) * 400 + dist * 0.5 - (isCurrent ? 60 : 0);
       if (score < bestScore) {

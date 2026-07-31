@@ -5,6 +5,7 @@ import {
   LineBasicMaterial,
   LineSegments,
   Mesh,
+  OctahedronGeometry,
   Object3D,
   PerspectiveCamera,
   Quaternion,
@@ -74,7 +75,9 @@ export class TargetPreview {
     if (g) return g;
     let src: Object3D;
     if (kind === 'turret') src = new Turret(new Rng(7)).object;
+    else if (kind === 'rocket-turret') src = new Turret(new Rng(7), 'homing').object;
     else if (kind === 'capital') src = new CapitalShip().object;
+    else if (kind.startsWith('ore-')) src = this.oreFormation();
     else src = buildShipMesh(kind as ShipKind).group;
     src.updateMatrixWorld(true);
     const lines = new Group();
@@ -97,5 +100,23 @@ export class TargetPreview {
     g.add(inner);
     this.cache.set(kind, g);
     return g;
+  }
+
+  private oreFormation(): Group {
+    const formation = new Group();
+    const geometry = new OctahedronGeometry(1, 0);
+    const placements = [
+      [-0.65, -0.18, 0.1, 0.48, 1.35, 0.48, -0.24],
+      [0, 0.15, 0, 0.62, 1.8, 0.62, 0.08],
+      [0.68, -0.12, -0.08, 0.44, 1.15, 0.44, 0.28],
+    ] as const;
+    for (const [x, y, z, sx, sy, sz, rz] of placements) {
+      const crystal = new Mesh(geometry, this.mat);
+      crystal.position.set(x, y, z);
+      crystal.scale.set(sx, sy, sz);
+      crystal.rotation.z = rz;
+      formation.add(crystal);
+    }
+    return formation;
   }
 }

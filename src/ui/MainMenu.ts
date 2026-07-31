@@ -103,9 +103,10 @@ export class MainMenu {
         <p>Three primary weapons share one energy pool: <b>Pulse Cannons</b> (fast bolts),
            <b>Fragment Storm</b> (close-range shotgun) and the <b>Ion Lance</b> (heavy slug).
            Cycle with 1·2·3 or the wheel.</p>
-        <p>The reticle soft-locks the hostile nearest your crosshair and projects a
-           <b>lead pip</b> — put your shots on the pip, not the ship. <b>Seeker missiles</b>
-           (RMB) chase whatever you have locked.</p>
+         <p>The reticle soft-locks the hostile nearest your crosshair and projects a
+            <b>lead pip</b> — put your shots on the pip, not the ship. <b>Seeker missiles</b>
+            (RMB) chase whatever you have locked. Enemy seekers raise a lock warning;
+            inside two seconds it turns red. A safely activated cloak breaks their lock.</p>
         <p>The <b>sphere radar</b> at the bottom of the HUD shows every contact in
            your ship's frame: up on the sphere is above you, the stem shows height
            over your wing plane, the bright tick marks dead ahead.</p>
@@ -125,9 +126,10 @@ export class MainMenu {
            within 250 m for four seconds, on a cooldown. <b>Nanobot kits</b> (H)
            are crafted consumables that weld 35 hull back on, mid-fight.</p>
         <h3>Ships & threat</h3>
-        <p>Three hulls in the hangar: the balanced <b>Kestrel</b>, the fast-but-fragile
-           <b>Vanta</b>, the armored <b>Aegis</b> with a deep energy pool. Threat level
-           scales enemy damage, toughness, wave size and score.</p>
+         <p>Three hulls in the hangar: the balanced <b>Kestrel</b>, the fast-but-fragile
+            <b>Vanta</b>, the armored <b>Aegis</b> with a deep energy pool. Threat level
+            scales enemy damage, toughness, wave size and score. Vigil wings mix dart
+            raiders, heavy wardens and broad missile bombers carrying guided or fast rockets.</p>
       </div>
       <div class="manual-col">
         <h3>Mining</h3>
@@ -151,8 +153,11 @@ export class MainMenu {
         <p>The Drift is inhabited: Vigil <b>patrol wings</b> fly their routes and only
            engage if you stray close (or shoot first), <b>neutral haulers</b> run cargo
            lanes — blue markers, no threat, ECHO judges piracy — and somewhere out
-           there a Vigil <b>capital ship</b> holds station behind its turret batteries.
-           Worth 2500 points, if you can crack 1600 hull. Asteroid fields cluster by
+            there a Vigil <b>capital ship</b> holds station behind twelve individually
+            destructible top/bottom batteries. Its prow annihilator telegraphs for two
+            seconds before firing down a narrow frontal arc; break sideways or put an
+            asteroid between you and the beam. Worth 2500 points, if you can crack 1600 hull.
+            Asteroid fields cluster by
            mineral: iron, pale ice, copper, dark basalt. You always launch clear of
            hostiles — how long that lasts is up to you.</p>
         <h3>Wrecks & Legacy</h3>

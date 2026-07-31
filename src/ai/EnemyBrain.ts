@@ -57,6 +57,7 @@ export class EnemyBrain {
     playerPos: Vector3,
     leadPoint: Vector3,
     playerVisible = true,
+    attackRange = 320,
   ): BrainDecision {
     this.stateTime += dt;
     const d = this.decision;
@@ -87,13 +88,18 @@ export class EnemyBrain {
       case 'approach': {
         d.steerTarget.copy(playerPos).add(this.offset);
         d.throttle = 1;
+        // Homing bombers can launch while actively pursuing instead of
+        // withholding a kilometre-range weapon until ordinary gun distance.
+        if (attackRange > 320 && dist < attackRange) {
+          d.wantsFire = this.rng.chance(this.aggression);
+        }
         if (dist < 260) this.transition('attack');
         break;
       }
       case 'attack': {
         d.steerTarget.copy(leadPoint);
         d.throttle = dist < 80 ? 0.55 : 0.85;
-        d.wantsFire = dist < 320 && this.rng.chance(this.aggression);
+        d.wantsFire = dist < attackRange && this.rng.chance(this.aggression);
         if (dist < 38 || this.stateTime > this.nextBreak) this.transition('break');
         if (dist > 420) this.transition('approach');
         break;

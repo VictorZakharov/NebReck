@@ -17,8 +17,7 @@ import { findAimedLoot, nearestNeutral } from './InteractionTargeting';
 import { Quest } from './Quests';
 import { EXPLORE_COMMS } from './Story';
 import { applyTrade, canTrade } from './Trade';
-
-const CLOAK_MIN_RANGE = 180;
+import { SYSTEM_LOCKOUT_RANGE_METERS } from './GameConstants';
 
 /**
  * Player-triggered world interactions: travel, contracts, trade, devices, and
@@ -156,21 +155,24 @@ export abstract class GameInteractions extends GameScreens {
    * Report loot under the boresight. While non-null, soft-lock disengages so
    * shots fly at the point of interest rather than curving toward a hostile.
    */
-  protected aimedLoot(hostileDot = -1): 'stash' | 'vein' | null {
+  protected aimedLoot(targetDot = -1, aimDirection?: Vector3): 'stash' | 'vein' | null {
     const result = findAimedLoot(
       this.player,
       this.world.bodies,
       this.shootables,
-      hostileDot,
+      targetDot,
       (from, to, body) => this.combat.hasLineOfSight(from, to, body),
+      aimDirection,
     );
-    this.lootAimBody = result.kind === 'vein' ? result.body : null;
-    if (this.lootAimBody && this.lootAimBody.orePoints.length > 0) {
+    this.lootAimBody = result.body;
+    if (result.kind === 'vein' && this.lootAimBody?.orePoints.length) {
       const anchor = this.lootAimPoint ?? new Vector3();
       anchor.set(0, 0, 0);
       for (const point of this.lootAimBody.orePoints) anchor.add(point);
       anchor.multiplyScalar(1 / this.lootAimBody.orePoints.length);
       this.lootAimPoint = anchor;
+    } else if (result.kind === 'stash' && this.lootAimBody) {
+      this.lootAimPoint = this.lootAimBody.position;
     } else {
       this.lootAimPoint = null;
     }
@@ -231,16 +233,10 @@ export abstract class GameInteractions extends GameScreens {
       return true;
     }
 
-    for (const hostile of this.hostiles) {
-      const tooClose =
-        hostile.alive &&
-        hostile.position.distanceToSquared(this.player.position) <
-          CLOAK_MIN_RANGE * CLOAK_MIN_RANGE;
-      if (tooClose) {
-        this.hud.showBanner('Too close — cloak refused');
-        this.audio.uiHover();
-        return false;
-      }
+    if (this.hasNearbyHostile(SYSTEM_LOCKOUT_RANGE_METERS)) {
+      this.hud.showBanner('Too close — cloak refused');
+      this.audio.uiHover();
+      return false;
     }
 
     if (!this.devices.tryCloak()) return false;
@@ -359,6 +355,8 @@ export abstract class GameInteractions extends GameScreens {
       this.rng.fork(),
       spec.aggression,
       this.difficulty.enemyToughness * this.threatScale(),
+      [],
+      spec.weaponMode,
     );
     enemy.hunter = true;
     enemy.object.position.copy(spec.position);

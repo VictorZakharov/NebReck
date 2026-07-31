@@ -19,6 +19,7 @@ import {
 import { Inventory, RECIPES } from './Inventory';
 import { QuestSystem } from './Quests';
 import { getShipDef } from './Ships';
+import { SYSTEM_LOCKOUT_RANGE_METERS } from './GameConstants';
 
 /**
  * Screen transitions and sortie lifecycle.
@@ -32,6 +33,7 @@ export abstract class GameScreens extends GameFoundation {
     if (this.player) {
       this.cloakVisual.set(this.player, false);
       this.scene.remove(this.player.object);
+      this.player.dispose();
     }
     this.player = new PlayerShip(getShipDef(shipId), {
       hull: this.meta.hullMult(),
@@ -181,6 +183,10 @@ export abstract class GameScreens extends GameFoundation {
       this.rng.fork(),
       this.difficulty,
       (spec) => this.spawnEnemy(spec),
+      () => this.enemies.reduce(
+        (count, enemy) => count + Number(enemy.hunter && enemy.alive),
+        0,
+      ),
     );
 
     this.deploySectorEntities();
@@ -239,6 +245,7 @@ export abstract class GameScreens extends GameFoundation {
           }
           return true;
         },
+        canCraftSafely: () => !this.hasNearbyHostile(SYSTEM_LOCKOUT_RANGE_METERS),
         onClose: () => this.closeLoadout(),
         onHover: () => this.audio.uiHover(),
         onClick: () => this.audio.pickup(),
@@ -257,6 +264,7 @@ export abstract class GameScreens extends GameFoundation {
 
   /** Validate and apply a crafting recipe. */
   craft(recipeId: string): boolean {
+    if (this.hasNearbyHostile(SYSTEM_LOCKOUT_RANGE_METERS)) return false;
     const recipe = RECIPES.find((candidate) => candidate.id === recipeId);
     if (!recipe || !this.inventory.canCraft(recipe)) return false;
     if (recipeId === 'missile-rack' && this.weapons.missileRate <= 0) return false;
@@ -336,14 +344,25 @@ export abstract class GameScreens extends GameFoundation {
   }
 
   protected override clearEntities(): void {
-    for (const enemy of this.enemies) this.scene.remove(enemy.object);
+    for (const enemy of this.enemies) {
+      this.scene.remove(enemy.object);
+      enemy.dispose();
+    }
     this.enemies = [];
-    for (const turret of this.turrets) this.scene.remove(turret.object);
+    for (const turret of this.turrets) {
+      this.scene.remove(turret.object);
+      turret.dispose();
+    }
     this.turrets = [];
-    for (const neutral of this.neutrals) this.scene.remove(neutral.object);
+    this.capitalTurrets = [];
+    for (const neutral of this.neutrals) {
+      this.scene.remove(neutral.object);
+      neutral.dispose();
+    }
     this.neutrals = [];
     if (this.capital) {
       this.scene.remove(this.capital.object);
+      this.capital.dispose();
       this.capital = null;
     }
     this.projectiles.clear();

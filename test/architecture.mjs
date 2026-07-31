@@ -8,6 +8,11 @@ const limits = new Map([
   ['src/game/GameRuntime.ts', 600],
   ['src/game/GameCombat.ts', 600],
   ['src/game/GameWorldFlow.ts', 700],
+  ['src/game/TestScenes.ts', 120],
+  ['src/game/test-scenes/TestSceneShared.ts', 60],
+  ['src/game/test-scenes/UiTestScenes.ts', 120],
+  ['src/game/test-scenes/CombatTestScenes.ts', 240],
+  ['src/game/test-scenes/WorldTestScenes.ts', 280],
 ]);
 
 let failed = false;

@@ -1,6 +1,6 @@
 # Extending the game
 
-Last updated: 2026-07-30.
+Last updated: 2026-07-31.
 
 Cookbook for the most likely additions. Read [GOTCHAS.md](GOTCHAS.md) first —
 especially the determinism and lookAt sections — and check
@@ -31,6 +31,14 @@ the public facade and run `npm run test:architecture` before opening a PR.
    `GameCombat.killEnemy`.
 4. Steering: parameterize `EnemyBrain` rather than forking it. NEVER `object.lookAt`
    — use `Ship.faceToward`.
+5. Give weapon variants a data package in `WeaponDefs.ts` (`ENEMY_ROCKETS` or a
+   bolt profile such as `ENEMY_AUTOGUN`), then route both `EnemyShip`/`Turret` and
+   `GameCombat` through it. Homing rockets retain a `Ship` target; fast rockets
+   must pass `null`. A long-range package must also pass its attack range into
+   `EnemyBrain`, or a pursuing bomber will hold fire until ordinary gun distance.
+6. Add its beauty/behavior staging to `game/test-scenes/CombatTestScenes.ts`,
+   register the name in the small `TestScenes.ts` dispatcher and visual runner,
+   and extend the deterministic smoke assertions (advance simulation time directly).
 
 ## Add a playable ship
 Extend `ShipKind`/`STYLES` in `ShipMeshTypes.ts`, add geometry to
@@ -107,6 +115,13 @@ Extend `HostileClass` (`ui/Hud.ts`), classify it in
 `ui/styles/hud-targets.css` or `hud-navigation.css`, add `COLOR_X` in
 `ui/Radar3D.ts`, and document the color in SYSTEMS.md + the Field Manual.
 
+Informational world objects (ore, stash, merchant, planet) do not belong in
+`Targeting.aimTarget`. Resolve them in `InteractionTargeting`, compare their
+crosshair angle against the selected distant contact, describe them in
+`GameHudPresenter`, and add a lightweight source mesh to `TargetPreview` when a
+wireframe is useful. World prompts must use `HudProjector.projectSmoothedAnchor`
+with a stable owning object as the key; never pin object actions to a HUD corner.
+
 ## Add a sector-population element
 Plan data in `Sector`'s `popRng` block (**append after existing rng consumers**),
 instantiate in `GameWorldFlow.populateLevel`/`deploySectorEntities`, include in
@@ -138,6 +153,10 @@ preserve import order when selectors intentionally override earlier layers.
 `game/Ships.ts` · `game/Difficulty.ts` · jump constants in
 `game/GameConstants.ts` · threat scale in `GameWorldFlow.threatScale` · encounter
 pacing in `EncounterDirector` · post stack in `rendering/PostFx.ts`.
+
+System safety gates (currently cloak and field crafting) share
+`SYSTEM_LOCKOUT_RANGE_METERS`. Enforce a gate in the model action as well as its
+button state; disabling only the view leaves direct/hotkey calls exploitable.
 
 ## Performance rules
 Pooled + allocation-free per frame (module-level scratch vectors); pooled lights

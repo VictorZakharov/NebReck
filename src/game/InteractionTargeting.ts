@@ -28,10 +28,12 @@ export function findAimedLoot(
   player: PlayerShip,
   bodies: readonly AsteroidBody[],
   shootables: readonly Ship[],
-  hostileDot: number,
+  targetDot: number,
   hasLineOfSight: (from: Vector3, to: Vector3, ignoredBody: AsteroidBody) => boolean,
+  aimDirection?: Vector3,
 ): AimedLootResult {
-  player.forward(forward);
+  if (aimDirection && aimDirection.lengthSq() > 1e-8) forward.copy(aimDirection).normalize();
+  else player.forward(forward);
   let best: AimedLootKind | null = null;
   let bestPoint: Vector3 | null = null;
   let bestBody: AsteroidBody | null = null;
@@ -48,7 +50,7 @@ export function findAimedLoot(
       const dist = offset.length();
       if (dist > 450 || dist < 1) continue;
       const dot = offset.multiplyScalar(1 / dist).dot(forward);
-      if (dot <= hostileDot + 0.001) continue;
+      if (dot <= targetDot + 0.001) continue;
       if (dot < bestDot || (dot === bestDot && dist >= bestDist)) continue;
 
       // A crystal on the far hemisphere is not visible just because its host
