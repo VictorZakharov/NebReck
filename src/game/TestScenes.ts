@@ -3,12 +3,15 @@ import {
   stageCapitalSuperweapon,
   stageCombat,
   stageEnemyVariety,
-  stageFriendlyTargeting,
   stageMissileWarning,
-  stageResourceTargeting,
-  stageTargeting,
 } from './test-scenes/CombatTestScenes';
 import { freezeCssAnimations } from './test-scenes/TestSceneShared';
+import {
+  stageDistantTargeting,
+  stageFriendlyTargeting,
+  stageResourceTargeting,
+  stageTargeting,
+} from './test-scenes/TargetingTestScenes';
 import {
   stageBoost,
   stageCloak,
@@ -52,6 +55,7 @@ const TEST_SCENES: Readonly<Record<string, (game: Game) => void>> = {
   loadout: stageLoadout,
   boost: stageBoost,
   targeting: stageTargeting,
+  'distant-targeting': stageDistantTargeting,
   'friendly-targeting': stageFriendlyTargeting,
   'resource-targeting': stageResourceTargeting,
   fx: stageFx,

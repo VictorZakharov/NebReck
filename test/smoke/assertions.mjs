@@ -160,6 +160,7 @@ export function collectSmokeFailures(results) {
     !targetingPolicy.staged ||
     !targetingPolicy.farSelectedCentred ||
     !targetingPolicy.farGrey ||
+    !targetingPolicy.unlimitedScanSelectedCentred ||
     !targetingPolicy.unpursuedSelectedCentred ||
     !targetingPolicy.pursuedSelectedCloser ||
     !targetingPolicy.nearRed ||

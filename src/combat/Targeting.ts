@@ -20,7 +20,8 @@ export interface TargetInfo {
  * While at least one enemy is pursuing the player, hostiles retain priority
  * and those inside weapon reach receive distance-weighted aim assist. With no
  * pursuit, hostiles and sensor-only civilians share one camera-crosshair scan
- * so the player inspects whichever contact they are actually pointing at.
+ * at any rendered distance, so the player inspects whichever contact they are
+ * actually pointing at. Weapon reach affects aim assist, never sensor selection.
  */
 export class Targeting {
   current: TargetInfo | null = null;
@@ -57,7 +58,7 @@ export class Targeting {
         true,
         scanFwd,
         0,
-        1500,
+        Infinity,
       );
       const contact = this.bestCandidate(
         player,
@@ -66,7 +67,7 @@ export class Targeting {
         true,
         scanFwd,
         0,
-        1500,
+        Infinity,
       );
       best = this.crosshairWinner(player, hostile, contact, scanFwd);
       if (best !== hostile) hostile = null;
@@ -87,7 +88,7 @@ export class Targeting {
         true,
         scanFwd,
         closeRange,
-        1500,
+        Infinity,
       );
       // During combat, hostile aim assist retains priority. Civilian contacts
       // remain a fallback only when no enemy qualifies in the acquire cone.
@@ -98,7 +99,7 @@ export class Targeting {
         true,
         scanFwd,
         0,
-        1500,
+        Infinity,
       );
     }
     if (!best) {
@@ -139,7 +140,7 @@ export class Targeting {
       const dist = toTarget.length();
       if (
         dist < 1e-5 || dist <= minRangeExclusive ||
-        dist > Math.min(1500, maxRangeInclusive)
+        dist > maxRangeInclusive
       ) continue;
       toTarget.divideScalar(dist);
       const dot = forward.dot(toTarget);

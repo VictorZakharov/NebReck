@@ -40,8 +40,8 @@ with a telegraphed annihilator beam — cripple it, destroy it, or outrun its fi
   1,200 m; player seekers expire after 1,050 m of actual traveled path. Live missiles
   raise lock and monotonic two-second impact warnings, while a safely activated cloak
   breaks their tracking. With no enemy pursuing, hostile and
-  civilian contacts at every range share one camera-crosshair ranking; active pursuit
-  restores hostile priority and distance-weighted close-combat aim assist. Civilians
+  civilian contacts at every range share one uncapped camera-crosshair ranking;
+  active pursuit restores hostile priority and distance-weighted close-combat aim assist. Civilians
   remain sensor-only and never autoaim. Hostile previews retain green→red health
   wireframes inside a separate red outline; civilians use relationship colors and
   mineable veins use their resource color.

@@ -37,6 +37,28 @@ export async function runTargetingSmoke(page) {
       box?.classList.contains('far') &&
       getComputedStyle(box).borderTopColor.includes('150, 165, 175');
 
+    // Regression for the live failure: the contact directly under the reticle
+    // at 1,847 m must beat a 1,444 m contact several degrees off-axis. Sensor
+    // inspection is not capped by the 1,500 m combat-era acquire distance.
+    centred.position.copy(origin).addScaledVector(cameraForward, 1847);
+    closer.position
+      .copy(origin)
+      .addScaledVector(cameraForward, 1435)
+      .addScaledVector(cameraRight, 160);
+    game.targeting.current = null;
+    game.targeting.update(
+      game.player,
+      [centred, closer],
+      [],
+      340,
+      () => true,
+      500,
+      cameraForward,
+      false,
+    );
+    const unlimitedScanSelectedCentred =
+      game.targeting.current?.ship === centred && game.targeting.current.distance > 1800;
+
     centred.position.copy(origin).addScaledVector(cameraForward, 450);
     closer.position.copy(origin).add({ x: 15, y: 0, z: -100 });
     game.targeting.current = null;
@@ -111,6 +133,7 @@ export async function runTargetingSmoke(page) {
       staged: true,
       farSelectedCentred,
       farGrey,
+      unlimitedScanSelectedCentred,
       unpursuedSelectedCentred,
       pursuedSelectedCloser,
       nearRed,

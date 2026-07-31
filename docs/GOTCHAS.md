@@ -122,6 +122,10 @@ Real issues hit while building this game, kept here so they only get paid for on
   engaged. With no pursuing enemy, hostiles and civilians compete in one pure
   camera-crosshair ranking (range breaks exact ties only), allowing immediate
   inspection target swaps to whichever contact is actually under the reticle.
+  Do not add a fixed sensor-distance cap: the 1,500 m legacy cutoff silently
+  discarded a centred 1,847 m contact and selected a 1,435 m off-axis contact.
+  Weapon range divides close combat from angular inspection; it does not bound
+  the latter.
   The hostiles list is rebuilt BEFORE `targeting.update` each tick.
 - **An informational contact is not an aim target.** During active pursuit,
   targeting tries LOS-clear hostiles first, then sensor-only civilians. During

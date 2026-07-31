@@ -36,17 +36,19 @@ Everspace-inspired exploration space-dogfighter. three.js + TypeScript + webpack
    `ui/ResourceIcons.ts` for material/consumable symbols;
    do not introduce one-off Unicode glyphs in DOM inventory UI.
    Visual staging is likewise split by responsibility: `TestScenes.ts` is only
-   the dispatcher; UI, combat and world scenes live under `game/test-scenes/`.
+   the dispatcher; UI, combat, targeting and world scenes live under
+   `game/test-scenes/`.
    Behavioral staging follows the same rule: `test/smoke.mjs` is a thin runner;
    feature probes live under `test/smoke/` and return results to the grouped
    assertion module. Do not grow the runner back into a scenario monolith.
 5. Pooled + allocation-free per frame; pooled lights idle at intensity 0.
 
 Targeting mode follows pursuit state: with no engaged enemy, hostiles and civilians
-share pure camera-crosshair ranking at every range; active pursuit restores hostile
-priority plus range-weighted aim assist inside weapon reach. Civilian and ore previews
-are informational only and must never enter `aimTarget`; ore wireframes use their
-resource color. All object prompts use a stable smoothed world anchor. Cloak and
+share pure camera-crosshair ranking at every range with no sensor-distance cap;
+active pursuit restores hostile priority plus range-weighted aim assist inside weapon
+reach. Civilian and ore previews are informational only and must never enter
+`aimTarget`; ore wireframes use their resource color. All object prompts use a stable
+smoothed world anchor. Cloak and
 crafting share the 180 m lockout.
 
 Planet cave geometry is an open-bottomed procedural arch whose sampled colliders

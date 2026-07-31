@@ -30,7 +30,7 @@ const DIFF_DIR = join(__dirname, 'diff');
 
 const SCENES = [
   'nebula', 'ship', 'asteroids', 'combat', 'hud', 'menu', 'cockpit', 'hangar', 'loadout',
-  'boost', 'targeting', 'friendly-targeting', 'resource-targeting', 'fx', 'cave', 'split', 'level', 'wreck', 'planet', 'base', 'trade', 'fleet',
+  'boost', 'targeting', 'distant-targeting', 'friendly-targeting', 'resource-targeting', 'fx', 'cave', 'split', 'level', 'wreck', 'planet', 'base', 'trade', 'fleet',
   'cloak', 'controls',
   'enemy-variety', 'missile-warning', 'capital-superweapon',
 ];

@@ -82,7 +82,8 @@ same planet.
   the available slots and emits its actual arrival count; if the cap is full the
   cadence timers continue normally without allocating another wing. Sector patrols
   and fixed batteries are separate from this reinforcement budget.
-- Targeting soft-lock: 18° acquire cone / ~28° keep, 1500 u max, over ALL
+- Targeting soft-lock: 18° acquire cone / ~28° close-combat keep, with no
+  sensor-distance cap, over ALL
   hostiles (fighters + independent turrets + capital), filtered through
   world/terrain LOS. The carrier's twelve mounted batteries collapse into its
   whole-hull contact beyond 260 m; inside 260 m they become individual lock and
@@ -91,8 +92,9 @@ same planet.
   −60 keep-bonus lets a much closer turret beat a distant fighter. With no pursuing
   enemy, hostiles and civilians at **every distance** compete in one camera-crosshair
   ranking; during pursuit, hostiles retain priority and distant hostiles still use
-  angular ranking. Civilians are sensor contacts (asteroid clutter does not suppress
-  identification), use range only as an exact-angle tie-break, and get no keep-lock
+  angular ranking. Weapon reach controls combat weighting and marker color, never
+  whether a contact can be inspected. Civilians are sensor contacts (asteroid clutter
+  does not suppress identification), use range only as an exact-angle tie-break, and get no keep-lock
   hysteresis. `Targeting.aimTarget` stays null for a winning civilian, so primary
   convergence, missile homing and the lead pip remain disabled. Losing the contact
   hides its capture bracket immediately without a fade.
