@@ -33,6 +33,45 @@ await new Promise((r) => server.listen(PORT, r));
 const browser = await chromium.launch({ args: ['--use-angle=swiftshader', '--mute-audio'] });
 const errors = [];
 
+/** Wait for browser layout/font work without pretending wall time is game time. */
+async function settleBrowserFrames(page, frameCount = 2) {
+  await page.evaluate(async (frames) => {
+    await document.fonts.ready;
+    for (let frame = 0; frame < frames; frame++) {
+      await new Promise((resolve) => requestAnimationFrame(resolve));
+    }
+  }, frameCount);
+}
+
+/** Advance the complete game by an exact amount, independent of renderer FPS. */
+async function advanceGameTime(page, seconds, hz = 60) {
+  await page.evaluate(({ frameCount, dt }) => {
+    const g = window.game;
+    g.loop.stop();
+    for (let frame = 0; frame < frameCount; frame++) g.loop.stepManual(dt);
+  }, { frameCount: Math.ceil(seconds * hz), dt: 1 / hz });
+}
+
+/** Advance projectile collision only, keeping unrelated actors frozen. */
+async function advanceProjectileTime(page, seconds, hz = 60) {
+  await page.evaluate(({ frameCount, dt }) => {
+    const g = window.game;
+    g.loop.stop();
+    const targets = [...g.enemies, ...g.turrets, ...g.neutrals];
+    if (g.capital?.alive) targets.push(g.capital);
+    for (let frame = 0; frame < frameCount; frame++) {
+      g.projectiles.update(
+        dt,
+        targets,
+        g.player.alive ? g.player : null,
+        g.world.bodies,
+        (hit) => g.combat.resolveHit(hit),
+        g.surface ? g.terrainProjectileHit : undefined,
+      );
+    }
+  }, { frameCount: Math.ceil(seconds * hz), dt: 1 / hz });
+}
+
 // The exact static hangar review route used for visual testing must commit a
 // selection on click. ENGAGE is deliberately never pressed in this scenario.
 const preferencePage = await browser.newPage({ viewport: { width: 1280, height: 720 } });
@@ -43,7 +82,8 @@ await preferencePage.context().addCookies([
   { name: 'cleverspace_difficulty', value: 'reckoning', url: `http://localhost:${PORT}` },
 ]);
 await preferencePage.goto(`http://localhost:${PORT}/?testScene=hangar&seed=7`, { waitUntil: 'load' });
-await preferencePage.waitForTimeout(600);
+await preferencePage.waitForFunction(() => window.__RENDER_DONE__ === true);
+await settleBrowserFrames(preferencePage);
 const preferenceMigrated = await preferencePage.evaluate(() => ({
   ship: window.game.selectedShipId,
   difficulty: window.game.selectedDifficultyId,
@@ -61,7 +101,8 @@ const preferenceWritten = await preferencePage.evaluate(() => {
   };
 });
 await preferencePage.reload({ waitUntil: 'load' });
-await preferencePage.waitForTimeout(400);
+await preferencePage.waitForFunction(() => window.__RENDER_DONE__ === true);
+await settleBrowserFrames(preferencePage);
 const preferenceReloaded = await preferencePage.evaluate(() => ({
   ship: window.game.selectedShipId,
   difficulty: window.game.selectedDifficultyId,
@@ -98,13 +139,14 @@ page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
 
 // Pinned seed: the default page rolls a random world per session.
 await page.goto(`http://localhost:${PORT}/?seed=99&headless=1`, { waitUntil: 'load' });
-await page.waitForTimeout(1000);
+await page.waitForFunction(() => Boolean(window.game));
+await settleBrowserFrames(page);
 
 // Fullscreen-like tall viewport: the independent action visor must retain the
 // ship-selector row's bottom baseline instead of remaining at its windowed Y.
 await page.evaluate(() => window.game.showHangar());
 await page.setViewportSize({ width: 1920, height: 1080 });
-await page.waitForTimeout(350);
+await settleBrowserFrames(page);
 const hangarAlignment = await page.evaluate(() => {
   const ships = document.querySelector('.hangar-ships')?.getBoundingClientRect();
   const actions = document.querySelector('.hangar-actions')?.getBoundingClientRect();
@@ -116,7 +158,7 @@ const hangarAlignment = await page.evaluate(() => {
 });
 console.log('fullscreen hangar baseline:', JSON.stringify(hangarAlignment));
 await page.setViewportSize({ width: 1280, height: 720 });
-await page.waitForTimeout(350);
+await settleBrowserFrames(page);
 
 // 0. Structural QA: every hull must be one connected body at geometry level
 // (covers all viewing angles) — no floating plates/fins/pods ("ship slop").
@@ -129,7 +171,97 @@ console.log(
     : disconnected.map((a) => `${a.kind}: ${a.components} pieces, orphans [${a.orphans.join(', ')}]`).join(' · '),
 );
 
-await page.evaluate(() => window.game.startMission());
+await page.evaluate(() => {
+  window.game.startMission();
+  // Nothing below relies on background rAF. Keeping the full Three.js scene
+  // rendering between assertions costs tens of seconds on CI SwiftShader.
+  window.game.loop.stop();
+});
+
+// A hull without a seeker rack cannot manufacture or buy ammunition. Both
+// screens explain why, and the model-level methods reject direct calls too.
+const missileGate = await page.evaluate(() => {
+  const g = window.game;
+  const previousRate = g.weapons.missileRate;
+  g.weapons.missileRate = 0;
+  g.inventory.add('scrap', 20);
+  const before = { scrap: g.inventory.counts.scrap, missiles: g.inventory.missiles };
+  const crafted = g.craft('missile-rack');
+  const bought = g.executeTrade('buy-missiles');
+
+  g.openLoadout();
+  const craftRow = [...document.querySelectorAll('.recipe-row')]
+    .find((row) => row.textContent.includes('Seeker Missiles'));
+  const craftButton = craftRow?.querySelector('button');
+  const craftUi = {
+    disabled: craftButton?.disabled ?? false,
+    label: craftButton?.textContent ?? '',
+  };
+  g.closeLoadout();
+
+  g.openTrade();
+  const tradeRow = [...document.querySelectorAll('.recipe-row')]
+    .find((row) => row.textContent.includes('Seeker Missiles'));
+  const tradeButton = tradeRow?.querySelector('button');
+  const tradeUi = {
+    disabled: tradeButton?.disabled ?? false,
+    label: tradeButton?.textContent ?? '',
+  };
+  g.closeTrade();
+  g.weapons.missileRate = previousRate;
+
+  return {
+    crafted,
+    bought,
+    unchanged:
+      g.inventory.counts.scrap === before.scrap &&
+      g.inventory.missiles === before.missiles,
+    craftUi,
+    tradeUi,
+  };
+});
+console.log('missile rack gate:', JSON.stringify(missileGate));
+
+// If the only hostile candidate is occluded, targeting may identify a visible
+// merchant. That contact is informational: no lead pip and no weapon aim target.
+const civilianTargeting = await page.evaluate(() => {
+  const g = window.game;
+  const merchant = g.neutrals.find((neutral) => neutral.isMerchant);
+  const blocked = g.neutrals.find((neutral) => neutral !== merchant);
+  if (!merchant || !blocked) return { staged: false };
+  const savedMerchant = merchant.position.clone();
+  const savedBlocked = blocked.position.clone();
+  const origin = g.player.position.clone();
+  g.player.object.rotation.set(0, 0, 0);
+  merchant.position.copy(origin).add({ x: 0, y: 0, z: -150 });
+  blocked.position.copy(origin).add({ x: 0, y: 0, z: -110 });
+  g.chaseCam.snapTo(g.player.object);
+  g.chaseCam.camera.updateMatrixWorld(true);
+  g.targeting.update(
+    g.player,
+    [blocked],
+    [merchant],
+    g.weapons.weapon.projectileSpeed,
+    (ship) => ship === merchant,
+  );
+  g.renderHudOnce();
+  const current = g.targeting.current;
+  const preview = document.querySelector('.target-preview');
+  const result = {
+    staged: true,
+    selectedMerchant: current?.ship === merchant,
+    informational: current?.aimAssist === false && g.targeting.aimTarget === null,
+    detail: document.querySelector('.preview-detail')?.textContent ?? '',
+    friendlyStyle: preview?.classList.contains('friendly') ?? false,
+    wireframe: !!preview?.querySelector('canvas'),
+    leadHidden: document.querySelector('.lead-pip')?.style.opacity === '0',
+  };
+  merchant.position.copy(savedMerchant);
+  blocked.position.copy(savedBlocked);
+  g.targeting.current = null;
+  return result;
+});
+console.log('civilian targeting:', JSON.stringify(civilianTargeting));
 
 // Crafting refreshes the overlay after every purchase. The scroll container
 // must remain at the recipe the player was working on.
@@ -493,6 +625,33 @@ const planet = await page.evaluate(() => {
   const level =
     Math.abs(g.player.object.rotation.x) < 0.01 && Math.abs(g.player.object.rotation.z) < 0.01;
 
+  const surfaceTurretsClear = g.turrets.every((turret) =>
+    g.surface.isTurretSpawnClear(turret.position)
+  );
+  window.__smoke.surfaceTurretHulls = g.turrets.map((turret) => turret.hull);
+  g.turrets.forEach((turret, index) => {
+    const spawn = g.surface.turretSpawns[index];
+    const outward = spawn.lookAt.clone().sub(turret.position);
+    outward.y = 0;
+    if (outward.lengthSq() < 0.001) outward.set(0, 0, 1);
+    outward.normalize();
+    for (const lift of [7, 18]) {
+      const from = turret.position.clone().addScaledVector(outward, 26);
+      from.y += lift;
+      g.projectiles.spawnBolt({
+        position: from,
+        direction: turret.position.clone().sub(from).normalize(),
+        speed: 220,
+        damage: 2,
+        faction: 'player',
+        color: g.surface.fog.color,
+        boltLength: 3,
+        boltWidth: 0.2,
+        life: 3,
+      });
+    }
+  });
+
   const t = g.turrets[0];
   window.__smoke.turretHullBefore = t.hull;
   const col = g.surface.fog.color.clone();
@@ -513,6 +672,7 @@ const planet = await page.evaluate(() => {
       life: 3,
     });
   }
+
   return {
     onPlanet,
     garrison,
@@ -530,25 +690,51 @@ const planet = await page.evaluate(() => {
     minHostile: Math.round(minHostile),
     onSurface,
     level,
+    surfaceTurretsClear,
   };
 });
 console.log('planetfall:', JSON.stringify(planet));
 
-// Let the test bolts fly, then stage the near-lock scenario: player ~120 m
-// from a live turret, aiming at it — soft lock must pick the CLOSE turret,
-// not some fighter a kilometre out (distance-weighted targeting).
-await page.waitForTimeout(1500);
+// A renderer-independent second of projectile time. SwiftShader may produce
+// only a few rAF ticks per wall-clock second, especially on shared CI runners.
+await advanceProjectileTime(page, 1);
+
+// Stage the near-lock scenario: player ~120 m from a live turret, aiming at it
+// — soft lock must pick the CLOSE turret, not a fighter a kilometre away.
 await page.evaluate(() => {
   const g = window.game;
   const t0 = g.turrets[0];
   window.__smoke.turretDamaged = !t0.alive || t0.hull < window.__smoke.turretHullBefore;
-  const target = g.turrets.find((x) => x.alive) ?? t0;
+  window.__smoke.allSurfaceTurretsDamageable = g.turrets.every(
+    (turret, index) =>
+      !turret.alive || turret.hull < window.__smoke.surfaceTurretHulls[index],
+  );
+  let target = g.turrets.find((x) => x.alive) ?? t0;
+  let viewpoint = target.position.clone().add({ x: 0, y: 80, z: 0 });
+  for (let index = 0; index < g.turrets.length; index++) {
+    const candidate = g.turrets[index];
+    if (!candidate.alive) continue;
+    const spawn = g.surface.turretSpawns[index];
+    const outward = spawn.lookAt.clone().sub(candidate.position);
+    outward.y = 0;
+    if (outward.lengthSq() < 0.001) outward.set(0, 0, 1);
+    outward.normalize();
+    const candidateView = candidate.position.clone().addScaledVector(outward, 120);
+    candidateView.y = Math.max(
+      candidate.position.y + 18,
+      g.surface.heightAt(candidateView.x, candidateView.z) + g.player.radius + 6,
+    );
+    if (!g.combat.hasLineOfSight(candidateView, candidate.position)) continue;
+    target = candidate;
+    viewpoint = candidateView;
+    break;
+  }
   g.player.hull = g.player.hullMax;
-  g.player.position.set(target.position.x + 80, target.position.y + 40, target.position.z + 80);
+  g.player.position.copy(viewpoint);
   g.player.velocity.set(0, 0, 0);
   g.player.faceToward(target.position);
 });
-await page.waitForTimeout(2500);
+await advanceGameTime(page, 1 / 60);
 const planetB = await page.evaluate(() => {
   const g = window.game;
   const lock = g.targeting.current;
@@ -577,6 +763,7 @@ const planetB = await page.evaluate(() => {
   g.exitPlanet();
   return {
     turretDamaged: window.__smoke.turretDamaged,
+    allSurfaceTurretsDamageable: window.__smoke.allSurfaceTurretsDamageable,
     lockDist,
     lockedNear,
     backInSpace: !g.surface && g.sectorIndex === 1,
@@ -595,7 +782,7 @@ const jumpStart = await page.evaluate(() => {
   g.player.velocity.set(0, 0, 0);
   g.inventory.add('flux', 2);
   const started = g.startJump(true);
-  if (started) g.jumpSpool = 0.05;
+  if (started) g.jumpSpool = 0.01;
   return {
     started,
     state: g.state,
@@ -605,7 +792,8 @@ const jumpStart = await page.evaluate(() => {
   };
 });
 console.log('jump start:', JSON.stringify(jumpStart));
-await page.waitForTimeout(4000);
+// Tick one performs the jump; tick two rebuilds the new sector's target lists.
+await advanceGameTime(page, 2 / 60);
 const postJump = await page.evaluate(() => ({
   sector: window.game.sectorIndex,
   enemies: window.game.enemies.length,
@@ -625,10 +813,9 @@ console.log('sector 2 (must be hostile):', JSON.stringify(postJump));
 // 4. Hunter dispatch + engagement.
 await page.evaluate(() => {
   const g = window.game;
-  // From this point onward use deterministic stepping. Hosted SwiftShader can
-  // render only a handful of rAF frames during an eight-second wall-clock wait,
-  // which used to make both this movement check and the following camera check
-  // report failures unrelated to gameplay.
+  // Keep deterministic stepping active. Hosted SwiftShader can render only a
+  // handful of rAF frames per second, so wall-clock waits are both slow and
+  // unrelated to the amount of gameplay simulation exercised.
   g.loop.stop();
   g.encounters.dispatchWing(3, g.player.position);
 });
@@ -722,7 +909,9 @@ const dev = await page.evaluate(() => {
   const cloakOk = g.activateCloak();
   const cloaked = g.devices.cloaked;
   const energyBefore = g.weapons.energy;
-  for (let i = 0; i < 60; i++) g.loop.stepManual(1 / 60);
+  // Exercise only the subsystem under test; rendering 60 full world frames in
+  // SwiftShader adds CI time without adding coverage to the cloak assertion.
+  for (let i = 0; i < 60; i++) g.updateDevices(1 / 60);
   const energyAfter = g.weapons.energy;
   let hullOpacity = 0;
   g.player.exterior.traverse((obj) => {
@@ -760,6 +949,14 @@ process.exit(
     !preferencesPersist ||
     disconnected.length > 0 ||
     hangarAlignment.delta > 2 ||
+    missileGate.crafted || missileGate.bought || !missileGate.unchanged ||
+    !missileGate.craftUi.disabled || missileGate.craftUi.label !== 'No rack' ||
+    !missileGate.tradeUi.disabled || missileGate.tradeUi.label !== 'No rack' ||
+    !civilianTargeting.staged || !civilianTargeting.selectedMerchant ||
+    !civilianTargeting.informational || !civilianTargeting.friendlyStyle ||
+    !civilianTargeting.wireframe || !civilianTargeting.leadHidden ||
+    !civilianTargeting.detail.includes('Friendly') ||
+    !civilianTargeting.detail.includes('Merchant') ||
     !craftingScroll.crafted || craftingScroll.before <= 0 ||
     Math.abs(craftingScroll.after - craftingScroll.before) > 1 ||
     craftingScroll.iconLayout.holdSvgs < 4 ||
@@ -788,7 +985,8 @@ process.exit(
     planet.collisionProbe.idleDamage > 0.01 ||
     planet.collisionProbe.impactDamage < 5 ||
     planet.minHostile <= 200 || !planet.onSurface || !planet.level ||
-    !planetB.turretDamaged || !planetB.lockedNear ||
+    !planet.surfaceTurretsClear || !planetB.turretDamaged ||
+    !planetB.allSurfaceTurretsDamageable || !planetB.lockedNear ||
     !planetB.backInSpace || !planetB.persisted ||
     !planetB.revisit.sameSurface || !planetB.revisit.harvested ||
     planetB.revisit.garrison !== 0 ||

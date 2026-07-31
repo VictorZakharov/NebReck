@@ -11,6 +11,8 @@
   box-shadow: 0 0 12px rgba(255, 179, 71, 0.4);
   transition: opacity 0.15s;
 }
+.target-box.friendly { border-color: #8aff9f; box-shadow: 0 0 12px rgba(138, 255, 159, 0.4); }
+.target-box.neutral { border-color: #9fdcff; box-shadow: 0 0 12px rgba(159, 220, 255, 0.36); }
 .target-dist {
   position: absolute;
   transform: translate(-50%, 0);
@@ -21,6 +23,8 @@
   white-space: nowrap;
   text-shadow: 0 0 8px rgba(255, 179, 71, 0.6);
 }
+.target-dist.friendly { color: #8aff9f; border-color: rgba(138, 255, 159, 0.5); }
+.target-dist.neutral { color: #9fdcff; border-color: rgba(159, 220, 255, 0.5); }
 .lead-pip {
   position: absolute;
   width: 10px; height: 10px;

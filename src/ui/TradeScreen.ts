@@ -7,6 +7,8 @@ import { getTradeIcon } from './TradeIcons';
 export interface TradeCallbacks {
   /** Execute a trade by id; returns true if it went through. */
   onTrade: (id: string) => boolean;
+  /** Ship-fit restrictions beyond wallet affordability. */
+  isAvailable: (id: string) => boolean;
   onClose: () => void;
   onHover: () => void;
   onClick: () => void;
@@ -104,8 +106,13 @@ export class TradeScreen {
       });
       const btn = document.createElement('button');
       btn.className = 'craft-btn';
-      btn.textContent = this.page === 'buy' ? 'Buy' : 'Sell';
-      btn.disabled = !canTrade(offer.id, this.inventory);
+      const available = this.callbacks.isAvailable(offer.id);
+      btn.textContent = !available && offer.id === 'buy-missiles'
+        ? 'No rack'
+        : this.page === 'buy'
+          ? 'Buy'
+          : 'Sell';
+      btn.disabled = !available || !canTrade(offer.id, this.inventory);
       btn.addEventListener('mouseenter', this.callbacks.onHover);
       btn.addEventListener('click', () => {
         if (this.callbacks.onTrade(offer.id)) {

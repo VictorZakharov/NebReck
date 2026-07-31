@@ -10,43 +10,35 @@ export interface TargetInfo {
   /** Where to shoot so bolts arrive as the target does. */
   leadPoint: Vector3;
   distance: number;
+  /** False for informational civilian contacts: bracket only, never aim/homing. */
+  aimAssist: boolean;
 }
 
 /**
- * Soft lock-on over ALL hostiles (fighters, turrets, the capital): the
- * candidate nearest the boresight wins, with DISTANCE weighted heavily enough
- * that a turret 100 m away beats a fighter a kilometre out at similar angle.
- * Hysteresis keeps the lock from flickering between two ships.
+ * LOS-aware soft lock over all hostiles (fighters, turrets, the capital).
+ * When none qualifies, the same centre-screen scan exposes a civilian contact
+ * for HUD identification only. Distance is weighted heavily and hysteresis
+ * keeps the current contact from flickering between nearby ships.
  */
 export class Targeting {
   current: TargetInfo | null = null;
   private readonly lead = new Vector3();
 
-  update(player: PlayerShip, hostiles: readonly Ship[], projectileSpeed: number): void {
+  /** The target weapons may converge or home on; civilian contacts return null. */
+  get aimTarget(): TargetInfo | null {
+    return this.current?.aimAssist ? this.current : null;
+  }
+
+  update(
+    player: PlayerShip,
+    hostiles: readonly Ship[],
+    contacts: readonly Ship[],
+    projectileSpeed: number,
+    isVisible: (ship: Ship) => boolean = () => true,
+  ): void {
     player.forward(fwd);
-    let best: Ship | null = null;
-    let bestScore = Infinity;
-    const maxRange = 1500;
-    const cosCone = Math.cos(0.32); // ~18°
-    const keepCosCone = Math.cos(0.5); // wider cone to *keep* a lock
-
-    for (const h of hostiles) {
-      if (!h.alive) continue;
-      toTarget.copy(h.position).sub(player.position);
-      const dist = toTarget.length();
-      if (dist > maxRange) continue;
-      toTarget.divideScalar(dist);
-      const dot = fwd.dot(toTarget);
-      const isCurrent = this.current?.ship === h;
-      if (dot < (isCurrent ? keepCosCone : cosCone)) continue;
-      // Angle matters, but a 10× closer target must win at similar angles.
-      const score = (1 - dot) * 400 + dist * 0.5 - (isCurrent ? 60 : 0);
-      if (score < bestScore) {
-        bestScore = score;
-        best = h;
-      }
-    }
-
+    const hostile = this.bestCandidate(player, hostiles, isVisible);
+    const best = hostile ?? this.bestCandidate(player, contacts, isVisible);
     if (!best) {
       this.current = null;
       return;
@@ -55,6 +47,43 @@ export class Targeting {
     const dist = best.position.distanceTo(player.position);
     const flightTime = dist / projectileSpeed;
     this.lead.copy(best.position).addScaledVector(best.velocity, flightTime);
-    this.current = { ship: best, leadPoint: this.lead, distance: dist };
+    this.current = {
+      ship: best,
+      leadPoint: this.lead,
+      distance: dist,
+      aimAssist: hostile !== null,
+    };
+  }
+
+  private bestCandidate(
+    player: PlayerShip,
+    candidates: readonly Ship[],
+    isVisible: (ship: Ship) => boolean,
+  ): Ship | null {
+    let best: Ship | null = null;
+    let bestScore = Infinity;
+    const maxRange = 1500;
+    const cosCone = Math.cos(0.32); // ~18°
+    const keepCosCone = Math.cos(0.5); // wider cone to *keep* a lock
+
+    for (const h of candidates) {
+      if (!h.alive) continue;
+      toTarget.copy(h.position).sub(player.position);
+      const dist = toTarget.length();
+      if (dist < 1e-5 || dist > maxRange) continue;
+      toTarget.divideScalar(dist);
+      const dot = fwd.dot(toTarget);
+      const isCurrent = this.current?.ship === h;
+      if (dot < (isCurrent ? keepCosCone : cosCone)) continue;
+      if (!isVisible(h)) continue;
+      // Angle matters, but a 10× closer target must win at similar angles.
+      const score = (1 - dot) * 400 + dist * 0.5 - (isCurrent ? 60 : 0);
+      if (score < bestScore) {
+        bestScore = score;
+        best = h;
+      }
+    }
+
+    return best;
   }
 }

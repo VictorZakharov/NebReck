@@ -24,6 +24,7 @@ import {
   Vector3,
 } from 'three';
 import { Rng } from '../core/Rng';
+import { TURRET_COLLISION_RADIUS } from '../entities/ShipMeshTypes';
 import { getSurfaceTexture } from '../rendering/SurfaceTextures';
 import { AsteroidBody, makeBody } from './AsteroidField';
 import { NebulaSkybox } from './NebulaSkybox';
@@ -428,6 +429,14 @@ export class PlanetSurface {
 
     // ---- underground cave systems (trenches carved into heightAt) ----------
     for (const run of this.caveRuns) buildSurfaceCave(structureHost, rng, run, planet);
+    // Builders intentionally offer several candidate mounts. Reject any that
+    // ended up intersecting later structure/cave collision instead of spawning
+    // an invulnerable battery hidden behind that geometry.
+    for (let index = this.turretSpawns.length - 1; index >= 0; index--) {
+      if (!this.isTurretSpawnClear(this.turretSpawns[index].position)) {
+        this.turretSpawns.splice(index, 1);
+      }
+    }
   }
 
   /** Interpolate the exact terrain triangles submitted to the renderer. */
@@ -564,6 +573,26 @@ export class PlanetSurface {
     return this.segmentTerrainHit(from, to, terrainProbe, false);
   }
 
+  /** True when the complete turret hit sphere is exposed to incoming fire. */
+  isTurretSpawnClear(position: Vector3, padding = 0.08): boolean {
+    const radius = TURRET_COLLISION_RADIUS + padding;
+    if (position.y - radius <= this.heightAt(position.x, position.z) + 0.05) {
+      return false;
+    }
+    for (const body of this.bodies) {
+      if (body.destroyed) continue;
+      if (body.box) {
+        const dx = Math.max(0, Math.abs(position.x - body.position.x) - body.box.hx);
+        const dy = Math.max(0, Math.abs(position.y - body.position.y) - body.box.hy);
+        const dz = Math.max(0, Math.abs(position.z - body.position.z) - body.box.hz);
+        if (dx * dx + dy * dy + dz * dz < radius * radius) return false;
+      } else if (position.distanceToSquared(body.position) < (body.radius + radius) ** 2) {
+        return false;
+      }
+    }
+    return true;
+  }
+
   /**
    * Surface spawn using TERRAIN AS COVER: prefer spots far from hostiles
    * whose sightlines the ground physically blocks. Always on the surface.
@@ -698,7 +727,9 @@ export class PlanetSurface {
     pad.position.set(x, y + 0.5, z);
     this.group.add(pad);
     this.turretSpawns.push({
-      position: new Vector3(x, y + 1.8, z),
+      // Root at +2.0 seats the visible base on the pad while keeping the tight
+      // central hit sphere just above padded rooftop AABBs.
+      position: new Vector3(x, y + 2.0, z),
       lookAt: new Vector3(lookX, y + 30, lookZ),
     });
   }

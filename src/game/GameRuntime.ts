@@ -1,7 +1,7 @@
 import { Color, Vector3 } from 'three';
 import { STYLE_ENGINES } from '../entities/ShipMesh';
 import { PostFx } from '../rendering/PostFx';
-import { targetDisplayName } from './GameConstants';
+import { targetPresentation } from './GameConstants';
 import { GameInteractions } from './GameInteractions';
 
 const menuLook = new Vector3();
@@ -267,10 +267,12 @@ export abstract class GameRuntime extends GameInteractions {
     this.targeting.update(
       player,
       this.hostiles,
+      this.neutrals,
       this.weapons.weapon.projectileSpeed,
+      (ship) => this.combat.hasLineOfSight(player.position, ship.position),
     );
     let hostileDot = -1;
-    if (this.targeting.current) {
+    if (this.targeting.current?.aimAssist) {
       player.forward(aimForward);
       aimBlockOff
         .copy(this.targeting.current.ship.position)
@@ -387,7 +389,7 @@ export abstract class GameRuntime extends GameInteractions {
       weaponName: this.weapons.weapon.name,
       energyFrac: this.weapons.energy / this.weapons.energyMax,
       seekersReadyFrac: 1 - this.weapons.missileCooldown / 1.35,
-      targetName: target ? targetDisplayName(target.ship.kind) : null,
+      targetName: target ? targetPresentation(target.ship, target.aimAssist).name : null,
       targetDistance: target?.distance ?? 0,
       shield: player.shield,
       shieldMax: player.shieldMax,

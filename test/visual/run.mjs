@@ -29,7 +29,7 @@ const DIFF_DIR = join(__dirname, 'diff');
 
 const SCENES = [
   'nebula', 'ship', 'asteroids', 'combat', 'hud', 'menu', 'cockpit', 'hangar', 'loadout',
-  'boost', 'targeting', 'fx', 'cave', 'split', 'level', 'wreck', 'planet', 'base', 'trade', 'fleet',
+  'boost', 'targeting', 'friendly-targeting', 'fx', 'cave', 'split', 'level', 'wreck', 'planet', 'base', 'trade', 'fleet',
   'cloak', 'controls',
 ];
 const SEED = 7;
@@ -104,8 +104,12 @@ for (const scene of scenes) {
   process.stdout.write(`Scene "${scene}" … `);
   await page.goto(url, { waitUntil: 'load' });
   await page.waitForFunction(() => window.__RENDER_DONE__ === true, { timeout: 30000 });
-  // One settled frame beyond the ready flag for font rasterization etc.
-  await page.waitForTimeout(250);
+  // Wait for actual browser work rather than an arbitrary wall-clock delay.
+  await page.evaluate(async () => {
+    await document.fonts.ready;
+    await new Promise((resolve) => requestAnimationFrame(resolve));
+    await new Promise((resolve) => requestAnimationFrame(resolve));
+  });
 
   const outputPath = join(OUTPUT_DIR, `${scene}.png`);
   await page.screenshot({ path: outputPath });

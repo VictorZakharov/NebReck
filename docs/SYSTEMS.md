@@ -64,11 +64,16 @@ same planet.
   `projectileSpeed × life` (pulse ≈ 544, scatter ≈ 243, lance ≈ 774) — drives the
   grey out-of-range markers. Missiles: soft-lock seekers, 1.35 s cooldown.
 - Targeting soft-lock: 18° acquire cone / ~28° keep, 1500 u max, over ALL
-  hostiles (fighters + turrets + capital). Score `(1-dot)*400 + dist*0.5` with a
-  −60 keep-bonus: a much closer turret beats a distant fighter at similar angle.
-- Target preview (top-left, `TargetPreview.ts`): edge-wireframe of the locked
-  hostile in its REAL view-space orientation (nose-on when charging, tail-on
-  when fleeing), line color green→red by hull fraction; name + hull bar below.
+  hostiles (fighters + turrets + capital), filtered through world/terrain LOS.
+  Score `(1-dot)*400 + dist*0.5` with a −60 keep-bonus: a much closer turret beats
+  a distant fighter at similar angle. Only when no visible hostile qualifies does
+  the same cone identify a visible merchant/hauler as an informational contact.
+  `Targeting.aimTarget` stays null for those contacts, so primary convergence,
+  missile homing and the lead pip remain disabled.
+- Target preview (top-left, `TargetPreview.ts`): edge-wireframe in the contact's
+  REAL view-space orientation (nose-on when charging, tail-on when fleeing).
+  Hostiles shade green→red by hull fraction; merchants are friendly green and
+  haulers neutral blue, with role/action text below the name.
 - Turrets: 340 u range, fire only with `hasLineOfSight` (terrain + big bodies,
   own-mount excluded).
 - EMP stun: hostiles dead-stick (velocity decay, no fire). Cloak: brains go blind —
@@ -86,8 +91,9 @@ same planet.
 | **green double** | **merchant — marked at ANY range** + "⚖ Merchant" by sector readout |
 | gold | delivery-contract beacon |
 
-Locked target: orange box + lead pip + range chip. Every visible hostile gets a
-bracket; off-screen ones get chevrons with range.
+Locked hostile: orange box + lead pip + range chip. Informational civilians use a
+green/blue box and range chip with no lead pip. Every other visible contact gets a
+bracket; off-screen hostiles get chevrons with range.
 
 ## Contracts (Quests.ts) — hail a hauler with R
 
@@ -122,7 +128,8 @@ Jumping voids in-sector deliveries; planetfall does NOT (sector persists).
 - Stashes (`stash: true` bodies): mixed burst 3▲ 3◆ 2●. Found at bases, in caves,
   cave asteroids, wreck blackboxes.
 - Merchant stock (`Trade.ts`): buy Flux 1 = Scrap 8 · nano = Scrap 5 ·
-  crystals 3 = Scrap 6; sell crystals 3 = Scrap 6 · Flux 1 = Scrap 10.
+  crystals 3 = Scrap 6 · seekers 4 = Scrap 5; sell crystals 3 = Scrap 6 ·
+  Flux 1 = Scrap 10. Seeker purchases are unavailable on a hull with no rack.
   Trade screen rows carry painterly offer art (`TradeIcons.ts`), structured
   SVG cost/gain holdings, and a ✕ close button. Purchases play SFX but no
   merchant voiceover; docking fades the engine loop fully silent; Esc/R
@@ -139,7 +146,8 @@ Jumping voids in-sector deliveries; planetfall does NOT (sector persists).
 
 ## Crafting (Inventory.ts RECIPES → GameScreens.craft)
 
-nanobot-kit 6▲ (repeatable) · shield-cell 5◆ (instant +40, refused at full) ·
+nanobot-kit 6▲ (repeatable) · seekers ×2 3▲ (repeatable, refused without a rack) ·
+shield-cell 5◆ (instant +40, refused at full) ·
 weapon-amp 8◆4▲ (+15% dmg ×3) · engine-tune 8▲1● (+8% spd ×3) · shield-matrix
 8◆1● (+25 max shield ×3). Per-run only. A successful craft rerenders the recipe
 state without changing the right-hand list's scroll position.
@@ -192,7 +200,10 @@ through the tunnel. Overlapping spheres sampled from and offset outside the same
 arch profile make visual rock equal collision rock. A dense approach route
 follows the first bend;
 terrain ramps, base/cave exclusion zones, side-only mouth rubble, and
-clearance-selected guard anchors keep entrances and enemies accessible. Body
+clearance-selected guard anchors keep entrances and enemies accessible. Turret
+hit spheres cover the armored center rather than the long barrels; the finished
+surface rejects any mount whose full hit sphere still intersects terrain or a
+registered body, preventing one-way batteries hidden inside geometry. Body
 impact damage is linear in inward closing speed after a 4 m/s dead zone, so a
 parked overlap causes none. Every other visible obstacle registers with the
 shared body list and therefore blocks ships, fire, and line of sight. There are

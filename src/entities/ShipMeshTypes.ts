@@ -24,6 +24,9 @@ export interface ShipStyle {
   canopy: number;
 }
 
+/** Tight central hit sphere for a stationary battery (barrel tips excluded). */
+export const TURRET_COLLISION_RADIUS = 1.45;
+
 export const STYLES: Record<ShipKind, ShipStyle> = {
   kestrel: { hull: 0x9aa7b8, panel: 0x5d6b7e, accent: 0x27e8ff, engine: 0x38c8ff, canopy: 0x1fd7d0 },
   vanta: { hull: 0xaeb9c6, panel: 0x525f6e, accent: 0x8cff5a, engine: 0x5affc8, canopy: 0x9fffe0 },

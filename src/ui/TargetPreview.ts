@@ -48,7 +48,12 @@ export class TargetPreview {
   }
 
   /** kind=null hides the readout; relQuat = inverse(viewQuat) · targetQuat. */
-  update(kind: string | null, hullFrac: number, relQuat: Quaternion): void {
+  update(
+    kind: string | null,
+    hullFrac: number,
+    relQuat: Quaternion,
+    relationship: 'hostile' | 'friendly' | 'neutral' = 'hostile',
+  ): void {
     if (kind !== this.mountedKind) {
       if (this.mounted) this.scene.remove(this.mounted);
       this.mounted = kind ? this.wireframeFor(kind) : null;
@@ -59,6 +64,8 @@ export class TargetPreview {
     this.mounted.quaternion.copy(relQuat);
     const f = Math.max(0, Math.min(1, hullFrac));
     this.mat.color.setHSL(f * 0.34, 0.95, 0.55); // red → green
+    if (relationship === 'friendly') this.mat.color.setHex(0x8aff9f);
+    else if (relationship === 'neutral') this.mat.color.setHex(0x9fdcff);
     this.renderer.render(this.scene, this.camera);
   }
 

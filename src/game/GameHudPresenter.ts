@@ -14,7 +14,7 @@ import { Radar3D } from '../ui/Radar3D';
 import { TargetPreview } from '../ui/TargetPreview';
 import { DeviceSystem } from './Devices';
 import { EncounterDirector } from './EncounterDirector';
-import { JUMP_FLUX_COST, JUMP_SPOOL_TIME, targetDisplayName } from './GameConstants';
+import { JUMP_FLUX_COST, JUMP_SPOOL_TIME, targetPresentation } from './GameConstants';
 import { HudProjector } from './HudProjection';
 import { Inventory } from './Inventory';
 import { Quest, QuestSystem } from './Quests';
@@ -155,11 +155,15 @@ export class GameHudPresenter {
     this.radar.update(player.object.quaternion, player.position, radarContacts);
 
     const targetRotation = this.projector.targetRotation(camera, target?.ship ?? null);
+    const targetInfo = target
+      ? targetPresentation(target.ship, target.aimAssist)
+      : null;
     if (target) {
       this.targetPreview.update(
         target.ship.kind,
         target.ship.hull / target.ship.hullMax,
         targetRotation,
+        targetInfo!.relationship,
       );
     } else {
       this.targetPreview.update(null, 0, targetRotation);
@@ -200,7 +204,9 @@ export class GameHudPresenter {
       onPlanet: host.surface !== null,
       targetPreview: target
         ? {
-            name: targetDisplayName(target.ship.kind),
+            name: targetInfo!.name,
+            detail: targetInfo!.detail,
+            relationship: targetInfo!.relationship,
             hullFrac: target.ship.hull / target.ship.hullMax,
           }
         : null,
