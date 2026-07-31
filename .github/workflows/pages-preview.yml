@@ -107,7 +107,7 @@ jobs:
           PR_ACTION: ${{ github.event.action }}
         with:
           script: |
-            const marker = '<!-- cleverspace-pages-preview -->';
+            const marker = '<!-- nebreck-pages-preview -->';
             const removed = process.env.PR_ACTION === 'closed';
             const body = removed
               ? `${marker}\n🧹 This PR preview has been removed.`

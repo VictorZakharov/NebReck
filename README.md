@@ -1,9 +1,9 @@
 # Nebula Reckoning
 
-Last updated: 2026-07-30.
+Last updated: 2026-07-31.
 
 [MIT License](LICENSE) · [Contributing](CONTRIBUTING.md) ·
-[Security](SECURITY.md) · [Play the latest production build](https://victorzakharov.github.io/CleverSpace/)
+[Security](SECURITY.md) · [Play the latest production build](https://victorzakharov.github.io/NebReck/)
 
 > **Development note:** This project was vibe-coded over just two real-time days
 > using a combination of Fable 5 High and GPT-5.6 Sol Max.
@@ -74,7 +74,7 @@ http://127.0.0.1:8123/?testScene=hangar-live&seed=7
 ## Deployments
 
 Every merge to `main` publishes the production bundle to
-[GitHub Pages](https://victorzakharov.github.io/CleverSpace/). Pull requests
+[GitHub Pages](https://victorzakharov.github.io/NebReck/). Pull requests
 opened from branches in this repository receive an isolated preview at
 `/pr-preview/pr-<number>/`; the workflow posts that link on the PR and removes
 the preview when the PR closes. Fork pull requests run read-only CI without

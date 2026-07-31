@@ -163,8 +163,9 @@ Ion Lance: 0.28 s cd, 16 energy/shot — burst weapon, gated hard by the bank.
 Hangar shows hardpoint chips + a top-left numeric spec panel on one shared,
 outward-convex interactive visor; drag any mouse button on empty space to orbit
 the showcase. Ship and difficulty selections are validated and written
-immediately to one-year `cleverspace_ship` / `cleverspace_difficulty` cookies,
-even before Engage. Enemy: raider (fast, 34 hull) /
+immediately to one-year `nebreck_ship` / `nebreck_difficulty` cookies, even
+before Engage. Valid `cleverspace_*` values are migrated on first read for
+backward compatibility. Enemy: raider (fast, 34 hull) /
 brute (110 hull, drops flux 60%). Capital: 1600 hull, 4 hull-mounted batteries
 (die with it, NOT individually targetable — its hull sphere eats the bolts, so
 lock and damage route to the ship), 2500 pts, projects jump suppression.

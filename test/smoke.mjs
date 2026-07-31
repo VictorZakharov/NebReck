@@ -38,8 +38,17 @@ const errors = [];
 const preferencePage = await browser.newPage({ viewport: { width: 1280, height: 720 } });
 preferencePage.on('pageerror', (e) => errors.push(e.message));
 preferencePage.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
+await preferencePage.context().addCookies([
+  { name: 'cleverspace_ship', value: 'aegis', url: `http://localhost:${PORT}` },
+  { name: 'cleverspace_difficulty', value: 'reckoning', url: `http://localhost:${PORT}` },
+]);
 await preferencePage.goto(`http://localhost:${PORT}/?testScene=hangar&seed=7`, { waitUntil: 'load' });
 await preferencePage.waitForTimeout(600);
+const preferenceMigrated = await preferencePage.evaluate(() => ({
+  ship: window.game.selectedShipId,
+  difficulty: window.game.selectedDifficultyId,
+  cookie: document.cookie,
+}));
 const preferenceWritten = await preferencePage.evaluate(() => {
   document.querySelectorAll('.ship-card')[0]?.click();
   document.querySelectorAll('.diff-btn')[0]?.click();
@@ -61,17 +70,26 @@ const preferenceReloaded = await preferencePage.evaluate(() => ({
 }));
 await preferencePage.close();
 const preferencesPersist =
+  preferenceMigrated.ship === 'aegis' &&
+  preferenceMigrated.difficulty === 'reckoning' &&
+  preferenceMigrated.cookie.includes('nebreck_ship=aegis') &&
+  preferenceMigrated.cookie.includes('nebreck_difficulty=reckoning') &&
   preferenceWritten.ship === preferenceReloaded.ship &&
   preferenceWritten.difficulty === preferenceReloaded.difficulty &&
   preferenceWritten.playerShip === preferenceWritten.ship &&
   preferenceReloaded.playerShip === preferenceReloaded.ship &&
   preferenceWritten.state === 'hangar' &&
   preferenceReloaded.state === 'hangar' &&
-  preferenceWritten.cookie.includes('cleverspace_ship=') &&
-  preferenceWritten.cookie.includes('cleverspace_difficulty=');
+  preferenceWritten.cookie.includes('nebreck_ship=') &&
+  preferenceWritten.cookie.includes('nebreck_difficulty=');
 console.log(
   'hangar preferences:',
-  JSON.stringify({ written: preferenceWritten, reloaded: preferenceReloaded, persisted: preferencesPersist }),
+  JSON.stringify({
+    migrated: preferenceMigrated,
+    written: preferenceWritten,
+    reloaded: preferenceReloaded,
+    persisted: preferencesPersist,
+  }),
 );
 
 const page = await browser.newPage({ viewport: { width: 1280, height: 720 } });

@@ -1,5 +1,5 @@
 {
-  "name": "cleverspace",
+  "name": "nebreck",
   "version": "0.1.0",
   "private": true,
   "description": "Nebula Reckoning — a fast arcade space dogfighter built with three.js",
@@ -7,12 +7,12 @@
   "author": "Victor Zakharov",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/VictorZakharov/CleverSpace.git"
+    "url": "git+https://github.com/VictorZakharov/NebReck.git"
   },
   "bugs": {
-    "url": "https://github.com/VictorZakharov/CleverSpace/issues"
+    "url": "https://github.com/VictorZakharov/NebReck/issues"
   },
-  "homepage": "https://victorzakharov.github.io/CleverSpace/",
+  "homepage": "https://victorzakharov.github.io/NebReck/",
   "engines": {
     "node": ">=24 <25"
   },
