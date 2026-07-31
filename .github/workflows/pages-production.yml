@@ -1,0 +1,87 @@
+name: Deploy production
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages-publisher
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    name: Build aggregated Pages artifact
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v7
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build production bundle
+        run: npm run build
+
+      - name: Stage production and retain open PR previews
+        shell: bash
+        run: |
+          set -euo pipefail
+          pages_dir="${RUNNER_TEMP}/pages"
+
+          if git ls-remote --exit-code --heads origin gh-pages >/dev/null 2>&1; then
+            git fetch origin gh-pages:refs/remotes/origin/gh-pages
+            git worktree add --detach "${pages_dir}" origin/gh-pages
+          else
+            git worktree add --detach "${pages_dir}"
+            git -C "${pages_dir}" switch --orphan gh-pages
+            git -C "${pages_dir}" rm -rf --ignore-unmatch .
+          fi
+
+          find "${pages_dir}" -mindepth 1 -maxdepth 1 \
+            ! -name .git \
+            ! -name pr-preview \
+            -exec rm -rf {} +
+          cp -a dist/. "${pages_dir}/"
+          touch "${pages_dir}/.nojekyll"
+
+          git -C "${pages_dir}" config user.name "github-actions[bot]"
+          git -C "${pages_dir}" config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git -C "${pages_dir}" add -A
+          if ! git -C "${pages_dir}" diff --cached --quiet; then
+            git -C "${pages_dir}" commit -m "Deploy production ${GITHUB_SHA}"
+            git -C "${pages_dir}" push origin HEAD:gh-pages
+          fi
+
+      - name: Upload aggregated Pages artifact
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: ${{ runner.temp }}/pages
+
+  deploy:
+    name: Publish GitHub Pages
+    needs: publish
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

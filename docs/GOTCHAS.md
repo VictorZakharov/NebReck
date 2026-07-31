@@ -145,7 +145,8 @@ Real issues hit while building this game, kept here so they only get paid for on
 - Closing an overlay (trade/loadout) re-enters `playing` while the pointer lock
   re-acquire is still pending/rejected — the `pointerlockchange` auto-pause then
   dumped the player into the pause menu ("Esc at trade screen throws to menu").
-  `Game.autoPauseGraceUntil` suppresses auto-pause for 1.5 s after overlay close.
+  `GameFoundation.autoPauseGraceUntil` suppresses auto-pause for 1.5 s after
+  overlay close.
 - **Metalness without an env map renders BLACK.** Base buildings at
   `metalness 0.6` were near-silhouettes on planet surfaces (no environment map
   there) — keep structure materials ≤ ~0.35 metalness, or feed an envMap.
@@ -231,12 +232,13 @@ Real issues hit while building this game, kept here so they only get paid for on
 
 - **Turrets must gate FIRE on line-of-sight, not just tracking** — otherwise they
   blast their own mounting rock/roof or a hillside all day (this happened on
-  planets, asteroids, and buildings simultaneously). `Game.hasLineOfSight` checks
-  big bodies + planet terrain, skipping the sphere that contains the shooter.
+  planets, asteroids, and buildings simultaneously).
+  `GameCombat.hasLineOfSight` checks big bodies + planet terrain, skipping the
+  sphere that contains the shooter.
 - **Planetfall must DETACH the space world, never dispose it** — the sector has to
   be bit-identical on lift-off (destroyed rocks, live patrols, beacons). See
-  `spaceStash` in Game; the smoke test scars a rock before landing to prove
-  identity survives.
+  `spaceStash` in `GameWorldFlow`; the smoke test scars a rock before landing to
+  prove identity survives.
 - **A revisited planet must also be detached, not regenerated.** `planetStates`
   caches the exact `PlanetSurface`, surviving enemies/turrets, and pickup
   snapshot for the current sector/sortie. Rebuilding from the seed alone revives
