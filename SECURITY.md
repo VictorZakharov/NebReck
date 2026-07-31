@@ -11,7 +11,7 @@ Please do not disclose a suspected vulnerability in a public issue.
 
 Use GitHub's private vulnerability reporting flow:
 
-<https://github.com/VictorZakharov/CleverSpace/security/advisories/new>
+<https://github.com/VictorZakharov/NebReck/security/advisories/new>
 
 Include the affected version or commit, reproduction steps, impact, and any
 suggested mitigation. Reports will be reviewed before public disclosure.

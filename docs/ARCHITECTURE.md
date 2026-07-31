@@ -161,13 +161,14 @@ surviving enemy/turret objects and pickup snapshot, so harvested bodies and a
 cleared garrison stay cleared until the sector/sortie is discarded. The
 `Game.world` accessor still presents the active environment to combat.
 
-Hangar ship/difficulty changes write `cleverspace_ship` and
-`cleverspace_difficulty` synchronously from the selection click (one-year,
-`Expires` + `Max-Age`, `Path=/`, `SameSite=Lax`) and are validated against the
-current catalogs at startup. The click contract is route-independent and does
-not require Engage. Explicit `?headless=1` skips startup restore and the Engage
-fallback; automation that actually clicks a hangar card still exercises the real
-cookie write.
+Hangar ship/difficulty changes write `nebreck_ship` and `nebreck_difficulty`
+synchronously from the selection click (one-year, `Expires` + `Max-Age`,
+`Path=/`, `SameSite=Lax`) and are validated against the current catalogs at
+startup. Valid values from the former `cleverspace_*` keys are migrated on read,
+so the repository rename does not discard existing selections. The click
+contract is route-independent and does not require Engage. Explicit
+`?headless=1` skips startup restore and the Engage fallback; automation that
+actually clicks a hangar card still exercises the real cookie write.
 
 Planet caves expose a dense `CaveLandmark.route` from the outside ramp onto the
 Catmull-Rom centreline plus known-clear interior/exterior guard anchors. The

@@ -1,8 +1,10 @@
 import { DIFFICULTIES } from './Difficulty';
 import { PLAYER_SHIPS } from './Ships';
 
-const SHIP_COOKIE = 'cleverspace_ship';
-const DIFFICULTY_COOKIE = 'cleverspace_difficulty';
+const SHIP_COOKIE = 'nebreck_ship';
+const DIFFICULTY_COOKIE = 'nebreck_difficulty';
+const LEGACY_SHIP_COOKIE = 'cleverspace_ship';
+const LEGACY_DIFFICULTY_COOKIE = 'cleverspace_difficulty';
 const ONE_YEAR_SECONDS = 31_536_000;
 const ONE_YEAR_MS = ONE_YEAR_SECONDS * 1_000;
 
@@ -22,23 +24,39 @@ function writeCookie(name: string, value: string): void {
     `Max-Age=${ONE_YEAR_SECONDS}; Expires=${expires}; Path=/; SameSite=Lax`;
 }
 
+function readPreferenceCookie(
+  name: string,
+  legacyName: string,
+  isValid: (value: string) => boolean,
+): string | null {
+  const current = readCookie(name);
+  if (current && isValid(current)) return current;
+
+  const legacy = readCookie(legacyName);
+  if (!legacy || !isValid(legacy)) return null;
+  writeCookie(name, legacy);
+  return legacy;
+}
+
 export interface GamePreferences {
   shipId: string;
   difficultyId: string;
 }
 
 export function loadGamePreferences(defaults: GamePreferences): GamePreferences {
-  const savedShip = readCookie(SHIP_COOKIE);
-  const savedDifficulty = readCookie(DIFFICULTY_COOKIE);
+  const savedShip = readPreferenceCookie(
+    SHIP_COOKIE,
+    LEGACY_SHIP_COOKIE,
+    (value) => PLAYER_SHIPS.some((ship) => ship.id === value),
+  );
+  const savedDifficulty = readPreferenceCookie(
+    DIFFICULTY_COOKIE,
+    LEGACY_DIFFICULTY_COOKIE,
+    (value) => DIFFICULTIES.some((difficulty) => difficulty.id === value),
+  );
   return {
-    shipId:
-      savedShip && PLAYER_SHIPS.some((ship) => ship.id === savedShip)
-        ? savedShip
-        : defaults.shipId,
-    difficultyId:
-      savedDifficulty && DIFFICULTIES.some((difficulty) => difficulty.id === savedDifficulty)
-        ? savedDifficulty
-        : defaults.difficultyId,
+    shipId: savedShip ?? defaults.shipId,
+    difficultyId: savedDifficulty ?? defaults.difficultyId,
   };
 }
 
