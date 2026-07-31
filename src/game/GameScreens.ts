@@ -58,6 +58,7 @@ export abstract class GameScreens extends GameFoundation {
   }
 
   showMenu(): void {
+    if (!this.headless) this.input.leaveFlightMode();
     this.state = 'menu';
     this.hangarVisor.unmount();
     if (this.hangarBay) this.scene.remove(this.hangarBay.group);
@@ -135,6 +136,9 @@ export abstract class GameScreens extends GameFoundation {
   }
 
   startMission(): void {
+    // Called directly from Engage/Retry user activation, before synchronous
+    // world setup consumes the opportunity to enter keyboard-lock fullscreen.
+    if (!this.headless) this.input.enterFlightMode();
     this.hangarVisor.unmount();
     if (this.hangarBay) this.scene.remove(this.hangarBay.group);
     for (const object of this.sector.backdropFx) object.visible = true;
@@ -198,7 +202,6 @@ export abstract class GameScreens extends GameFoundation {
     this.chaseCam.snapTo(player.object);
     // Warm the shader cache so the first close-range fight does not hitch.
     this.renderer.compile(this.scene, this.chaseCam.camera);
-    if (!this.headless) this.input.requestPointerLock();
   }
 
   pause(): void {
@@ -218,7 +221,7 @@ export abstract class GameScreens extends GameFoundation {
     if (this.state !== 'paused') return;
     this.closeOverlays();
     this.state = 'playing';
-    if (!this.headless) this.input.requestPointerLock();
+    if (!this.headless) this.input.enterFlightMode();
   }
 
   openLoadout(): void {
@@ -259,7 +262,7 @@ export abstract class GameScreens extends GameFoundation {
     this.hud.setVisible(true);
     this.state = 'playing';
     this.autoPauseGraceUntil = performance.now() + 1500;
-    if (!this.headless) this.input.requestPointerLock();
+    if (!this.headless) this.input.enterFlightMode();
   }
 
   /** Validate and apply a crafting recipe. */
@@ -299,7 +302,8 @@ export abstract class GameScreens extends GameFoundation {
 
   protected gameOver(): void {
     this.state = 'gameover';
-    this.input.exitPointerLock();
+    if (!this.headless) this.input.leaveFlightMode(false);
+    else this.input.exitPointerLock();
     this.hud.setVisible(false);
     const minutes = Math.floor(this.missionTime / 60);
     const seconds = Math.floor(this.missionTime % 60);

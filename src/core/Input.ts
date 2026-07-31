@@ -12,12 +12,16 @@ export class Input {
   private buttonsPressedThisFrame = new Set<number>();
   private pointerLocked = false;
   private wheelDelta = 0;
+  private flightKeysActive = false;
 
   constructor(private readonly element: HTMLElement) {
     window.addEventListener('keydown', (e) => {
       if (!this.keys.has(e.code)) this.pressedThisFrame.add(e.code);
       this.keys.add(e.code);
-      if (e.code === 'Tab' || e.code === 'Space') e.preventDefault();
+      if (
+        e.code === 'Tab' || e.code === 'Space' ||
+        (this.flightKeysActive && e.code === 'KeyW' && (e.ctrlKey || e.metaKey))
+      ) e.preventDefault();
     });
     window.addEventListener('keyup', (e) => this.keys.delete(e.code));
     window.addEventListener('blur', () => {
@@ -43,6 +47,42 @@ export class Input {
     document.addEventListener('pointerlockchange', () => {
       this.pointerLocked = document.pointerLockElement === this.element;
     });
+    document.addEventListener('fullscreenchange', () => {
+      if (document.fullscreenElement && this.flightKeysActive) void this.lockFlightKeys();
+      else this.unlockFlightKeys();
+    });
+  }
+
+  /**
+   * Enter browser-game fullscreen and capture KeyW with every modifier, making
+   * Left Ctrl + W available as descend + forward instead of Chrome's close-tab
+   * accelerator. Unsupported browsers still retain ordinary pointer lock.
+   */
+  enterFlightMode(): void {
+    this.flightKeysActive = true;
+    void (async () => {
+      if (!document.fullscreenElement && document.fullscreenEnabled) {
+        try {
+          const options = {
+            navigationUI: 'hide',
+            keyboardLock: 'browser',
+          } as FullscreenOptions & { keyboardLock: 'browser' };
+          await document.documentElement.requestFullscreen(options);
+        } catch { /* fullscreen rejected or unsupported */ }
+      }
+      await this.lockFlightKeys();
+      this.requestPointerLock();
+    })();
+  }
+
+  /** Stop capturing browser accelerators; optionally leave app fullscreen. */
+  leaveFlightMode(exitFullscreen = true): void {
+    this.flightKeysActive = false;
+    this.exitPointerLock();
+    this.unlockFlightKeys();
+    if (exitFullscreen && document.fullscreenElement) {
+      void document.exitFullscreen().catch(() => {});
+    }
   }
 
   requestPointerLock(): void {
@@ -76,6 +116,11 @@ export class Input {
 
   get isPointerLocked(): boolean {
     return this.pointerLocked;
+  }
+
+  /** Test hook for the synthetic Ctrl+W regression; no allocation. */
+  get capturesFlightKeys(): boolean {
+    return this.flightKeysActive;
   }
 
   isDown(code: string): boolean {
@@ -112,5 +157,22 @@ export class Input {
   endFrame(): void {
     this.pressedThisFrame.clear();
     this.buttonsPressedThisFrame.clear();
+  }
+
+  private async lockFlightKeys(): Promise<void> {
+    const keyboard = (navigator as Navigator & {
+      keyboard?: { lock(codes?: string[]): Promise<void> };
+    }).keyboard;
+    if (!keyboard || !document.fullscreenElement || !this.flightKeysActive) return;
+    try {
+      await keyboard.lock(['KeyW']);
+    } catch { /* progressive enhancement */ }
+  }
+
+  private unlockFlightKeys(): void {
+    const keyboard = (navigator as Navigator & {
+      keyboard?: { unlock(): void };
+    }).keyboard;
+    keyboard?.unlock();
   }
 }

@@ -33,7 +33,7 @@ src/
   main.ts                 entry: URL params (testScene, seed) → Game → menu or test scene
   core/
     GameLoop.ts           rAF loop + dt clamp + stepManual() for deterministic tests
-    Input.ts              keyboard/mouse/pointer-lock; per-frame consumed deltas
+    Input.ts              keyboard/mouse + fullscreen keyboard/pointer lock; frame deltas
     EventBus.ts           typed pub/sub (GameEvents interface = the event catalog)
     Rng.ts                seeded mulberry32; fork() derives child streams
   rendering/
@@ -85,9 +85,9 @@ src/
   combat/
     WeaponDefs.ts         player weapons/seeker + enemy rotary/homing/fast packages
     WeaponSystem.ts       player firing, energy, switching, damageMult (upgrades)
-    ProjectileSystem.ts   pooled bolts/ordnance, homing + lock threat query, swept hull collision
+    ProjectileSystem.ts   pooled ordnance, path-range clamp, homing/threat query, swept collision
     CapitalBeam.ts        thick-ray trace: first asteroid absorbs, ships before it are hit
-    Targeting.ts          range-weighted close lock + crosshair-ranked distant/civilian scan
+    Targeting.ts          pursuit-aware hostile lock + unified peaceful contact scan
   fx/
     ParticleSystem.ts     one pooled additive point-sprite system for everything
     ExplosionSystem.ts    flash + shockwave ring + sparks/embers + pooled point lights
@@ -119,6 +119,7 @@ src/
     GameCombat.ts         hits, hostile ordnance/LOS, carrier-beam effects and collisions
     GameHudPresenter.ts   HUD frame assembly, projections, radar and pickup flyouts
     GameWorldFlow.ts      jump spool, sector population and persistent planet swaps
+    SpawnSafety.ts        quiet sector-entry solver with guaranteed outer-shell fallback
     GameConstants.ts      travel/system-safety constants + target relationship/role copy
     GamePreferences.ts    validated one-year ship/difficulty cookies
     InteractionTargeting.ts boresight loot/body + nearest-neutral queries
@@ -143,6 +144,25 @@ src/
     TestScenes.ts         small deterministic scene-name dispatcher
     test-scenes/          shared stepping + focused UI, combat and world staging modules
 ```
+
+Behavioral automation follows the same ownership split:
+
+```
+test/
+  smoke.mjs               thin Chromium lifecycle + ordered scenario runner
+  smoke/
+    helpers.mjs           static server, browser diagnostics, deterministic stepping
+    hangar.mjs            preferences, hangar geometry, crafting and contact UI
+    world.mjs             peace/trade/planet persistence/jump flow
+    targeting.mjs         pursuit policy, ordnance warnings/range and flight key chord
+    capital.mjs           carrier battery, preview and annihilator probes
+    runtime.mjs           hunters, camera, turrets, devices and stress cleanup
+    assertions.mjs        grouped invariant aggregation and failure labels
+```
+
+Scenario modules intentionally execute in runner order against one page. They may
+reuse staged world state, but own no browser/server lifecycle and must advance
+gameplay through the deterministic helpers rather than wall time.
 
 ## Game state machine
 
@@ -197,7 +217,7 @@ GameLoop.tick(dt)
     hostiles[] targeting-resolution rebuild (distant carrier mounts collapse);
     shootables[] physical-hit rebuild (all mounts + capital + neutrals)
     PlayerShip.update          ← Input
-    Targeting.update           → close range-weighted hostile; else camera-angle contact
+    Targeting.update           → pursuit-aware hostile lock or unified camera-angle inspection
     InteractionTargeting      → competing ore/stash boresight candidate (never aim assist)
     WeaponSystem.update        → spawns bolts/missiles from aimTarget only
     engine-trail particle emission (dt-accumulated)

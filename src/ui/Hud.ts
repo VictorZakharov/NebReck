@@ -306,6 +306,7 @@ export class Hud {
 
     e.targetPreview.classList.toggle('show', s.targetPreview !== null);
     if (s.targetPreview) {
+      e.targetPreview.classList.toggle('hostile', s.targetPreview.relationship === 'hostile');
       e.targetPreview.classList.toggle('friendly', s.targetPreview.relationship === 'friendly');
       e.targetPreview.classList.toggle('neutral', s.targetPreview.relationship === 'neutral');
       e.previewTitle.textContent = s.targetPreview.relationship === 'hostile' ? 'Target' : 'Contact';

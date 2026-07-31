@@ -37,16 +37,19 @@ with a telegraphed annihilator beam — cripple it, destroy it, or outrun its fi
   soft-targeting with lead pip, enemy AI wings (raiders, rotary interceptors, wardens
   and missile bombers), mixed cannon / rotary / homing-rocket / fast-rocket batteries,
   escalating waves and story comms. Seeker bombers can launch while pursuing from
-  1,200 m; live missiles raise lock and monotonic two-second impact warnings, while
-  a safely activated cloak breaks their tracking. Close hostiles retain range-weighted
-  aim assist; distant hostiles and sensor-only civilian contacts are selected strictly
-  by camera-crosshair angle. Civilians receive relationship-colored wireframes but
-  never autoaim.
+  1,200 m; player seekers expire after 1,050 m of actual traveled path. Live missiles
+  raise lock and monotonic two-second impact warnings, while a safely activated cloak
+  breaks their tracking. With no enemy pursuing, hostile and
+  civilian contacts at every range share one camera-crosshair ranking; active pursuit
+  restores hostile priority and distance-weighted close-combat aim assist. Civilians
+  remain sensor-only and never autoaim. Hostile previews retain green→red health
+  wireframes inside a separate red outline; civilians use relationship colors and
+  mineable veins use their resource color.
 - **Mining & crafting**: shoot glowing ore veins on asteroids, tractor in salvage
   (Scrap / Ion Crystals / Flux Cores), spend it mid-run in the Tab Engineering screen
   on repairs, refills and three-rank per-run upgrades. A shared original SVG set
   identifies every material/consumable in the HUD, hold and cost chips. Vein hints
-  and informational crystal wireframes follow a stable, smoothly projected centroid;
+  and informational resource-colored vein wireframes follow a stable, smoothly projected centroid;
   merchant, stash and landing prompts follow their world objects too. Crafting keeps
   its scroll position, is safety-locked within 180 m of a hostile, and cannot produce
   or buy missiles for a hull without a rack. The jump HUD shows required/held Flux.
@@ -98,7 +101,7 @@ deployment credentials.
 | Mouse | Steer (pitch/yaw) |
 | LMB / RMB | Primary fire / seeker missile |
 | W / S | Thrust / brake |
-| A / D, Space / L-Ctrl | Strafe |
+| A / D, Space / L-Ctrl | Strafe; L-Ctrl + W descends while thrusting forward |
 | Q / E | Roll |
 | Shift | Boost |
 | 1·2·3 / wheel | Switch weapon |
@@ -109,17 +112,24 @@ deployment credentials.
 | F / G / H | Cloak / EMP / nanobots |
 | Esc | Pause |
 
+Engage enters app fullscreen and uses browser Keyboard Lock where supported so
+modifier movement chords such as `L-Ctrl + W` remain game input instead of browser shortcuts.
+
 The in-game **Field Manual** (main menu) documents every implemented mechanic.
 
 ## Testing
 
 ```bash
-npm run test:architecture     # enforce controller line-size budgets
+npm run test:architecture     # enforce controller and harness line-size budgets
 npm run typecheck            # strict TS, no emit
 npm run test:visual          # compare 26 scenes with local, ignored baselines
 npm run test:visual:update   # re-capture local baselines after intentional changes
 npm run test:smoke           # end-to-end behavior + persistence regression suite
 ```
+
+The smoke command keeps a thin runner in `test/smoke.mjs`; focused hangar, world,
+targeting, capital, and runtime probes live under `test/smoke/` and share
+deterministic artificial-time helpers.
 
 The visual harness (`test/visual/run.mjs`) builds the app, serves `dist/`, drives
 headless Chromium on SwiftShader (software GL → GPU-independent pixels), loads each

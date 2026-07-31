@@ -119,7 +119,7 @@ export abstract class GameInteractions extends GameScreens {
     this.hud.setVisible(true);
     this.state = 'playing';
     this.autoPauseGraceUntil = performance.now() + 1500;
-    if (!this.headless) this.input.requestPointerLock();
+    if (!this.headless) this.input.enterFlightMode();
   }
 
   executeTrade(id: string): boolean {

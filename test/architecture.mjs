@@ -13,6 +13,14 @@ const limits = new Map([
   ['src/game/test-scenes/UiTestScenes.ts', 120],
   ['src/game/test-scenes/CombatTestScenes.ts', 240],
   ['src/game/test-scenes/WorldTestScenes.ts', 280],
+  ['test/smoke.mjs', 100],
+  ['test/smoke/helpers.mjs', 120],
+  ['test/smoke/hangar.mjs', 400],
+  ['test/smoke/world.mjs', 560],
+  ['test/smoke/targeting.mjs', 460],
+  ['test/smoke/capital.mjs', 360],
+  ['test/smoke/runtime.mjs', 300],
+  ['test/smoke/assertions.mjs', 320],
 ]);
 
 let failed = false;
@@ -28,7 +36,7 @@ for (const [path, limit] of limits) {
 
 if (failed) {
   console.error(
-    '\nController size budget exceeded. Extract a focused responsibility instead of growing the orchestrator.',
+    '\nModule size budget exceeded. Extract a focused responsibility instead of growing an orchestrator or scenario monolith.',
   );
   process.exitCode = 1;
 }

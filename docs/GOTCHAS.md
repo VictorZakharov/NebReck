@@ -118,13 +118,16 @@ Real issues hit while building this game, kept here so they only get paid for on
   capital-level contact; they re-enter up close. `shootables` still contains every
   mount at every range so this UI policy never changes physical hits. Inside the
   active weapon reach, score is `(1-dot)*400 + dist*0.5`, so a 10× closer turret
-  beats a distant fighter at similar angles. When no in-range hostile qualifies,
-  enemies switch to pure camera-crosshair angle (range breaks exact ties only).
+  beats a distant fighter at similar angles—but only while an `EnemyBrain` is
+  engaged. With no pursuing enemy, hostiles and civilians compete in one pure
+  camera-crosshair ranking (range breaks exact ties only), allowing immediate
+  inspection target swaps to whichever contact is actually under the reticle.
   The hostiles list is rebuilt BEFORE `targeting.update` each tick.
-- **An informational contact is not an aim target.** Targeting tries LOS-clear
-  hostiles first, then sensor-only civilians. Civilians rank by camera-crosshair
-  angle (range breaks only an angular tie), are not erased by asteroid visual
-  clutter, and receive no wider keep-lock cone. HUD projection
+- **An informational contact is not an aim target.** During active pursuit,
+  targeting tries LOS-clear hostiles first, then sensor-only civilians. During
+  peace, both relationship sets share the angular comparison, but a winning
+  civilian remains informational. Civilians are not erased by asteroid visual
+  clutter and receive no wider keep-lock cone. HUD projection
   consumes `current`, but primary convergence and seeker homing must consume
   `aimTarget`; feeding `current` to weapons silently enables autoaim against
   merchants. The capture bracket has no opacity transition so loss is immediate.
@@ -136,6 +139,14 @@ Real issues hit while building this game, kept here so they only get paid for on
   radial speed—that delayed the red warning until roughly 0.6 seconds. Cache a
   per-projectile warning ETA with `min(previous,current)` so displayed time cannot
   rise; clear it immediately when radial closing speed becomes non-positive.
+- **Missile range is traveled path, not launch-to-current displacement.** Player
+  seekers have a 1,050 m budget. Clamp the final swept segment to the remaining
+  budget before collision tests, then release it; checking after collision allows
+  a last-frame hit beyond range, while displacement lets curved seekers overfly it.
+- **Chrome reserves Ctrl+W before ordinary page key handling.** Flight enters
+  JavaScript fullscreen and locks physical `KeyW`, which forwards every modifier
+  chord to `Input`; the handler must still `preventDefault()` while retaining both
+  `ControlLeft` and `KeyW` so descend + forward works. Pointer lock alone is not enough.
 - **Removing an Object3D does not free its GPU allocations.** Every ship mesh is
   procedurally instantiated, so kills, sector swaps, hangar hull changes, parked
   planet visits, and an abandoned space stash must call `Ship.dispose()` after
@@ -294,7 +305,7 @@ Real issues hit while building this game, kept here so they only get paid for on
   is inert if `EnemyBrain.approach` only sets `wantsFire` inside its legacy 320 m
   gun envelope. Pass the package attack range through `EnemyShip.update`.
 - **Committed carrier fire is a state machine, not a delayed callback.** Charge
-  begins only inside the forward cone with LOS. During the two-second charge the
+  begins only within 500 m, inside the forward cone, and with LOS. During the two-second charge the
   last visible position updates and is clamped to the physical arc; losing LOS or
   leaving the cone never cancels the shot. `traceCapitalBeam` stops at and destroys
   only the nearest asteroid, protecting the player and further rocks behind it.

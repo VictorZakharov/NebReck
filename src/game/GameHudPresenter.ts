@@ -260,25 +260,25 @@ export class GameHudPresenter {
 
   private jumpStatus(): { label: string; frac: number } {
     const host = this.host;
-    const fluxStatus = `Flux ${JUMP_FLUX_COST}/${host.inventory.counts.flux}`;
+    const fluxCount = `${JUMP_FLUX_COST}/${host.inventory.counts.flux}`;
     if (host.jumpSpool >= 0) {
       const fraction = 1 - host.jumpSpool / JUMP_SPOOL_TIME;
       return {
-        label: `Spooling ${Math.round(fraction * 100)}%${host.jumpConsumesFlux ? ` · ${fluxStatus}` : ''}`,
+        label: `Spool ${Math.round(fraction * 100)}%${host.jumpConsumesFlux ? ` · ${fluxCount}` : ''}`,
         frac: fraction,
       };
     }
     if (host.surface) {
       host.player.forward(jumpDirection);
       return jumpDirection.y > 0.5
-        ? { label: 'Hold J — lift off', frac: 1 }
-        : { label: 'Aim skyward to leave', frac: 0 };
+        ? { label: 'J · Lift off', frac: 1 }
+        : { label: 'Aim skyward', frac: 0 };
     }
-    if (host.findAimedPlanet() !== null) return { label: 'Hold J — LAND', frac: 1 };
+    if (host.findAimedPlanet() !== null) return { label: 'J · Land', frac: 1 };
     if (host.jumpSuppressed) return { label: 'Suppressed', frac: 0 };
     if (host.inventory.counts.flux < JUMP_FLUX_COST) {
-      return { label: `${fluxStatus} · insufficient`, frac: 0 };
+      return { label: `${fluxCount} · Low flux`, frac: 0 };
     }
-    return { label: `Hold J · ${fluxStatus}`, frac: 1 };
+    return { label: `J · Flux ${fluxCount}`, frac: 1 };
   }
 }

@@ -2,6 +2,7 @@ import { Scene, Vector3 } from 'three';
 import { AudioEngine } from '../audio/AudioEngine';
 import { ProjectileHit, ProjectileSystem } from '../combat/ProjectileSystem';
 import { traceCapitalBeam } from '../combat/CapitalBeam';
+import { capitalBatteryHullDamage } from '../combat/CapitalSubsystemDamage';
 import { ENEMY_AUTOGUN, ENEMY_BOLT_COLOR } from '../combat/WeaponDefs';
 import { EventBus } from '../core/EventBus';
 import { Rng } from '../core/Rng';
@@ -273,6 +274,8 @@ export class GameCombat {
 
   private killTurret(turret: Turret): void {
     const host = this.host;
+    const parentCapital = host.capital?.alive && host.capitalTurrets.includes(turret)
+      ? host.capital : null;
     host.explosions.spawn(turret.position, 1.4);
     host.audio.explosion(true);
     host.debris.spawn(turret.position, 5, host.rng);
@@ -280,6 +283,10 @@ export class GameCombat {
     turret.dispose();
     host.turrets = host.turrets.filter((candidate) => candidate !== turret);
     host.capitalTurrets = host.capitalTurrets.filter((candidate) => candidate !== turret);
+    if (parentCapital) {
+      const result = parentCapital.takeDamage(capitalBatteryHullDamage(parentCapital, turret));
+      if (result.died) this.killCapital(parentCapital);
+    }
     host.score += Math.round(
       turret.stats.score * host.difficulty.scoreMult * host.threatScale(),
     );

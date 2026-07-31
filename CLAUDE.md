@@ -37,12 +37,17 @@ Everspace-inspired exploration space-dogfighter. three.js + TypeScript + webpack
    do not introduce one-off Unicode glyphs in DOM inventory UI.
    Visual staging is likewise split by responsibility: `TestScenes.ts` is only
    the dispatcher; UI, combat and world scenes live under `game/test-scenes/`.
+   Behavioral staging follows the same rule: `test/smoke.mjs` is a thin runner;
+   feature probes live under `test/smoke/` and return results to the grouped
+   assertion module. Do not grow the runner back into a scenario monolith.
 5. Pooled + allocation-free per frame; pooled lights idle at intensity 0.
 
-Targeting has two regimes: range-weighted hostile aim assist inside current weapon
-reach, then pure camera-crosshair ranking beyond reach; civilian and ore previews
-are informational only and must never enter `aimTarget`. All object prompts use a
-stable smoothed world anchor. Cloak and crafting share the 180 m system lockout.
+Targeting mode follows pursuit state: with no engaged enemy, hostiles and civilians
+share pure camera-crosshair ranking at every range; active pursuit restores hostile
+priority plus range-weighted aim assist inside weapon reach. Civilian and ore previews
+are informational only and must never enter `aimTarget`; ore wireframes use their
+resource color. All object prompts use a stable smoothed world anchor. Cloak and
+crafting share the 180 m lockout.
 
 Planet cave geometry is an open-bottomed procedural arch whose sampled colliders
 come from the same profile. Preserve the non-self-intersecting control path, dense
@@ -53,10 +58,15 @@ closing-speed collision damage whenever surface generation changes.
 Hangar selection clicks are persistence commits. Save ship/difficulty synchronously
 inside the click callbacks; do not defer them to Engage or game entry.
 
+Player seekers have a 1,050 m cumulative traveled-path budget, including curves;
+clamp the final swept segment before collision so a large step cannot over-range
+hit. Immersive flight locks physical `KeyW` where the browser supports Keyboard
+Lock so `L-Ctrl + W` remains descend + thrust instead of a close-tab shortcut.
+
 ## Verify loop (run all four before claiming done)
 
 ```bash
-npm run test:architecture   # Game facade/controller size budgets
+npm run test:architecture   # Game/controller and smoke-module size budgets
 npm run typecheck
 npm run test:visual          # 26 scenes vs local baselines; 0.000% on this machine
 npm run test:smoke           # full loop: peace→contract→merchant→planet→jump→combat→devices

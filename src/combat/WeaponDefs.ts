@@ -85,12 +85,14 @@ export const PLAYER_WEAPONS: WeaponDef[] = [
 export const MISSILE = {
   name: 'Seeker Missiles',
   cooldown: 1.35,
-  damage: 34,
+  damage: 68,
   speed: 130,
   accel: 160,
   maxSpeed: 260,
   turnRate: 2.6,
   life: 6,
+  /** Hard traveled-path budget; curved pursuit consumes the same 1,050 m. */
+  maxDistance: 1050,
   color: new Color(1.0, 0.85, 0.3),
 } as const;
 
@@ -112,12 +114,13 @@ export const ENEMY_AUTOGUN = {
 export const ENEMY_ROCKETS = {
   homing: {
     name: 'Vigil Seeker',
-    damage: 28,
+    damage: 56,
     speed: 92,
     accel: 105,
     maxSpeed: 205,
     turnRate: 1.55,
     life: 8,
+    maxDistance: 1580,
     attackRange: 1200,
     color: new Color(1.0, 0.22, 0.08),
   },
@@ -129,6 +132,7 @@ export const ENEMY_ROCKETS = {
     maxSpeed: 285,
     turnRate: 0,
     life: 4.6,
+    maxDistance: 1311,
     attackRange: 320,
     color: new Color(1.0, 0.58, 0.1),
   },

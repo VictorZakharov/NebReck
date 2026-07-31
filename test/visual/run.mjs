@@ -4,7 +4,8 @@
  *   npm run test:visual          — capture all scenes, compare against local baselines
  *   npm run test:visual:update   — capture and overwrite local baselines
  *
- * Flags: --scene=<name> to run a single scene, --no-build to reuse dist/.
+ * Flags: --scene=<name> to run a single scene, --no-build to reuse dist/,
+ *        --port=<number> to coexist with a running review server.
  *
  * Renders run in headless Chromium on SwiftShader (software GL) so results
  * are stable across GPUs/driver updates on the same OS. Scenes are staged
@@ -35,14 +36,20 @@ const SCENES = [
 ];
 const SEED = 7;
 const VIEWPORT = { width: 1280, height: 720 };
-const PORT = 8123;
+
+const args = process.argv.slice(2);
+const portArg = args.find((argument) => argument.startsWith('--port='))?.split('=')[1];
+const PORT = portArg === undefined ? 8123 : Number(portArg);
+if (!Number.isInteger(PORT) || PORT < 1 || PORT > 65535) {
+  console.error(`Invalid visual harness port "${portArg}".`);
+  process.exit(2);
+}
 
 // Pixelmatch sensitivity + how many differing pixels we tolerate before
 // failing (anti-aliasing wobble across Chromium updates stays under this).
 const PIXEL_THRESHOLD = 0.16;
 const MAX_DIFF_RATIO = 0.015;
 
-const args = process.argv.slice(2);
 const update = args.includes('--update');
 const noBuild = args.includes('--no-build');
 const only = args.find((a) => a.startsWith('--scene='))?.split('=')[1];

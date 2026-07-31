@@ -65,6 +65,8 @@ interface Projectile {
   accel: number;
   maxSpeed: number;
   turnRate: number;
+  maxDistance: number;
+  distanceTravelled: number;
   trailColor: Color;
   trailTimer: number;
   /** Monotonic HUD countdown once this seeker enters the imminent window. */
@@ -121,6 +123,8 @@ export class ProjectileSystem {
         accel: 0,
         maxSpeed: 0,
         turnRate: 0,
+        maxDistance: Infinity,
+        distanceTravelled: 0,
         trailColor: new Color(),
         trailTimer: 0,
         warningEta: Infinity,
@@ -138,6 +142,8 @@ export class ProjectileSystem {
     p.damage = s.damage;
     p.faction = s.faction;
     p.life = s.life;
+    p.maxDistance = Infinity;
+    p.distanceTravelled = 0;
     p.velocity.copy(s.direction).normalize().multiplyScalar(s.speed);
     p.material.color.copy(s.color).multiplyScalar(3.2); // HDR — bloom picks it up
     p.mesh.visible = true;
@@ -154,6 +160,7 @@ export class ProjectileSystem {
       maxSpeed: MISSILE.maxSpeed,
       turnRate: MISSILE.turnRate,
       life: MISSILE.life,
+      maxDistance: MISSILE.maxDistance,
       color: MISSILE.color,
       homing: true,
     });
@@ -174,6 +181,7 @@ export class ProjectileSystem {
       maxSpeed: def.maxSpeed,
       turnRate: def.turnRate,
       life: def.life,
+      maxDistance: def.maxDistance,
       color: def.color,
       homing: mode === 'homing',
     });
@@ -191,6 +199,7 @@ export class ProjectileSystem {
       maxSpeed: number;
       turnRate: number;
       life: number;
+      maxDistance: number;
       color: Color;
       homing: boolean;
     },
@@ -207,6 +216,8 @@ export class ProjectileSystem {
     p.accel = def.accel;
     p.maxSpeed = def.maxSpeed;
     p.turnRate = def.turnRate;
+    p.maxDistance = def.maxDistance;
+    p.distanceTravelled = 0;
     p.trailTimer = 0;
     p.warningEta = Infinity;
     p.velocity.copy(direction).normalize().multiplyScalar(def.speed);
@@ -272,6 +283,23 @@ export class ProjectileSystem {
       }
 
       newPos.copy(p.mesh.position).addScaledVector(p.velocity, dt);
+      let expiresAtRange = false;
+      if (p.kind === 'missile') {
+        const stepDistance = p.velocity.length() * dt;
+        const remainingDistance = Math.max(0, p.maxDistance - p.distanceTravelled);
+        if (stepDistance >= remainingDistance) {
+          if (stepDistance > 1e-8) {
+            newPos.copy(p.mesh.position).addScaledVector(
+              p.velocity,
+              remainingDistance / stepDistance * dt,
+            );
+          }
+          p.distanceTravelled = p.maxDistance;
+          expiresAtRange = true;
+        } else {
+          p.distanceTravelled += stepDistance;
+        }
+      }
 
       // Swept collision along this frame's travel segment.
       let hitSomething = false;
@@ -334,6 +362,13 @@ export class ProjectileSystem {
           faction: p.faction,
           wasMissile: p.kind === 'missile',
         });
+        this.release(p);
+        continue;
+      }
+
+      // Collision is swept only as far as the weapon's actual flight budget.
+      // If nothing was struck before that endpoint, the missile dies there.
+      if (expiresAtRange) {
         this.release(p);
         continue;
       }
