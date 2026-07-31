@@ -12,6 +12,7 @@ const limits = new Map([
   ['src/game/test-scenes/TestSceneShared.ts', 60],
   ['src/game/test-scenes/UiTestScenes.ts', 120],
   ['src/game/test-scenes/CombatTestScenes.ts', 240],
+  ['src/game/test-scenes/TargetingTestScenes.ts', 160],
   ['src/game/test-scenes/WorldTestScenes.ts', 280],
   ['test/smoke.mjs', 100],
   ['test/smoke/helpers.mjs', 120],

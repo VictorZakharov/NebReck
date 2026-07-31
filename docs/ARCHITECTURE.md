@@ -142,7 +142,7 @@ src/
     Story.ts              title, intro, exploration comms beats (fired once on
                           first-contact / first-cave / capital-sighted / …), death lines
     TestScenes.ts         small deterministic scene-name dispatcher
-    test-scenes/          shared stepping + focused UI, combat and world staging modules
+    test-scenes/          shared stepping + focused UI, combat, targeting and world staging modules
 ```
 
 Behavioral automation follows the same ownership split:

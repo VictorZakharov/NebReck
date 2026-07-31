@@ -45,6 +45,7 @@ actual regression check. Never commit generated PNGs.
 | combat / fx / split | staged battle FX, explosion quality, rock calving |
 | hud | full HUD: panels, jump spool + warp streaks, contract OFFER panel, quest tracker, merchant note |
 | targeting | hostile marker semantics: lock box + lead/range, red/amber/grey contacts, edge chevrons, radar, live fire |
+| distant-targeting | no-pursuit angular scan beyond 1.5 km: centred 1,847 m hostile selected over a nearer off-axis contact |
 | friendly-targeting | merchant fallback lock: green box/wireframe, relationship+role copy, no lead pip |
 | menu / hangar / loadout / cockpit | each screen; cockpit = live-data MFDs + frame |
 | boost | camera framing at full boost (ship large, visible) |
@@ -166,9 +167,12 @@ Asserted, in order:
    overhead turret aim dot→1, and cloak/EMP/nanobots all function.
 10. Range-policy staging proves close hostiles are distance weighted, distant
     hostiles are camera-angle ranked, and an on-crosshair civilian beats an off-axis
-    hostile only during peace; active pursuit restores hostile priority. Lock colors
-    remain red/grey rather than changing to orange. Hostile previews independently
-    assert a red relationship outline and green full-health wireframe. Explicit
+    hostile only during peace; active pursuit restores hostile priority. The
+    exact live regression is staged separately: a centred 1,847 m hostile
+    must beat a 1,444 m off-axis hostile despite both lying beyond/near the old
+    1,500 m sensor cutoff. Weapon reach never caps inspection. Lock colors remain
+    red/grey rather than changing to orange. Hostile previews independently assert
+    a red relationship outline and green full-health wireframe. Explicit
     package staging proves a pursuing seeker bomber
     fires at 1,050 m plus rapid rotary ship/battery cadence. Artificial projectile
     time proves homing versus fast-unguided rockets, a 900 m player-seeker hit and
