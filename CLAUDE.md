@@ -43,6 +43,15 @@ Everspace-inspired exploration space-dogfighter. three.js + TypeScript + webpack
    assertion module. Do not grow the runner back into a scenario monolith.
 5. Pooled + allocation-free per frame; pooled lights idle at intensity 0.
 
+WebGL resolution is adaptive and independent of CSS/HUD resolution. Preserve the
+1920×1080 initial pixel budget, 1280×720 floor, hysteresis, and current buffer-pixel
+workload across resize/fullscreen. Manual test stepping intentionally supplies no
+wall-clock sample, so visual baselines do not change with machine speed.
+Static procedural meshes are material-batched for rendering. Authored source parts
+remain on camera-disabled layer 31 for connectivity/debris; visual traversals skip
+`renderBatchSource`, while destruction skips `excludeFromDebris`. Repeated fog
+cards are instanced, not independent sprites. Preserve the 330-call benchmark cap.
+
 Targeting mode follows pursuit state: with no engaged enemy, hostiles and civilians
 share pure camera-crosshair ranking at every range with no sensor-distance cap;
 active pursuit restores hostile priority plus range-weighted aim assist inside weapon
@@ -92,11 +101,12 @@ remain the first synchronous activation-gated request, before fullscreen; awaiti
 fullscreen first breaks Safari. The first unlocked canvas click retries capture
 and must never leak through as a weapon press.
 
-## Verify loop (run all four before claiming done)
+## Verify loop (run all five before claiming done)
 
 ```bash
 npm run test:architecture   # Game/controller and smoke-module size budgets
 npm run typecheck
+npm run test:performance     # 1080p/native-4K/Retina-4K renderer diagnostics
 npm run test:visual          # 36 scenes vs local baselines; 0.000% on this machine
 npm run test:smoke           # full loop: peace→contract→merchant→planet→jump→combat→devices
 ```

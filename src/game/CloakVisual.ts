@@ -51,7 +51,7 @@ export class CloakVisual {
       const shell = new Group();
       player.exterior.traverse((object) => {
         const mesh = object as Mesh;
-        if (!mesh.isMesh) return;
+        if (!mesh.isMesh || mesh.userData.renderBatchSource) return;
         const shellPart = new Mesh(mesh.geometry, rim);
         shellPart.position.copy(mesh.position);
         shellPart.rotation.copy(mesh.rotation);
@@ -88,6 +88,7 @@ export class CloakVisual {
 
   private applyGhostMaterials(player: PlayerShip): void {
     player.exterior.traverse((object) => {
+      if (object.userData.renderBatchSource) return;
       if ((object as { isSprite?: boolean }).isSprite) return;
       const material = (object as { material?: CloakableMaterial }).material;
       if (!material || !('opacity' in material)) return;
@@ -105,6 +106,7 @@ export class CloakVisual {
 
   private restoreMaterials(player: PlayerShip): void {
     player.exterior.traverse((object) => {
+      if (object.userData.renderBatchSource) return;
       const material = (object as { material?: CloakableMaterial }).material;
       if (!material || material.__cloakBase === undefined) return;
       material.opacity = material.__cloakBase;

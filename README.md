@@ -99,7 +99,13 @@ with a telegraphed annihilator beam — cripple it, destroy it, or outrun its fi
 - **Visuals**: fragment-correct solar corona, HDR bloom, ACES tonemap, SMAA,
   chromatic aberration on boost, procedural nebula/planets/asteroids, and pooled
   explosions with shockwaves and lights.
-- **144 Hz ready**: rAF-driven loop, all simulation dt-scaled and frame-rate independent.
+- **Adaptive high-refresh rendering**: the rAF-driven simulation stays frame-rate
+  independent while a hysteresis-controlled framebuffer targets smooth play without
+  changing the native-resolution DOM HUD. Native and Retina-style 4K both begin at
+  a 1080p internal pixel budget, can descend toward 720p after sustained overload,
+  and recover quality gradually when headroom returns. Static hull/cave primitives
+  and volumetric fog billboards are GPU-batched; the seeded hostile benchmark drops
+  from 663 to 300 draw calls without reducing its 163k-triangle scene detail.
 
 ## Run
 
@@ -159,6 +165,7 @@ The in-game **Field Manual** (main menu) documents every implemented mechanic.
 ```bash
 npm run test:architecture     # enforce controller and harness line-size budgets
 npm run typecheck            # strict TS, no emit
+npm run test:performance     # repeatable 1080p / native-4K / Retina-4K renderer report
 npm run test:visual          # compare 36 scenes with local, ignored baselines
 npm run test:visual:update   # re-capture local baselines after intentional changes
 npm run test:smoke           # end-to-end behavior + persistence regression suite
@@ -167,6 +174,12 @@ npm run test:smoke           # end-to-end behavior + persistence regression suit
 The smoke command keeps a thin runner in `test/smoke.mjs`; focused hangar, world,
 targeting, capital, runtime, and real coarse-pointer mobile probes live under `test/smoke/` and share
 deterministic artificial-time helpers.
+
+The performance command stages a real hostile sector in the production build and
+reports framebuffer size, draw calls, triangles, GPU-synchronized frame time, and
+render-only time for three display profiles. Timing is diagnostic rather than a
+machine-specific threshold; a deterministic 330-draw structural budget and smoke
+tests guard batching plus the adaptive-resolution policy.
 
 The visual harness (`test/visual/run.mjs`) builds the app, serves `dist/`, drives
 headless Chromium on SwiftShader (software GL → GPU-independent pixels), loads each

@@ -15,6 +15,7 @@ covered by one of the two.
 ```bash
 npm run test:architecture     # controller + smoke-module line-size budgets
 npm run typecheck            # strict TS
+npm run test:performance     # production renderer report at 1080p and two 4K profiles
 npm run test:visual          # 36 scenes vs local baselines (builds first)
 npm run test:visual:update   # re-capture local baselines (--scene=<name> for one)
 npm run test:smoke           # full gameplay loop in live headless Chromium
@@ -22,6 +23,25 @@ npm run test:smoke           # full gameplay loop in live headless Chromium
 
 Pass `-- --port=<number>` to either visual command when the default review port
 8123 is already occupied (for example, `npm run test:visual -- --port=8128`).
+
+## Renderer benchmark (`test/performance.mjs`)
+
+The benchmark loads the production build, stages the real hostile second sector,
+stops rAF, and advances identical manual frames at 1920×1080 DPR 1, 3840×2160 DPR 1,
+and 1920×1080 DPR 2. It reports CSS size, actual framebuffer size/pixel ratio,
+megapixels, draw calls, triangles, GPU-synchronized total frame time, and
+render-only time. SwiftShader timings are useful for repeatable local comparisons,
+not as an absolute hardware FPS promise, so there is no timing threshold. The
+seeded scene does enforce a machine-independent ceiling of 330 draw calls; its
+current 300-call result guards static hull/cave batching and instanced fog.
+
+`test/smoke/performance.mjs` supplies the portable assertions: both 4K forms must
+start at no more than the 1080p pixel budget, sustained overload must reduce the
+ratio without crossing the 720p floor, and sustained headroom must recover it.
+It also verifies that a live player hull compresses its authored source parts to
+less than half as many render meshes.
+Manual visual-test stepping supplies no wall-clock delta, keeping screenshots
+deterministic and native at the harness's 1280×720 viewport.
 
 ## Visual harness (`test/visual/run.mjs` + `src/game/TestScenes.ts` + `test-scenes/`)
 

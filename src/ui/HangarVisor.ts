@@ -1,4 +1,5 @@
 import { PerspectiveCamera, WebGLRenderer } from 'three';
+import { initialRenderPixelRatio } from '../rendering/AdaptiveResolution';
 import { VisorAnchor, VisorPanels } from './VisorPanels';
 
 /**
@@ -27,7 +28,11 @@ export class HangarVisor {
       powerPreference: 'high-performance',
     });
     this.renderer.setClearColor(0x000000, 0);
-    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    this.renderer.setPixelRatio(initialRenderPixelRatio(
+      window.innerWidth,
+      window.innerHeight,
+      window.devicePixelRatio,
+    ));
     this.panels = new VisorPanels(() => this.scheduleRender());
 
     const element = this.renderer.domElement;

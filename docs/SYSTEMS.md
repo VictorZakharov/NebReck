@@ -32,6 +32,25 @@ ever-meaner sectors (or dive onto planets) → death banks score÷10 as **credit
   pointer hit testing for its entire surface, so a swipe can start on informational
   ship copy or hardpoint chips as well as on buttons.
 
+## Rendering performance
+
+- Simulation is display-refresh driven and dt-scaled; render resolution never
+  changes gameplay time, targeting, physics, or the native-resolution DOM HUD.
+- The WebGL framebuffer starts within a 1920×1080 pixel budget. Thus 3840×2160 at
+  DPR 1 uses ratio 0.5 and 1920×1080 at DPR 2 uses ratio 1, both producing a
+  1920×1080 internal scene before browser compositing.
+- Sustained performance below 52 FPS for 0.8 s lowers the ratio by 15%; sustained
+  performance above 58 FPS for 4 s raises it by 8%. Scaling is bounded by native
+  device resolution and an approximately 1280×720 minimum pixel budget.
+- Hitches longer than 100 ms are ignored by the scaler, and fullscreen/resize
+  preserves the current framebuffer workload. This prevents tab switches and
+  transient reallocations from causing a quality spiral.
+- Procedural hull parts remain individually addressable for collision, structural
+  QA, and physical breakup, but opaque pieces sharing a material are fused into
+  rendering-only batches. Cave-shell boulders use the same path, while the 26
+  drifting fog cards render as three instanced billboard draws. The seed-99 hostile
+  benchmark retains 163,235 triangles while reducing frame draw calls 663 -> 300.
+
 ## Environments
 
 | | Space sector | Planet surface |

@@ -1,9 +1,10 @@
 import { WebGLRenderer } from 'three';
+import { initialRenderPixelRatio } from './AdaptiveResolution';
 
 /**
  * WebGL renderer tuned for the postprocessing pipeline: MSAA off (SMAA runs
- * as a post pass), stencil off, high-performance GPU hint. Pixel ratio is
- * capped at 2 so 4K displays don't tank frame rate.
+ * as a post pass), stencil off, high-performance GPU hint. The initial pixel
+ * budget is resolution-aware; runtime sampling can then trade detail for FPS.
  */
 export function createRenderer(canvas: HTMLCanvasElement): WebGLRenderer {
   const renderer = new WebGLRenderer({
@@ -13,7 +14,11 @@ export function createRenderer(canvas: HTMLCanvasElement): WebGLRenderer {
     depth: true,
     powerPreference: 'high-performance',
   });
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.setPixelRatio(initialRenderPixelRatio(
+    window.innerWidth,
+    window.innerHeight,
+    window.devicePixelRatio,
+  ));
   renderer.setSize(window.innerWidth, window.innerHeight, false);
   return renderer;
 }

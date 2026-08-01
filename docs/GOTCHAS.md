@@ -61,6 +61,21 @@ Real issues hit while building this game, kept here so they only get paid for on
   WebGL error.** Recreate the postprocessing composer after the fullscreen
   transition, then resize its targets; resizing the renderer alone left the
   hangar's WebGL background black until F11 was toggled back.
+- **CSS resolution is not framebuffer resolution.** A 4K viewport is 4× the
+  pixels of 1080p, and a 1920×1080 Retina/DPR-2 canvas is also a 4K framebuffer;
+  every half-float bloom/post pass pays that cost. `AdaptiveResolution` budgets
+  actual framebuffer pixels, not CSS width, and the DOM HUD stays native.
+- **A resize must not reset adaptive quality.** Recomputing from device DPR on
+  every fullscreen transition jumps straight back to the expensive target.
+  Preserve the current buffer-pixel workload across viewport changes and let
+  sustained frame timing recover quality. Ignore >100 ms wall-clock hitches so
+  background tabs and target reallocations do not trigger a downshift spiral.
+- **A batched hull deliberately exists twice in the scene graph.** Layer-31
+  source parts preserve exact geometry for audits and debris; layer-0 fused meshes
+  are the only rendered copies. Manual traversals that build visuals (target
+  previews, cloak shells) must skip `renderBatchSource`, while destruction must
+  skip `excludeFromDebris`. Removing either side causes duplicate renders or fake
+  monolithic wreckage.
 
 ## Determinism / visual tests
 
