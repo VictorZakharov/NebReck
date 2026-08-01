@@ -1,11 +1,21 @@
 import { Game } from './Game';
+import { stageAsteroidImpact } from './test-scenes/AsteroidImpactTestScene';
 import {
+  stageCapitalChargeGuide,
   stageCapitalSuperweapon,
   stageCombat,
   stageEnemyVariety,
   stageMissileWarning,
 } from './test-scenes/CombatTestScenes';
+import { stageShipBreakup } from './test-scenes/DebrisTestScenes';
 import { freezeCssAnimations } from './test-scenes/TestSceneShared';
+import {
+  stageDamageShake,
+  stageFx,
+  stageFxVolume,
+  stageShieldImpact,
+  stageSmokeVolume,
+} from './test-scenes/FxTestScenes';
 import {
   stageMobileControls,
   stageMobileHangar,
@@ -36,7 +46,6 @@ import {
   stageBase,
   stageCave,
   stageFleet,
-  stageFx,
   stageLevel,
   stageNebula,
   stagePlanet,
@@ -69,6 +78,12 @@ const TEST_SCENES: Readonly<Record<string, (game: Game) => void>> = {
   'friendly-targeting': stageFriendlyTargeting,
   'resource-targeting': stageResourceTargeting,
   fx: stageFx,
+  'fx-volume': stageFxVolume,
+  'smoke-volume': stageSmokeVolume,
+  'shield-impact': stageShieldImpact,
+  'damage-shake': stageDamageShake,
+  'asteroid-impact': stageAsteroidImpact,
+  'ship-breakup': stageShipBreakup,
   cave: stageCave,
   split: stageSplit,
   level: stageLevel,
@@ -88,6 +103,7 @@ const TEST_SCENES: Readonly<Record<string, (game: Game) => void>> = {
   'enemy-variety': stageEnemyVariety,
   'missile-warning': stageMissileWarning,
   'capital-superweapon': stageCapitalSuperweapon,
+  'capital-charge-guide': stageCapitalChargeGuide,
 };
 
 /**

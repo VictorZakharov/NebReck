@@ -174,7 +174,8 @@ export class GameHudPresenter {
     const targetInfo = target
       ? targetPresentation(target.ship, target.aimAssist)
       : null;
-    const ore = !target && host.lootAimed === 'vein' ? host.lootAimBody?.ore : null;
+    const oreBody = !target && host.lootAimed === 'vein' ? host.lootAimBody : null;
+    const ore = oreBody?.ore ?? null;
     const previewInfo = target
       ? {
           kind: target.ship.kind,
@@ -189,7 +190,9 @@ export class GameHudPresenter {
             name: ore === 'crystal' ? 'Ion Crystal Vein' : 'Scrap Alloy Vein',
             detail: 'Mineable · Exposed formation · Fire to extract',
             relationship: 'neutral' as const,
-            hullFrac: 1,
+            hullFrac: Number.isFinite(oreBody!.oreHpMax)
+              ? oreBody!.oreHp / Math.max(1, oreBody!.oreHpMax)
+              : 1,
           }
         : null;
     this.targetPreview.update(

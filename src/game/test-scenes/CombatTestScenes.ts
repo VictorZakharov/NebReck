@@ -35,7 +35,7 @@ export function stageCombat(game: Game): void {
       life: 10,
     });
   }
-  game.explosions.spawn(new Vector3(-16, 2, -48), 1.3);
+  game.explosions.spawn(new Vector3(-16, 2, -48), 1.3, 'ship');
   game.playerShield.hit(new Vector3(2, 1, -2));
   steps(game, 8);
 }
@@ -131,11 +131,52 @@ export function stageCapitalSuperweapon(game: Game): void {
   };
   (capital as unknown as { cooldown: number }).cooldown = 0;
   for (let frame = 0; frame < 92; frame++) capital.update(TEST_STEP, context);
+  game.postFx.update(1, false);
 
   const cameraOffset = new Vector3(38, 7, -60).applyQuaternion(capital.object.quaternion);
   const lookOffset = new Vector3(0, 0.5, -13).applyQuaternion(capital.object.quaternion);
   const cam = game.chaseCam.camera;
   cam.position.copy(capital.position).add(cameraOffset);
   cam.lookAt(capital.position.clone().add(lookOffset));
+  steps(game, 3);
+}
+
+/** Close oblique view of the committed, finite superweapon charge telegraph. */
+export function stageCapitalChargeGuide(game: Game): void {
+  game.startMission();
+  jumpToSector2(game);
+  game.state = 'test';
+  game.hud.setVisible(false);
+  for (const group of game.sector.planetGroups) group.visible = false;
+  const capital = game.capital;
+  if (!capital) throw new Error('capital-charge-guide scene expects a carrier');
+  const forward = new Vector3();
+  const right = new Vector3(1, 0, 0).applyQuaternion(capital.object.quaternion);
+  const up = new Vector3(0, 1, 0).applyQuaternion(capital.object.quaternion);
+  capital.forward(forward);
+  game.player.position.copy(capital.position).addScaledVector(forward, 320);
+  game.player.object.visible = false;
+  const context = {
+    player: game.player,
+    playerVisible: true,
+    canSeePlayer: () => true,
+    onCharge: () => {},
+    onFire: (shot: { range: number }) => shot.range,
+  };
+  (capital as unknown as { cooldown: number }).cooldown = 0;
+  for (let frame = 0; frame < 92; frame++) capital.update(TEST_STEP, context);
+  game.postFx.update(1, false);
+
+  const cam = game.chaseCam.camera;
+  cam.position
+    .copy(capital.position)
+    .addScaledVector(forward, 160)
+    .addScaledVector(right, 260)
+    .addScaledVector(up, 60);
+  cam.lookAt(
+    capital.position
+      .clone()
+      .addScaledVector(forward, 160),
+  );
   steps(game, 3);
 }

@@ -16,7 +16,7 @@ covered by one of the two.
 npm run test:architecture     # controller + smoke-module line-size budgets
 npm run typecheck            # strict TS
 npm run test:performance     # production renderer report at 1080p and two 4K profiles
-npm run test:visual          # 36 scenes vs local baselines (builds first)
+npm run test:visual          # 43 scenes vs local baselines (builds first)
 npm run test:visual:update   # re-capture local baselines (--scene=<name> for one)
 npm run test:smoke           # full gameplay loop in live headless Chromium
 ```
@@ -43,6 +43,13 @@ less than half as many render meshes.
 Manual visual-test stepping supplies no wall-clock delta, keeping screenshots
 deterministic and native at the harness's 1280×720 viewport.
 
+For normal PR iteration, run only each affected scene with
+`-- --scene=<name>` and inspect its PNG. The full 37-scene SwiftShader sweep is
+serial by design and reserved for broad renderer changes or release checks; it
+takes roughly three minutes on the reference Windows machine. It is not part of
+CI: generated baselines are deliberately local, while the deterministic smoke
+suite supplies the pull-request behavior gate.
+
 ## Visual harness (`test/visual/run.mjs` + `src/game/TestScenes.ts` + `test-scenes/`)
 
 Headless Chromium on SwiftShader (software GL → GPU-independent pixels), 1280×720,
@@ -62,7 +69,13 @@ actual regression check. Never commit generated PNGs.
 | Scene | Guards |
 |---|---|
 | nebula / asteroids / ship | environment art, half-clipped solar emitter, palette clusters, rounded/textured rocks, hull greeble |
-| combat / fx / split | staged battle FX, explosion quality, rock calving |
+| combat / fx / split | staged battle FX; clean laser vs missile vs mature ship smoke; rock calving |
+| fx-volume | oblique view of instanced 3D fireball lobes and spherical shock fronts |
+| smoke-volume | camera embedded inside a large, navigable post-explosion soot cloud |
+| shield-impact | side-on proof that the hit ripple occupies only the struck hemisphere |
+| damage-shake | deterministic heavy-hull-hit framing: positional/rotational kick + HUD flash |
+| asteroid-impact | live projectile entry point and surface-protruding asteroid impact FX |
+| ship-breakup | unobscured post-blast plate of cloned components from the actual destroyed Kestrel hull |
 | hud | full HUD: panels, jump spool + warp streaks, contract OFFER panel, quest tracker, merchant note |
 | targeting | hostile marker semantics: lock box + lead/range, red/amber/grey contacts, edge chevrons, radar, live fire |
 | distant-targeting | no-pursuit angular scan beyond 1.5 km: centred 1,847 m hostile selected over a nearer off-axis contact |
@@ -83,6 +96,7 @@ actual regression check. Never commit generated PNGs.
 | enemy-variety | raider/warden/bomber silhouettes, cannon and rocket batteries, both rocket families |
 | missile-warning | red imminent-impact warning, countdown and in-flight seeker |
 | capital-superweapon | mixed top/bottom carrier batteries and the 75%-charged annihilator telegraph |
+| capital-charge-guide | close oblique proof that the harmless charge telegraph is finite, broken energy rather than a solid kilometre-long bar |
 
 For interactive hangar review, use
 `http://127.0.0.1:8123/?testScene=hangar-live&seed=7` after starting the dev
@@ -126,7 +140,8 @@ SwiftShader runs ~4 FPS and dt clamps at 1/20, so sim time ≪ wall time: never
 advance helpers, direct dispatch calls, fixed-step hunter AI/camera updates).
 
 `test/smoke.mjs` is only the ordered runner. Feature probes are split into
-`hangar`, `desktop-input`, `world`, `targeting`, `capital`, `runtime`, and `mobile` modules; shared server,
+`hangar`, `desktop-input`, `world`, `targeting`, `capital`, `asteroid-impact`,
+`projectile-damage`, `debris`, `fx`, `runtime`, and `mobile` modules; shared server,
 browser-diagnostic, and artificial-time utilities live in `helpers.mjs`, while
 `assertions.mjs` converts their returned results into named failures. Keep probes
 with the system they exercise, return serializable result objects, and preserve
@@ -152,6 +167,31 @@ below its smoke-module size budget.
 It also sends a canvas mousedown while unlocked and proves that the fresh-gesture
 retry occurs without leaking the click into primary fire, while retaining the
 Ctrl+W forward-plus-descend keyboard chord.
+
+The FX probe advances pools directly: an energy impact must create zero smoke, a
+missile cloud must be non-empty, ship destruction must be denser, every puff must
+expire, and the active count must stay within 512. It then routes real player hits
+through combat and asserts that a surviving shield flashes, a depleted shield does
+not, and a hull strike produces a stronger damage kick.
+
+The breakup probe destroys a live large asteroid and requires 2–3 newly registered,
+collidable children with finite HP, then destroys one child to prove it is gameplay
+geometry rather than expiring decoration. It advances the field and requires every
+child to translate outward and rotate. Separately, it audits every live hull/turret
+kind: every fragment must retain a source-part identity and stay below hull-relative
+rod/oversize bounds even with excluded superweapon VFX forced visible. It then advances a
+player breakup through four seconds of artificial gravity against a deterministic
+terrain sampler to prove the parts fall and remain above the rendered ground.
+
+The asteroid-impact probe fires both a bolt and missile through the live projectile
+system into transformed instanced geometry. It requires a unit face normal and
+measures 0.8/1.2 m of effect clearance along that normal, catching sloped surfaces
+where a center-radial offset would still render inside the asteroid.
+
+The projectile-damage probe fires through a rendered ore spike, requires the owning
+body's `oreHp` and DOM preview bar to decrease together, then launches a real fast,
+unguided enemy rocket and proves it intersects and damages the player without being
+treated as a seeker lock.
 
 **Ship connectivity audit** runs first (`window.auditShips()` →
 `auditShipConnectivity` in `ShipMeshAudit.ts`, re-exported by `ShipMesh.ts`):

@@ -260,6 +260,7 @@ export function collectSmokeFailures(results) {
     !capitalSystems.rejectedFromSide ||
     !capitalSystems.rejectedBeyondActivation ||
     !capitalSystems.startedInFront ||
+    !capitalSystems.finiteChargeGuide ||
     !capitalSystems.committedWithinArc ||
     capitalSystems.beamFired !== 1 ||
     !capitalSystems.firstObstacleDestroyed ||

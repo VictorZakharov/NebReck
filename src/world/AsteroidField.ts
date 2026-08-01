@@ -113,11 +113,21 @@ export interface AsteroidBody {
   /** Non-null while the rock still carries a minable ore vein. */
   ore: OreType | null;
   oreHp: number;
+  oreHpMax: number;
   /** Which instance of which crystal mesh visualizes the vein. */
   crystalMesh: InstancedMesh | null;
   crystalIndex: number;
   /** World-space crystal centers used for true vein aiming/visibility. */
   orePoints: Vector3[];
+  /** Hit radius for each matching crystal center. */
+  orePointRadii: number[];
+}
+
+/** Initial inertial motion for a real child rock created by a breakup. */
+export interface ChildAsteroidMotion {
+  velocity: Vector3;
+  spinAxis: Vector3;
+  spinSpeed: number;
 }
 
 /** Fresh body record with the common defaults filled in. */
@@ -134,9 +144,11 @@ export function makeBody(partial: Partial<AsteroidBody> & Pick<AsteroidBody, 'po
     stash: false,
     ore: null,
     oreHp: Infinity,
+    oreHpMax: Infinity,
     crystalMesh: null,
     crystalIndex: -1,
     orePoints: [],
+    orePointRadii: [],
     ...partial,
   };
 }
@@ -161,6 +173,11 @@ const rockNormal = new Vector3();
 const crystalNormal = new Vector3();
 const crystalTangent = new Vector3();
 const crystalBitangent = new Vector3();
+const rockLocalDirection = new Vector3();
+const rockPosition = new Vector3();
+const rockScale = new Vector3();
+const rockRotation = new Quaternion();
+const inverseRockRotation = new Quaternion();
 const UP = new Vector3(0, 1, 0);
 const RIGHT = new Vector3(1, 0, 0);
 
@@ -204,6 +221,14 @@ export class AsteroidField {
   }[] =
     [];
   private readonly freeSlots = new Map<number, { mesh: InstancedMesh; index: number }[]>();
+  private readonly driftingChildren: {
+    body: AsteroidBody;
+    mesh: InstancedMesh;
+    index: number;
+    velocity: Vector3;
+    spinAxis: Vector3;
+    spinSpeed: number;
+  }[] = [];
 
   constructor(rng: Rng, count: number, fieldRadius: number, exclusionRadius = 120) {
     // Cluster plan.
@@ -290,6 +315,7 @@ export class AsteroidField {
             palette: p,
             ore,
             oreHp: 26 + pl.scale * 0.8,
+            oreHpMax: 26 + pl.scale * 0.8,
           });
           this.bodies.push(body);
 
@@ -341,8 +367,18 @@ export class AsteroidField {
         body.crystalMesh = mesh;
         body.crystalIndex = bi * 3;
         body.orePoints.length = 0;
+        body.orePointRadii.length = 0;
         const [nx, ny, nz] = rng.unitSphere();
         rockNormal.set(nx, ny, nz).normalize();
+        body.mesh!.getMatrixAt(body.index, tmpMat);
+        tmpMat.decompose(rockPosition, rockRotation, rockScale);
+        inverseRockRotation.copy(rockRotation).invert();
+        rockLocalDirection.copy(rockNormal).applyQuaternion(inverseRockRotation);
+        const surfaceRadius = 1 / Math.sqrt(
+          (rockLocalDirection.x / rockScale.x) ** 2 +
+          (rockLocalDirection.y / rockScale.y) ** 2 +
+          (rockLocalDirection.z / rockScale.z) ** 2,
+        );
         crystalTangent
           .crossVectors(rockNormal, Math.abs(rockNormal.y) < 0.9 ? UP : RIGHT)
           .normalize();
@@ -355,18 +391,19 @@ export class AsteroidField {
             .normalize();
           dummy.position
             .copy(body.position)
-            .addScaledVector(rockNormal, body.radius * 0.78)
-            .addScaledVector(crystalTangent, (s - 1) * body.radius * 0.11)
-            .addScaledVector(crystalBitangent, rng.range(-0.08, 0.08) * body.radius);
+            .addScaledVector(rockNormal, surfaceRadius * 0.98)
+            .addScaledVector(crystalTangent, (s - 1) * surfaceRadius * 0.1)
+            .addScaledVector(crystalBitangent, rng.range(-0.06, 0.06) * surfaceRadius);
           dummy.quaternion.setFromUnitVectors(UP, crystalNormal);
           dummy.scale.set(
-            body.radius * 0.12,
-            body.radius * rng.range(0.25, 0.33),
-            body.radius * 0.12,
+            surfaceRadius * 0.08,
+            surfaceRadius * rng.range(0.22, 0.28),
+            surfaceRadius * 0.08,
           );
           dummy.updateMatrix();
           mesh.setMatrixAt(bi * 3 + s, dummy.matrix);
           body.orePoints.push(dummy.position.clone());
+          body.orePointRadii.push(surfaceRadius * 0.23);
         }
       });
       mesh.instanceMatrix.needsUpdate = true;
@@ -385,6 +422,7 @@ export class AsteroidField {
     body.ore = null;
     body.crystalMesh = null;
     body.orePoints.length = 0;
+    body.orePointRadii.length = 0;
   }
 
   /** Shatter a rock: hide its instance (and any crystals), mark it gone. */
@@ -400,7 +438,13 @@ export class AsteroidField {
   }
 
   /** Split-off child rock, palette-matched to its parent. */
-  spawnChild(position: Vector3, radius: number, rng: Rng, palette = 0): AsteroidBody | null {
+  spawnChild(
+    position: Vector3,
+    radius: number,
+    rng: Rng,
+    palette = 0,
+    motion?: ChildAsteroidMotion,
+  ): AsteroidBody | null {
     let slots = this.freeSlots.get(palette);
     if (!slots || slots.length === 0) {
       // Fall back to any palette with room rather than dropping the child.
@@ -429,11 +473,22 @@ export class AsteroidField {
       palette,
     });
     this.bodies.push(body);
+    if (motion) {
+      this.driftingChildren.push({
+        body,
+        mesh: slot.mesh,
+        index: slot.index,
+        velocity: motion.velocity.clone(),
+        spinAxis: motion.spinAxis.clone().normalize(),
+        spinSpeed: motion.spinSpeed,
+      });
+    }
     return body;
   }
 
   update(dt: number): void {
     for (const s of this.spins) {
+      if (s.body.destroyed) continue;
       s.mesh.getMatrixAt(s.index, tmpMat);
       spinQuat.setFromAxisAngle(s.axis, s.speed * dt);
       spinRotMat.makeRotationFromQuaternion(spinQuat);
@@ -453,6 +508,18 @@ export class AsteroidField {
         }
         s.body.crystalMesh.instanceMatrix.needsUpdate = true;
       }
+    }
+    for (const child of this.driftingChildren) {
+      if (child.body.destroyed) continue;
+      child.mesh.getMatrixAt(child.index, tmpMat);
+      spinQuat.setFromAxisAngle(child.spinAxis, child.spinSpeed * dt);
+      spinRotMat.makeRotationFromQuaternion(spinQuat);
+      tmpMat.multiply(spinRotMat);
+      child.body.position.addScaledVector(child.velocity, dt);
+      tmpMat.setPosition(child.body.position);
+      child.mesh.setMatrixAt(child.index, tmpMat);
+      child.velocity.multiplyScalar(Math.exp(-0.3 * dt));
+      child.spinSpeed *= Math.exp(-0.12 * dt);
     }
     for (const m of this.meshes) m.instanceMatrix.needsUpdate = true;
   }

@@ -115,6 +115,7 @@ export class CaveAsteroid {
       rock.scale.setScalar(rockRadius);
       this.group.add(rock);
       const orePoints: Vector3[] = [];
+      const orePointRadii: number[] = [];
       for (let s = 0; s < 3; s++) {
         const spike = new Mesh(new OctahedronGeometry(1, 0), crystalMat);
         const [sx, sy, sz] = rng.unitSphere();
@@ -125,6 +126,7 @@ export class CaveAsteroid {
         orePoints.push(
           spike.position.clone().multiplyScalar(rockRadius).add(pos).add(center),
         );
+        orePointRadii.push(rockRadius * 0.42);
       }
       bodies.push(makeBody({
         position: pos.clone().add(center),
@@ -132,8 +134,10 @@ export class CaveAsteroid {
         hp: 45,
         solo: rock,
         ore: 'crystal',
-        oreHp: Number.POSITIVE_INFINITY, // ore releases on destruction
+        oreHp: 45,
+        oreHpMax: 45,
         orePoints,
+        orePointRadii,
       }));
     }
 
