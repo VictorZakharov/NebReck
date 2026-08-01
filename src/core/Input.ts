@@ -1,3 +1,5 @@
+import { DesktopFlightCapture } from './DesktopFlightCapture';
+
 /**
  * Unified physical and virtual input. Mouse and touch-look movement accumulate
  * into per-frame deltas that gameplay consumes once per tick, keeping aim
@@ -12,9 +14,8 @@ export class Input {
   private buttons = new Set<number>();
   private virtualButtons = new Set<number>();
   private buttonsPressedThisFrame = new Set<number>();
-  private pointerLocked = false;
   private wheelDelta = 0;
-  private flightKeysActive = false;
+  private readonly desktopCapture: DesktopFlightCapture;
   private virtualThrust = 0;
   private virtualStrafeX = 0;
   private virtualStrafeY = 0;
@@ -25,17 +26,18 @@ export class Input {
   private virtualLookTargetY = 0;
   readonly usesTouchControls: boolean;
 
-  constructor(private readonly element: HTMLElement) {
+  constructor(element: HTMLElement) {
     const compactTouchViewport =
       navigator.maxTouchPoints > 0 && Math.min(window.innerWidth, window.innerHeight) <= 900;
     this.usesTouchControls =
       window.matchMedia('(pointer: coarse)').matches || compactTouchViewport;
+    this.desktopCapture = new DesktopFlightCapture(element, this.usesTouchControls);
     window.addEventListener('keydown', (e) => {
       if (!this.keys.has(e.code)) this.pressedThisFrame.add(e.code);
       this.keys.add(e.code);
       if (
         e.code === 'Tab' || e.code === 'Space' ||
-        (this.flightKeysActive && e.code === 'KeyW' && (e.ctrlKey || e.metaKey))
+        (this.desktopCapture.capturesFlightKeys && e.code === 'KeyW' && (e.ctrlKey || e.metaKey))
       ) e.preventDefault();
     });
     window.addEventListener('keyup', (e) => this.keys.delete(e.code));
@@ -45,12 +47,13 @@ export class Input {
       this.resetVirtualControls();
     });
     element.addEventListener('mousemove', (e) => {
-      if (this.pointerLocked) {
+      if (this.desktopCapture.isPointerLocked) {
         this.mouseDx += e.movementX;
         this.mouseDy += e.movementY;
       }
     });
     element.addEventListener('mousedown', (e) => {
+      if (this.desktopCapture.captureMouseDown(e)) return;
       if (!this.buttons.has(e.button)) this.buttonsPressedThisFrame.add(e.button);
       this.buttons.add(e.button);
     });
@@ -60,13 +63,6 @@ export class Input {
       e.preventDefault();
     }, { passive: false });
     element.addEventListener('contextmenu', (e) => e.preventDefault());
-    document.addEventListener('pointerlockchange', () => {
-      this.pointerLocked = document.pointerLockElement === this.element;
-    });
-    document.addEventListener('fullscreenchange', () => {
-      if (document.fullscreenElement && this.flightKeysActive) void this.lockFlightKeys();
-      else this.unlockFlightKeys();
-    });
   }
 
   /**
@@ -75,68 +71,29 @@ export class Input {
    * accelerator. Unsupported browsers still retain ordinary pointer lock.
    */
   enterFlightMode(): void {
-    this.flightKeysActive = true;
-    void (async () => {
-      if (!document.fullscreenElement && document.fullscreenEnabled) {
-        try {
-          const options = {
-            navigationUI: 'hide',
-            keyboardLock: 'browser',
-          } as FullscreenOptions & { keyboardLock: 'browser' };
-          await document.documentElement.requestFullscreen(options);
-        } catch { /* fullscreen rejected or unsupported */ }
-      }
-      await this.lockFlightKeys();
-      if (!this.usesTouchControls) this.requestPointerLock();
-    })();
+    this.desktopCapture.enter();
   }
 
   /** Stop capturing browser accelerators; optionally leave app fullscreen. */
   leaveFlightMode(exitFullscreen = true): void {
-    this.flightKeysActive = false;
-    this.exitPointerLock();
-    this.unlockFlightKeys();
-    if (exitFullscreen && document.fullscreenElement) {
-      void document.exitFullscreen().catch(() => {});
-    }
+    this.desktopCapture.leave(exitFullscreen);
   }
 
   requestPointerLock(): void {
-    if (this.pointerLocked) return;
-    // Chrome rejects requests made within ~1.3 s of the user Esc-exiting the
-    // lock ("Pointer lock cannot be acquired immediately after..."). Swallow
-    // the rejection and retry once after the cooldown.
-    const attempt = (): void => {
-      try {
-        const result = this.element.requestPointerLock() as unknown as
-          | Promise<void>
-          | undefined;
-        result?.catch?.(() => {
-          window.setTimeout(() => {
-            if (!this.pointerLocked) {
-              try {
-                (this.element.requestPointerLock() as unknown as Promise<void> | undefined)
-                  ?.catch?.(() => {});
-              } catch { /* unsupported */ }
-            }
-          }, 1400);
-        });
-      } catch { /* unsupported */ }
-    };
-    attempt();
+    this.desktopCapture.requestPointerLock();
   }
 
   exitPointerLock(): void {
-    if (this.pointerLocked) document.exitPointerLock();
+    this.desktopCapture.exitPointerLock();
   }
 
   get isPointerLocked(): boolean {
-    return this.pointerLocked;
+    return this.desktopCapture.isPointerLocked;
   }
 
   /** Test hook for the synthetic Ctrl+W regression; no allocation. */
   get capturesFlightKeys(): boolean {
-    return this.flightKeysActive;
+    return this.desktopCapture.capturesFlightKeys;
   }
 
   isDown(code: string): boolean {
@@ -248,22 +205,6 @@ export class Input {
     this.buttonsPressedThisFrame.clear();
   }
 
-  private async lockFlightKeys(): Promise<void> {
-    const keyboard = (navigator as Navigator & {
-      keyboard?: { lock(codes?: string[]): Promise<void> };
-    }).keyboard;
-    if (!keyboard || !document.fullscreenElement || !this.flightKeysActive) return;
-    try {
-      await keyboard.lock(['KeyW']);
-    } catch { /* progressive enhancement */ }
-  }
-
-  private unlockFlightKeys(): void {
-    const keyboard = (navigator as Navigator & {
-      keyboard?: { unlock(): void };
-    }).keyboard;
-    keyboard?.unlock();
-  }
 }
 
 function clampUnit(value: number): number {

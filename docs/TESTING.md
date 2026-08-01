@@ -106,7 +106,7 @@ SwiftShader runs ~4 FPS and dt clamps at 1/20, so sim time ≪ wall time: never
 advance helpers, direct dispatch calls, fixed-step hunter AI/camera updates).
 
 `test/smoke.mjs` is only the ordered runner. Feature probes are split into
-`hangar`, `world`, `targeting`, `capital`, `runtime`, and `mobile` modules; shared server,
+`hangar`, `desktop-input`, `world`, `targeting`, `capital`, `runtime`, and `mobile` modules; shared server,
 browser-diagnostic, and artificial-time utilities live in `helpers.mjs`, while
 `assertions.mjs` converts their returned results into named failures. Keep probes
 with the system they exercise, return serializable result objects, and preserve
@@ -123,6 +123,12 @@ The portrait hangar probe also sends a browser-native CDP touch swipe whose init
 contact lands on the hardpoint row; it must move the actual hangar scroll container.
 This catches pointer-transparent informational panels that programmatic `scrollTop`
 checks cannot detect.
+
+`desktop-input.mjs` replaces the browser capture APIs with ordered spies and
+requires pointer lock to be requested before fullscreen in the same activation.
+It also sends a canvas mousedown while unlocked and proves that the fresh-gesture
+retry occurs without leaking the click into primary fire, while retaining the
+Ctrl+W forward-plus-descend keyboard chord.
 
 **Ship connectivity audit** runs first (`window.auditShips()` →
 `auditShipConnectivity` in `ShipMeshAudit.ts`, re-exported by `ShipMesh.ts`):

@@ -297,6 +297,13 @@ Real issues hit while building this game, kept here so they only get paid for on
 
 ## Pointer lock / input
 
+- **Pointer lock must be requested before fullscreen in the same user gesture.**
+  Fullscreen consumes transient activation; awaiting it first left Safari with no
+  permission to lock the mouse. This ordering is required by the current
+  [Pointer Lock specification](https://www.w3.org/TR/pointerlock-2/), not a UA quirk.
+  `DesktopFlightCapture.enter()` calls `requestPointerLock()` synchronously, then
+  starts fullscreen. An unlocked canvas mousedown supplies a fresh retry and is
+  consumed so acquiring the mouse never fires the primary weapon.
 - Browser Esc force-exits pointer lock. The `pointerlockchange` listener auto-pauses
   — it checks `state === 'playing'`, so any transition that intentionally exits lock
   (loadout, pause) must **change state first, then** call `exitPointerLock()`.

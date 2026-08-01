@@ -27,7 +27,6 @@ export function collectSmokeFailures(results) {
     missileCountdown,
     cloakMissileBreak,
     playerSeekerRange,
-    flightKeyChord,
   } = targeting;
   const { closed, camDist, turretAim, dev, combatStability, aegisMissiles } = runtime;
   const { defaults, settled, clicked, reloaded } = hangarPreferences;
@@ -231,10 +230,6 @@ export function collectSmokeFailures(results) {
     !playerSeekerRange.beyondExpired ||
     !playerSeekerRange.withinHit
   ) failures.push('player seeker range');
-  if (!flightKeyChord.consumed || !flightKeyChord.forward || !flightKeyChord.descend) {
-    failures.push('Ctrl+W flight chord');
-  }
-
   if (
     !capitalSystems.present ||
     capitalSystems.mounts < 8 ||

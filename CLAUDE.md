@@ -87,6 +87,10 @@ the shared actions/axes rather than DOM gestures. `TouchControls` owns pointer
 capture and virtual bindings. Coarse-pointer hangars keep native DOM active instead
 of mounting the rasterized visor, restore hit testing on the full hangar scroll
 container, and keep mobile touch targets at least 44 CSS px.
+Desktop browser capture lives in `core/DesktopFlightCapture.ts`. Pointer lock must
+remain the first synchronous activation-gated request, before fullscreen; awaiting
+fullscreen first breaks Safari. The first unlocked canvas click retries capture
+and must never leak through as a weapon press.
 
 ## Verify loop (run all four before claiming done)
 

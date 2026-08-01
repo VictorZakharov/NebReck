@@ -10,6 +10,10 @@ import { chromium } from 'playwright';
 import { collectSmokeFailures } from './smoke/assertions.mjs';
 import { runCapitalSmoke } from './smoke/capital.mjs';
 import {
+  collectDesktopInputFailures,
+  runDesktopInputSmoke,
+} from './smoke/desktop-input.mjs';
+import {
   capturePageErrors,
   settleBrowserFrames,
   startDistServer,
@@ -45,6 +49,7 @@ try {
   // Ordering is intentional: later probes reuse world state staged by earlier
   // feature groups, while all gameplay time remains deterministic.
   const hangar = await runHangarSmoke(page);
+  const desktopInput = await runDesktopInputSmoke(page);
   const world = await runWorldSmoke(page);
   const targeting = await runTargetingSmoke(page);
   const capitalSystems = await runCapitalSmoke(page);
@@ -61,6 +66,7 @@ try {
     capitalSystems,
     runtime,
   });
+  failures.push(...collectDesktopInputFailures(desktopInput));
   console.log(
     'smoke result:',
     failures.length === 0 ? 'PASS' : `FAIL: ${failures.join(', ')}`,
