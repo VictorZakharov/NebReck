@@ -1,4 +1,5 @@
 import { Vector3 } from 'three';
+import type { TargetInfo } from '../../combat/Targeting';
 import { Game } from '../Game';
 import { jumpToSector2, steps } from './TestSceneShared';
 
@@ -46,11 +47,61 @@ export function stageDistantTargeting(game: Game): void {
     [centred, offAxis],
     [],
     game.weapons.weapon.projectileSpeed,
-    () => true,
     game.weapons.weapon.projectileSpeed * game.weapons.weapon.life,
     forward,
     false,
   );
+  game.state = 'test';
+  game.renderHudOnce();
+}
+
+/** Peaceful crosshair inspection of a dormant independent turret. */
+export function stageTurretTargeting(game: Game): void {
+  game.startMission();
+  jumpToSector2(game);
+  game.hud.clearComms();
+  const turret = game.turrets.find((candidate) =>
+    candidate.mountNormal === null
+  );
+  if (!turret) throw new Error('turret-targeting scene expects an independent turret');
+  const player = game.player;
+  player.position.set(0, 2600, 0);
+  player.object.rotation.set(0, 0, 0);
+  player.velocity.set(0, 0, 0);
+  for (const enemy of game.enemies) enemy.position.set(4000, 3000, 4000);
+  game.chaseCam.snapTo(player.object);
+  game.chaseCam.camera.updateMatrixWorld(true);
+  const forward = new Vector3();
+  game.chaseCam.camera.getWorldDirection(forward);
+  turret.position.copy(player.position).addScaledVector(forward, 600);
+  turret.faceToward(player.position);
+  turret.stunTimer = 10;
+  game.targeting.current = null;
+  steps(game, 1);
+  const selected = game.targeting.current as TargetInfo | null;
+  if (selected?.ship !== turret) {
+    throw new Error('peaceful crosshair scan did not select the staged turret');
+  }
+  game.state = 'test';
+  game.renderHudOnce();
+}
+
+/** Nose-on carrier readout remains recognizable instead of collapsing to a dot. */
+export function stageCapitalTargeting(game: Game): void {
+  game.startMission();
+  jumpToSector2(game);
+  game.hud.clearComms();
+  const capital = game.capital;
+  if (!capital) throw new Error('capital-targeting scene expects a carrier');
+  const forward = new Vector3();
+  capital.forward(forward);
+  game.player.position.copy(capital.position).addScaledVector(forward, 700);
+  game.player.faceToward(capital.position);
+  game.player.velocity.set(0, 0, 0);
+  game.chaseCam.snapTo(game.player.object);
+  game.targeting.current = {
+    ship: capital, leadPoint: capital.position.clone(), distance: 700, aimAssist: true,
+  };
   game.state = 'test';
   game.renderHudOnce();
 }
@@ -77,7 +128,6 @@ export function stageFriendlyTargeting(game: Game): void {
     [],
     [merchant],
     game.weapons.weapon.projectileSpeed,
-    () => true,
   );
   game.renderHudOnce();
   game.state = 'test';

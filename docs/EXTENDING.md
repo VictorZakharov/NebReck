@@ -46,7 +46,10 @@ Extend `ShipKind`/`STYLES` in `ShipMeshTypes.ts`, add geometry to
 entry in `game/Ships.ts`. Shared nav-light/engine helpers live in
 `ShipMeshBuilder.ts`; do not move hull-specific detail back into the facade.
 Stat bars normalize against `STAT_CAPS` in `ui/HangarScreen.ts`. Meta upgrades
-copy the stat block in `PlayerShip`'s constructor — keep it that way.
+copy the stat block in `PlayerShip`'s constructor — keep it that way. Set both
+`startingMissiles` and `missileRegenSeconds` explicitly: use `null` for hulls
+without an onboard fabricator, and cover timed regeneration with artificial
+game-time stepping rather than wall-clock waits.
 
 ## Add a quest/contract type
 1. New kind in `game/Quests.ts`: extend `QuestKind`, add a branch in
@@ -119,7 +122,9 @@ Informational world objects (ore, stash, merchant, planet) do not belong in
 `Targeting.aimTarget`. Resolve them in `InteractionTargeting`, compare their
 crosshair angle against the selected distant contact, describe them in
 `GameHudPresenter`, and add a lightweight source mesh to `TargetPreview` when a
-wireframe is useful. World prompts must use `HudProjector.projectSmoothedAnchor`
+wireframe is useful. The preview derives its hostile perimeter mask from that same
+solid source automatically; do not recolor or CSS-filter the health wireframe.
+World prompts must use `HudProjector.projectSmoothedAnchor`
 with a stable owning object as the key; never pin object actions to a HUD corner.
 
 ## Add a sector-population element

@@ -32,6 +32,10 @@ export interface PlayerShipDef {
   weapons: string[];
   /** Seeker rack rate: 0 = no launcher, 1 = standard, 2 = double rate. */
   missileRate: number;
+  /** Ammo issued at the start of a new sortie. */
+  startingMissiles: number;
+  /** Seconds per regenerated seeker; null means the rack cannot fabricate ammo. */
+  missileRegenSeconds: number | null;
 }
 
 /** The hangar roster. Kestrel = balanced, Vanta = glass-cannon scout, Aegis = brawler. */
@@ -45,6 +49,8 @@ export const PLAYER_SHIPS: PlayerShipDef[] = [
     kind: 'vanta',
     weapons: ['pulse', 'lance'],
     missileRate: 0,
+    startingMissiles: 0,
+    missileRegenSeconds: null,
     stats: {
       maxSpeed: 100, boostSpeed: 190, accel: 110, strafeAccel: 72,
       turnRate: 3.1, rollRate: 2.9,
@@ -62,6 +68,8 @@ export const PLAYER_SHIPS: PlayerShipDef[] = [
     kind: 'kestrel',
     weapons: ['pulse', 'lance'],
     missileRate: 1,
+    startingMissiles: 8,
+    missileRegenSeconds: null,
     stats: {
       maxSpeed: 85, boostSpeed: 160, accel: 90, strafeAccel: 60,
       turnRate: 2.6, rollRate: 2.4,
@@ -79,6 +87,8 @@ export const PLAYER_SHIPS: PlayerShipDef[] = [
     kind: 'aegis',
     weapons: ['autogun', 'scatter'],
     missileRate: 2,
+    startingMissiles: 16,
+    missileRegenSeconds: 10,
     stats: {
       maxSpeed: 68, boostSpeed: 128, accel: 68, strafeAccel: 46,
       turnRate: 2.0, rollRate: 1.8,

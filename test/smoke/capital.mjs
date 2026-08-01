@@ -8,6 +8,8 @@ export async function runCapitalSmoke(page) {
     capital.forward(forward);
     game.player.position.copy(capital.position).addScaledVector(forward, 600);
     game.player.faceToward(capital.position);
+    game.chaseCam.snapTo(game.player.object);
+    game.chaseCam.camera.updateMatrixWorld(true);
     game.targeting.current = null;
     game.rebuildTargetLists();
     const weapons = [...new Set(initialMounts.map((turret) => turret.weapon))];
@@ -24,7 +26,6 @@ export async function runCapitalSmoke(page) {
       ),
       [],
       game.weapons.weapon.projectileSpeed,
-      () => true,
     );
     game.renderHudOnce();
     const farTargetsHull = game.targeting.current?.ship === capital;
@@ -35,11 +36,36 @@ export async function runCapitalSmoke(page) {
     const previewCanvas = document.querySelector('.preview-canvas');
     const farPreviewHostileOutline =
       previewPanel?.classList.contains('hostile') &&
-      getComputedStyle(previewCanvas).filter.includes('255, 59, 48');
+      game.hudPresenter.targetPreview.outlineActive &&
+      getComputedStyle(previewCanvas).filter === 'none';
     const previewHealthHsl = {};
     game.hudPresenter.targetPreview.mat.color.getHSL(previewHealthHsl);
     const farPreviewHealthColor = previewHealthHsl.h > 0.3;
-    const previewRoot = game.hudPresenter.targetPreview.cache.get('capital');
+    const previewRenderer = game.hudPresenter.targetPreview.renderer;
+    const previewGl = previewRenderer.getContext();
+    const previewPixels = new Uint8Array(170 * 128 * 4);
+    previewGl.readPixels(
+      0, 0, 170, 128,
+      previewGl.RGBA, previewGl.UNSIGNED_BYTE, previewPixels,
+    );
+    let farPreviewVisiblePixels = 0;
+    let previewMinX = 170;
+    let previewMaxX = -1;
+    let previewMinY = 128;
+    let previewMaxY = -1;
+    for (let pixel = 0; pixel < 170 * 128; pixel++) {
+      if (previewPixels[pixel * 4 + 3] < 8) continue;
+      const x = pixel % 170;
+      const y = Math.floor(pixel / 170);
+      farPreviewVisiblePixels++;
+      previewMinX = Math.min(previewMinX, x);
+      previewMaxX = Math.max(previewMaxX, x);
+      previewMinY = Math.min(previewMinY, y);
+      previewMaxY = Math.max(previewMaxY, y);
+    }
+    const farPreviewPixelWidth = Math.max(0, previewMaxX - previewMinX + 1);
+    const farPreviewPixelHeight = Math.max(0, previewMaxY - previewMinY + 1);
+    const previewRoot = game.hudPresenter.targetPreview.cache.get('capital')?.wireframe;
     let previewHullBreadthRatio = 0;
     if (previewRoot) {
       const savedQuaternion = previewRoot.quaternion.clone();
@@ -85,7 +111,6 @@ export async function runCapitalSmoke(page) {
       ),
       [],
       game.weapons.weapon.projectileSpeed,
-      () => true,
     );
     const nearMountLock = initialMounts.includes(game.targeting.current?.ship);
     game.targeting.current = null;
@@ -281,6 +306,9 @@ export async function runCapitalSmoke(page) {
       farPreviewHull,
       farPreviewHostileOutline,
       farPreviewHealthColor,
+      farPreviewVisiblePixels,
+      farPreviewPixelWidth,
+      farPreviewPixelHeight,
       previewHullBreadthRatio: Number(previewHullBreadthRatio.toFixed(3)),
       nearMountsAvailable,
       nearMountLock,

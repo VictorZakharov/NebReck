@@ -33,18 +33,27 @@ with a telegraphed annihilator beam — cripple it, destroy it, or outrun its fi
   in an interactive convex-visor hangar, plus three difficulty tiers with real
   multipliers. The card click itself commits each selection to a one-year browser
   cookie; Engage or game entry is not required.
-- **Combat**: four primary weapon profiles + lock-on seeker missiles, LOS-aware
+- **Combat**: four primary weapon profiles + lock-on seeker missiles, cover-independent
   soft-targeting with lead pip, enemy AI wings (raiders, rotary interceptors, wardens
   and missile bombers), mixed cannon / rotary / homing-rocket / fast-rocket batteries,
   escalating waves and story comms. Seeker bombers can launch while pursuing from
   1,200 m; player seekers expire after 1,050 m of actual traveled path. Live missiles
   raise lock and monotonic two-second impact warnings, while a safely activated cloak
   breaks their tracking. With no enemy pursuing, hostile and
-  civilian contacts at every range share one uncapped camera-crosshair ranking;
+  civilian contacts at every range share one uncapped, camera-origin crosshair ranking
+  inside a tight target-sized sensor cone;
   active pursuit restores hostile priority and distance-weighted close-combat aim assist. Civilians
   remain sensor-only and never autoaim. Hostile previews retain green→red health
-  wireframes inside a separate red outline; civilians use relationship colors and
+  wireframes inside a separate red silhouette-perimeter glow (internal edges are
+  never relationship-tinted); civilians use relationship colors and
   mineable veins use their resource color.
+  Sensor selection works through asteroids and terrain; physical fire and enemy
+  attacks remain line-of-sight blocked.
+- **Arrival awareness**: sector jumps and planetary lift-off face the ship toward
+  the equal-weight majority bearing of visible contacts, without letting a carrier's
+  twelve batteries outweigh the carrier itself. The Aegis launches with 16 seekers
+  and fabricates one more every 10 seconds in flight; the Kestrel starts with 8 and
+  does not regenerate them.
 - **Mining & crafting**: shoot glowing ore veins on asteroids, tractor in salvage
   (Scrap / Ion Crystals / Flux Cores), spend it mid-run in the Tab Engineering screen
   on repairs, refills and three-rank per-run upgrades. A shared original SVG set
@@ -122,7 +131,7 @@ The in-game **Field Manual** (main menu) documents every implemented mechanic.
 ```bash
 npm run test:architecture     # enforce controller and harness line-size budgets
 npm run typecheck            # strict TS, no emit
-npm run test:visual          # compare 26 scenes with local, ignored baselines
+npm run test:visual          # compare 30 scenes with local, ignored baselines
 npm run test:visual:update   # re-capture local baselines after intentional changes
 npm run test:smoke           # end-to-end behavior + persistence regression suite
 ```
@@ -137,7 +146,7 @@ scene via `/?testScene=<name>&seed=7`, and diffs screenshots with pixelmatch.
 Scenes are staged deterministically (seeded RNG, fixed-step simulation, frozen CSS
 animations) — a same-machine re-render diffs at exactly 0.000%. Baselines are local
 generated artifacts and are intentionally not committed: the first run creates
-them, and subsequent runs compare against them. The 26 scenes cover world art,
+them, and subsequent runs compare against them. The 30 scenes cover world art,
 every major screen, targeting, combat/FX, caves, bases, trade, fleet connectivity,
 cloak, controls, enemy variants, missile warnings and the capital superweapon.
 Failure diffs land in `test/visual/diff/`.

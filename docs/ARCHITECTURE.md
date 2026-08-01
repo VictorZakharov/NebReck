@@ -87,7 +87,7 @@ src/
     WeaponSystem.ts       player firing, energy, switching, damageMult (upgrades)
     ProjectileSystem.ts   pooled ordnance, path-range clamp, homing/threat query, swept collision
     CapitalBeam.ts        thick-ray trace: first asteroid absorbs, ships before it are hit
-    Targeting.ts          pursuit-aware hostile lock + unified peaceful contact scan
+    Targeting.ts          cover-independent aim assist + camera-origin target-sized scan
   fx/
     ParticleSystem.ts     one pooled additive point-sprite system for everything
     ExplosionSystem.ts    flash + shockwave ring + sparks/embers + pooled point lights
@@ -101,6 +101,7 @@ src/
     VisorPanels.ts        direct canvas raster + one shared convex helmet surface
     ShipThumbnails.ts     offscreen renderer → data-URL hull portraits for the cards
     Radar3D.ts            sphere radar on its own tiny WebGL canvas (ship-frame blips + stems)
+    TargetPreview.ts      centered/fitted health wireframe + GPU silhouette perimeter glow
     LoadoutScreen.ts      in-run crafting (Tab); pure view over Inventory
     TradeScreen.ts        merchant Buy/Sell view over structured Trade holdings
     ResourceIcons.ts      original inline SVG set for all resources/consumables
@@ -118,7 +119,7 @@ src/
     GameRuntime.ts        input, simulation, carrier mount LOS, missile-warning transitions
     GameCombat.ts         hits, hostile ordnance/LOS, carrier-beam effects and collisions
     GameHudPresenter.ts   HUD frame assembly, projections, radar and pickup flyouts
-    GameWorldFlow.ts      jump spool, sector population and persistent planet swaps
+    GameWorldFlow.ts      jump spool, contact-facing arrivals and persistent planet swaps
     SpawnSafety.ts        quiet sector-entry solver with guaranteed outer-shell fallback
     GameConstants.ts      travel/system-safety constants + target relationship/role copy
     GamePreferences.ts    validated one-year ship/difficulty cookies
@@ -127,9 +128,9 @@ src/
     WorldCollision.ts     shared sphere/AABB body tests
     CloakVisual.ts        hull ghosting + iridescent rim resource lifecycle
     Config.ts             base tuning (camera, bloom, world densities, weapon energy)
-    Ships.ts              PLAYER_SHIPS roster (stats per hull)
+    Ships.ts              PLAYER_SHIPS roster (stats, weapons and seeker fabrication)
     Difficulty.ts         DIFFICULTIES multipliers
-    Inventory.ts          resource wallet + RECIPES + craft bookkeeping
+    Inventory.ts          resource wallet + recipes + frame-rate-independent seeker fabrication
     EncounterDirector.ts  exploration threat pacing: alert heat from Vigil kills →
                           hunter wings jump in from deep space; ambient scout pairs;
                           12-live-hunter ceiling (gated off in peaceful sector 1)
@@ -153,8 +154,8 @@ test/
   smoke/
     helpers.mjs           static server, browser diagnostics, deterministic stepping
     hangar.mjs            preferences, hangar geometry, crafting and contact UI
-    world.mjs             peace/trade/planet persistence/jump flow
-    targeting.mjs         pursuit policy, ordnance warnings/range and flight key chord
+    world.mjs             peace/trade/planet persistence/jump flow + turret clearance
+    targeting.mjs         pursuit/contact policy, ordnance warnings/range and flight key chord
     capital.mjs           carrier battery, preview and annihilator probes
     runtime.mjs           hunters, camera, turrets, devices and stress cleanup
     assertions.mjs        grouped invariant aggregation and failure labels
@@ -217,9 +218,10 @@ GameLoop.tick(dt)
     hostiles[] targeting-resolution rebuild (distant carrier mounts collapse);
     shootables[] physical-hit rebuild (all mounts + capital + neutrals)
     PlayerShip.update          ← Input
-    Targeting.update           → pursuit-aware hostile lock or unified camera-angle inspection
+    Targeting.update           → close aim assist or tight camera-origin angular inspection
     InteractionTargeting      → competing ore/stash boresight candidate (never aim assist)
     WeaponSystem.update        → spawns bolts/missiles from aimTarget only
+    Inventory.regenerateMissiles → optional per-hull real-time seeker fabrication
     engine-trail particle emission (dt-accumulated)
     EnemyShip.update × N       ← EnemyBrain (patrol/approach/attack/break),
                                  stun + cloak-blind aware, fires via callback
@@ -271,7 +273,7 @@ See `test/visual/run.mjs`, `src/game/TestScenes.ts`, and
 `src/game/test-scenes/`. Deterministic because:
 seeded Rng, `GameLoop.stepManual` (no wall clock), frozen CSS animations
 (injected style pauses everything at t=1s), SwiftShader software GL in headless
-Chromium. Same machine → 0.000% pixel diff. The current 26 scenes cover world art,
+Chromium. Same machine → 0.000% pixel diff. The current 30 scenes cover world art,
 ships, combat/FX, hostile and civilian HUD targeting, every major screen,
 caves/bases/wrecks, trade, fleet connectivity, cloak, controls, enemy ordnance,
 missile warnings and the carrier superweapon.

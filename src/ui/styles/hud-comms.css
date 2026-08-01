@@ -13,11 +13,6 @@
 .target-preview.show { display: block; }
 .preview-wrap { margin: 6px 0 4px; }
 .preview-canvas { display: block; width: 170px; height: 128px; }
-/* Relationship and condition are separate channels: hostile red strokes sit
-   outside the health-colored wireframe rather than replacing its color. */
-.target-preview.hostile .preview-canvas {
-  filter: drop-shadow(0 0 1px #ff3b30) drop-shadow(0 0 1px #ff3b30);
-}
 .preview-name {
   font-size: 11px; letter-spacing: 0.28em; text-transform: uppercase;
   color: var(--accent); margin-bottom: 5px;

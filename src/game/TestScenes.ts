@@ -7,10 +7,12 @@ import {
 } from './test-scenes/CombatTestScenes';
 import { freezeCssAnimations } from './test-scenes/TestSceneShared';
 import {
+  stageCapitalTargeting,
   stageDistantTargeting,
   stageFriendlyTargeting,
   stageResourceTargeting,
   stageTargeting,
+  stageTurretTargeting,
 } from './test-scenes/TargetingTestScenes';
 import {
   stageBoost,
@@ -56,6 +58,8 @@ const TEST_SCENES: Readonly<Record<string, (game: Game) => void>> = {
   boost: stageBoost,
   targeting: stageTargeting,
   'distant-targeting': stageDistantTargeting,
+  'turret-targeting': stageTurretTargeting,
+  'capital-targeting': stageCapitalTargeting,
   'friendly-targeting': stageFriendlyTargeting,
   'resource-targeting': stageResourceTargeting,
   fx: stageFx,

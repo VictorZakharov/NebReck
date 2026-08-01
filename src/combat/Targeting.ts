@@ -5,6 +5,7 @@ import { Ship } from '../entities/Ship';
 const fwd = new Vector3();
 const scanFwd = new Vector3();
 const toTarget = new Vector3();
+const CROSSHAIR_MARGIN = 0.045; // reticle-sized sensor pick radius (~2.6 degrees)
 
 export interface TargetInfo {
   ship: Ship;
@@ -16,7 +17,7 @@ export interface TargetInfo {
 }
 
 /**
- * LOS-aware soft lock over all hostiles (fighters, turrets, the capital).
+ * Sensor soft lock over all hostiles (fighters, turrets, the capital).
  * While at least one enemy is pursuing the player, hostiles retain priority
  * and those inside weapon reach receive distance-weighted aim assist. With no
  * pursuit, hostiles and sensor-only civilians share one camera-crosshair scan
@@ -37,10 +38,10 @@ export class Targeting {
     hostiles: readonly Ship[],
     contacts: readonly Ship[],
     projectileSpeed: number,
-    isVisible: (ship: Ship) => boolean = () => true,
     weaponRange = Infinity,
     crosshairForward?: Vector3,
     pursuitActive = true,
+    crosshairOrigin?: Vector3,
   ): void {
     player.forward(fwd);
     scanFwd.copy(crosshairForward ?? fwd);
@@ -48,45 +49,46 @@ export class Targeting {
     else scanFwd.normalize();
 
     const closeRange = Math.max(0, weaponRange);
+    const scanOrigin = crosshairOrigin ?? player.position;
     let hostile: Ship | null;
     let best: Ship | null;
     if (!pursuitActive) {
       hostile = this.bestCandidate(
         player,
         hostiles,
-        isVisible,
         true,
         scanFwd,
+        scanOrigin,
         0,
         Infinity,
       );
       const contact = this.bestCandidate(
         player,
         contacts,
-        () => true,
         true,
         scanFwd,
+        scanOrigin,
         0,
         Infinity,
       );
-      best = this.crosshairWinner(player, hostile, contact, scanFwd);
+      best = this.crosshairWinner(scanOrigin, hostile, contact, scanFwd);
       if (best !== hostile) hostile = null;
     } else {
       const closeHostile = this.bestCandidate(
         player,
         hostiles,
-        isVisible,
         false,
         fwd,
+        player.position,
         0,
         closeRange,
       );
       hostile = closeHostile ?? this.bestCandidate(
         player,
         hostiles,
-        isVisible,
         true,
         scanFwd,
+        scanOrigin,
         closeRange,
         Infinity,
       );
@@ -95,9 +97,9 @@ export class Targeting {
       best = hostile ?? this.bestCandidate(
         player,
         contacts,
-        () => true,
         true,
         scanFwd,
+        scanOrigin,
         0,
         Infinity,
       );
@@ -121,9 +123,9 @@ export class Targeting {
   private bestCandidate(
     player: PlayerShip,
     candidates: readonly Ship[],
-    isVisible: (ship: Ship) => boolean,
     crosshairPriority: boolean,
     forward: Vector3,
+    scanOrigin: Vector3,
     minRangeExclusive: number,
     maxRangeInclusive: number,
   ): Ship | null {
@@ -136,19 +138,23 @@ export class Targeting {
 
     for (const h of candidates) {
       if (!h.alive) continue;
-      toTarget.copy(h.position).sub(player.position);
-      const dist = toTarget.length();
+      const dist = h.position.distanceTo(player.position);
       if (
         dist < 1e-5 || dist <= minRangeExclusive ||
         dist > maxRangeInclusive
       ) continue;
-      toTarget.divideScalar(dist);
+      toTarget.copy(h.position).sub(scanOrigin);
+      const scanDistance = toTarget.length();
+      if (scanDistance < 1e-5) continue;
+      toTarget.divideScalar(scanDistance);
       const dot = forward.dot(toTarget);
       const isCurrent = this.current?.ship === h;
+      const acquireCos = crosshairPriority
+        ? Math.cos(CROSSHAIR_MARGIN + Math.asin(Math.min(0.95, h.radius / scanDistance)))
+        : cosCone;
       // Informational contacts do not get combat-lock hysteresis: once they
       // leave the ordinary crosshair cone, their bracket disappears at once.
-      if (dot < (!crosshairPriority && isCurrent ? keepCosCone : cosCone)) continue;
-      if (!isVisible(h)) continue;
+      if (dot < (!crosshairPriority && isCurrent ? keepCosCone : acquireCos)) continue;
       if (crosshairPriority) {
         const dotDelta = dot - bestDot;
         if (dotDelta > 1e-7 || (Math.abs(dotDelta) <= 1e-7 && dist < bestDistance)) {
@@ -171,17 +177,17 @@ export class Targeting {
 
   /** Compare already-filtered hostile/contact winners without per-frame arrays. */
   private crosshairWinner(
-    player: PlayerShip,
+    scanOrigin: Vector3,
     hostile: Ship | null,
     contact: Ship | null,
     forward: Vector3,
   ): Ship | null {
     if (!hostile) return contact;
     if (!contact) return hostile;
-    toTarget.copy(hostile.position).sub(player.position);
+    toTarget.copy(hostile.position).sub(scanOrigin);
     const hostileDistance = toTarget.length();
     const hostileDot = forward.dot(toTarget.divideScalar(hostileDistance));
-    toTarget.copy(contact.position).sub(player.position);
+    toTarget.copy(contact.position).sub(scanOrigin);
     const contactDistance = toTarget.length();
     const contactDot = forward.dot(toTarget.divideScalar(contactDistance));
     return contactDot > hostileDot + 1e-7 ||

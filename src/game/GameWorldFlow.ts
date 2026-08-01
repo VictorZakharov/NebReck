@@ -18,6 +18,7 @@ import { EnemyShip } from '../entities/EnemyShip';
 import { NeutralShip } from '../entities/NeutralShip';
 import { PickupSnapshot, PickupSystem } from '../entities/PickupSystem';
 import { PlayerShip } from '../entities/PlayerShip';
+import { Ship } from '../entities/Ship';
 import { Turret } from '../entities/Turret';
 import { WarpTunnel } from '../fx/WarpTunnel';
 import { ChaseCamera } from '../rendering/ChaseCamera';
@@ -99,6 +100,7 @@ export interface GameWorldFlowHost {
 const jumpForward = new Vector3();
 const jumpProbe = new Vector3();
 const sectorHeart = new Vector3();
+const arrivalTarget = new Vector3();
 
 /** Free GPU resources owned by a discarded world subtree. */
 function disposeGroup(root: Object3D): void {
@@ -468,7 +470,7 @@ export class GameWorldFlow {
     host.player.object.position
       .copy(planet.position)
       .addScaledVector(jumpProbe, -(planet.radius + 220));
-    host.player.faceToward(sectorHeart);
+    this.orientPlayerTowardTargets();
     host.player.velocity.set(0, 0, 0);
     host.chaseCam.snapTo(host.player.object);
     host.hud.flashJump();
@@ -632,6 +634,39 @@ export class GameWorldFlow {
       hostilePositions,
       patrolWaypoints,
     ));
+    this.orientPlayerTowardTargets();
+  }
+
+  /** Face the equal-weight mean bearing of targetable contacts on arrival. */
+  private orientPlayerTowardTargets(): void {
+    const { host } = this;
+    sectorHeart.set(0, 0, 0);
+    arrivalTarget.set(0, 0, 0);
+    let nearestDistanceSq = Infinity;
+    const include = (ship: Ship): void => {
+      if (!ship.alive) return;
+      jumpProbe.copy(ship.position).sub(host.player.position);
+      const distanceSq = jumpProbe.lengthSq();
+      if (distanceSq < 1e-5) return;
+      sectorHeart.add(jumpProbe.normalize());
+      if (distanceSq < nearestDistanceSq) {
+        nearestDistanceSq = distanceSq;
+        arrivalTarget.copy(ship.position);
+      }
+    };
+    for (const enemy of host.enemies) include(enemy);
+    for (const turret of host.turrets) {
+      if (!host.capitalTurrets.includes(turret)) include(turret);
+    }
+    for (const neutral of host.neutrals) include(neutral);
+    if (host.capital) include(host.capital);
+    if (sectorHeart.lengthSq() > 1e-4) {
+      arrivalTarget.copy(sectorHeart).normalize().add(host.player.position);
+    } else if (nearestDistanceSq === Infinity) {
+      arrivalTarget.set(0, 0, 0);
+      if (host.player.position.lengthSq() < 1e-5) arrivalTarget.z = -1;
+    }
+    host.player.faceToward(arrivalTarget);
   }
 
   private rebuildPostFx(): void {

@@ -9,6 +9,10 @@ export async function runTargetingSmoke(page) {
     const savedCentred = centred.position.clone();
     const savedCloser = closer.position.clone();
     const savedContact = peacefulContact.position.clone();
+    const peacefulTurret = game.turrets.find((turret) =>
+      turret.alive && !game.capitalTurrets.includes(turret)
+    );
+    const savedTurret = peacefulTurret?.position.clone();
     const origin = game.player.position.clone().set(0, 2600, 0);
     const cameraForward = origin.clone().set(0.18, 0, -1).normalize();
     const cameraRight = cameraForward.clone().cross({ x: 0, y: 1, z: 0 }).normalize();
@@ -17,6 +21,7 @@ export async function runTargetingSmoke(page) {
     game.player.velocity.set(0, 0, 0);
     game.chaseCam.snapTo(game.player.object);
     game.chaseCam.camera.updateMatrixWorld(true);
+    const cameraOrigin = game.chaseCam.camera.position.clone();
 
     centred.position.copy(origin).addScaledVector(cameraForward, 900);
     closer.position.copy(origin).add({ x: 0, y: 0, z: -650 });
@@ -26,7 +31,6 @@ export async function runTargetingSmoke(page) {
       [centred, closer],
       [],
       340,
-      () => true,
       500,
       cameraForward,
     );
@@ -40,9 +44,9 @@ export async function runTargetingSmoke(page) {
     // Regression for the live failure: the contact directly under the reticle
     // at 1,847 m must beat a 1,444 m contact several degrees off-axis. Sensor
     // inspection is not capped by the 1,500 m combat-era acquire distance.
-    centred.position.copy(origin).addScaledVector(cameraForward, 1847);
+    centred.position.copy(cameraOrigin).addScaledVector(cameraForward, 1847);
     closer.position
-      .copy(origin)
+      .copy(cameraOrigin)
       .addScaledVector(cameraForward, 1435)
       .addScaledVector(cameraRight, 160);
     game.targeting.current = null;
@@ -51,14 +55,29 @@ export async function runTargetingSmoke(page) {
       [centred, closer],
       [],
       340,
-      () => true,
       500,
       cameraForward,
       false,
+      cameraOrigin,
     );
-    const unlimitedScanSelectedCentred =
+    let unlimitedScanSelectedCentred =
       game.targeting.current?.ship === centred && game.targeting.current.distance > 1800;
-
+    const blocker = game.world.bodies.find((body) => !body.destroyed && !body.box);
+    const blockerPosition = blocker?.position.clone(), blockerRadius = blocker?.radius;
+    if (blocker) {
+      blocker.position.copy(cameraOrigin).addScaledVector(cameraForward, 700);
+      blocker.radius = 90;
+    }
+    const centredOccluded = !game.combat.hasLineOfSight(
+      game.player.position, centred.position, null, centred,
+    );
+    game.targeting.current = null;
+    game.targeting.update(
+      game.player, [centred, closer], [], 340, 500, cameraForward, false, cameraOrigin,
+    );
+    unlimitedScanSelectedCentred &&=
+      centredOccluded && game.targeting.current?.ship === centred;
+    if (blocker && blockerPosition && blockerRadius !== undefined) { blocker.position.copy(blockerPosition); blocker.radius = blockerRadius; }
     centred.position.copy(origin).addScaledVector(cameraForward, 450);
     closer.position.copy(origin).add({ x: 15, y: 0, z: -100 });
     game.targeting.current = null;
@@ -67,12 +86,22 @@ export async function runTargetingSmoke(page) {
       [centred, closer],
       [],
       340,
-      () => true,
       500,
       cameraForward,
       false,
     );
     const unpursuedSelectedCentred = game.targeting.current?.ship === centred;
+
+    if (peacefulTurret) {
+      centred.position.copy(origin).addScaledVector(cameraForward, 700)
+        .addScaledVector(cameraRight, 90);
+      peacefulTurret.position.copy(origin).addScaledVector(cameraForward, 850);
+      game.targeting.current = null;
+      game.targeting.update(
+        game.player, [centred, peacefulTurret], [], 340, 500, cameraForward, false,
+      );
+    }
+    const unpursuedTurretSelected = game.targeting.current?.ship === peacefulTurret;
 
     game.targeting.current = null;
     game.targeting.update(
@@ -80,7 +109,6 @@ export async function runTargetingSmoke(page) {
       [centred, closer],
       [],
       340,
-      () => true,
       500,
       cameraForward,
       true,
@@ -94,7 +122,7 @@ export async function runTargetingSmoke(page) {
     centred.position
       .copy(origin)
       .addScaledVector(cameraForward, 900)
-      .addScaledVector(cameraRight, 60);
+      .addScaledVector(cameraRight, 20);
     peacefulContact.position.copy(origin).addScaledVector(cameraForward, 1100);
     game.targeting.current = null;
     game.targeting.update(
@@ -102,7 +130,6 @@ export async function runTargetingSmoke(page) {
       [centred],
       [peacefulContact],
       340,
-      () => true,
       500,
       cameraForward,
       false,
@@ -116,7 +143,6 @@ export async function runTargetingSmoke(page) {
       [centred],
       [peacefulContact],
       340,
-      () => true,
       500,
       cameraForward,
       true,
@@ -128,6 +154,7 @@ export async function runTargetingSmoke(page) {
     centred.position.copy(savedCentred);
     closer.position.copy(savedCloser);
     peacefulContact.position.copy(savedContact);
+    if (peacefulTurret && savedTurret) peacefulTurret.position.copy(savedTurret);
     game.targeting.current = null;
     return {
       staged: true,
@@ -135,6 +162,7 @@ export async function runTargetingSmoke(page) {
       farGrey,
       unlimitedScanSelectedCentred,
       unpursuedSelectedCentred,
+      unpursuedTurretSelected,
       pursuedSelectedCloser,
       nearRed,
       peaceSelectedCentredContact,

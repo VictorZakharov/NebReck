@@ -46,16 +46,30 @@ Everspace-inspired exploration space-dogfighter. three.js + TypeScript + webpack
 Targeting mode follows pursuit state: with no engaged enemy, hostiles and civilians
 share pure camera-crosshair ranking at every range with no sensor-distance cap;
 active pursuit restores hostile priority plus range-weighted aim assist inside weapon
-reach. Civilian and ore previews are informational only and must never enter
+reach. Angular inspection uses the chase-camera position and a reticle-sized,
+target-angular-radius cone; using the player origin or the old 18-degree scan can
+select a visibly offset contact behind the reticle. Sensor acquisition deliberately
+ignores world/terrain LOS; projectiles, AI fire, and the carrier beam still obey it.
+Civilian and ore previews are informational only and must never enter
 `aimTarget`; ore wireframes use their resource color. All object prompts use a stable
 smoothed world anchor. Cloak and
 crafting share the 180 m lockout.
+
+Hostile preview relationship color is a silhouette-mask perimeter glow rendered
+behind the health-colored edge wireframe. Never apply a red CSS filter to the whole
+preview canvas: that tints every internal edge and destroys the health channel.
+Preview source geometry is centered after normalization: translate by
+`-sourceCenter * scale`, not the unscaled center. Capital previews use uniform
+view-aware zoom so a nose-on carrier remains legible without changing orientation.
 
 Planet cave geometry is an open-bottomed procedural arch whose sampled colliders
 come from the same profile. Preserve the non-self-intersecting control path, dense
 `CaveLandmark.route`, terrain-triangle `heightAt` sampler, overlapping wall lattice,
 base/cave exclusion zones, open guard anchors, bounded rock aspect ratios, and
 closing-speed collision damage whenever surface generation changes.
+
+Space-cave batteries must sit beyond every asteroid collision body; derive their
+mount surface from the displaced mesh and bridge any clearance offset with the pad.
 
 Hangar selection clicks are persistence commits. Save ship/difficulty synchronously
 inside the click callbacks; do not defer them to Engage or game entry.
@@ -64,13 +78,17 @@ Player seekers have a 1,050 m cumulative traveled-path budget, including curves;
 clamp the final swept segment before collision so a large step cannot over-range
 hit. Immersive flight locks physical `KeyW` where the browser supports Keyboard
 Lock so `L-Ctrl + W` remains descend + thrust instead of a close-tab shortcut.
+Per-hull seeker issuance/fabrication belongs in `PlayerShipDef`: Aegis starts at
+16 and regenerates one every 10 seconds; Kestrel starts at 8 with no regeneration.
+Sector and orbit arrivals face the equal-weight mean contact bearing; exclude
+capital-mounted turrets so one carrier does not count as thirteen contacts.
 
 ## Verify loop (run all four before claiming done)
 
 ```bash
 npm run test:architecture   # Game/controller and smoke-module size budgets
 npm run typecheck
-npm run test:visual          # 26 scenes vs local baselines; 0.000% on this machine
+npm run test:visual          # 30 scenes vs local baselines; 0.000% on this machine
 npm run test:smoke           # full loop: peace→contract→merchant→planet→jump→combat→devices
 ```
 

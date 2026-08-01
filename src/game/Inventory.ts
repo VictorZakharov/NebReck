@@ -68,9 +68,22 @@ export class Inventory {
   /** Seeker missile ammo — replenished at merchants. */
   missiles = 8;
   levels = new Map<string, number>();
+  private missileRegenProgress = 0;
 
   add(type: ResourceType, n = 1): void {
     this.counts[type] += n;
+  }
+
+  /** Advance a ship-provided seeker fabricator using frame-rate-independent time. */
+  regenerateMissiles(dt: number, interval: number | null): number {
+    if (interval === null || interval <= 0) return 0;
+    this.missileRegenProgress += Math.max(0, dt) / interval;
+    const gained = Math.floor(this.missileRegenProgress + 1e-9);
+    if (gained > 0) {
+      this.missileRegenProgress -= gained;
+      this.missiles += gained;
+    }
+    return gained;
   }
 
   levelOf(recipe: Recipe): number {
