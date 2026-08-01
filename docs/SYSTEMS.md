@@ -231,10 +231,12 @@ drives HUD slots, digit keys and wheel), energy banks and missile racks:
 Ion Lance: 0.28 s cd, 16 energy/shot — burst weapon, gated hard by the bank.
 Hangar shows hardpoint chips + a top-left numeric spec panel on one shared,
 outward-convex interactive visor; drag any mouse button on empty space to orbit
-the showcase. Ship and difficulty selections are validated and written
-immediately to one-year `nebreck_ship` / `nebreck_difficulty` cookies, even
-before Engage. Valid `cleverspace_*` values are migrated on first read for
-  backward compatibility. Enemy roster: raider (34 hull / 16 shield / 100 pts),
+the showcase. Startup reads and validates the root-scoped
+`nebreck_hangar_ship` / `nebreck_hangar_difficulty` cookies without rewriting
+them, falling back to Kestrel/Veteran when absent or invalid. An explicit ship or
+difficulty card click writes its one-year cookie immediately, before Engage;
+opening the hangar, repainting the visor, and pressing Engage do not write.
+Enemy roster: raider (34 hull / 16 shield / 100 pts),
   brute (110 / 50 / 250), and broad-wing bomber (78 / 34 / 325) carrying either
   seeker or fast rockets; selected raiders carry a visible rotary cluster. The
   capital is worth 2500 pts, projects jump suppression,

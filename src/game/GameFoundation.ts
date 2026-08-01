@@ -43,7 +43,7 @@ import { DeviceSystem } from './Devices';
 import { DifficultyDef, getDifficulty } from './Difficulty';
 import { EncounterDirector, HunterSpawnSpec } from './EncounterDirector';
 import { GameCombat } from './GameCombat';
-import { loadGamePreferences } from './GamePreferences';
+import { loadHangarPreferences } from './HangarPreferences';
 import { GameHudPresenter } from './GameHudPresenter';
 import { GameWorldFlow } from './GameWorldFlow';
 import { Inventory } from './Inventory';
@@ -64,8 +64,6 @@ export interface GameOptions {
   seed: number;
   /** Test harness mode: no pointer lock, no audio, no rAF loop. */
   headless: boolean;
-  /** Restore preferences and retain the Engage fallback; clicks always save. */
-  persistPreferences?: boolean;
 }
 
 /**
@@ -195,22 +193,18 @@ export abstract class GameFoundation {
   protected gameOverScreen: GameOverScreen | null = null;
   protected deathTimer = -1;
   protected readonly headless: boolean;
-  protected readonly persistPreferences: boolean;
 
   constructor(canvas: HTMLCanvasElement, uiRoot: HTMLElement, options: GameOptions) {
     this.headless = options.headless;
-    this.persistPreferences = options.persistPreferences ?? !options.headless;
     this.uiRoot = uiRoot;
     this.meta = new MetaProgress(!options.headless);
-    if (this.persistPreferences) {
-      const preferences = loadGamePreferences({
-        shipId: this.selectedShipId,
-        difficultyId: this.selectedDifficultyId,
-      });
-      this.selectedShipId = preferences.shipId;
-      this.selectedDifficultyId = preferences.difficultyId;
-      this.difficulty = getDifficulty(preferences.difficultyId);
-    }
+    const preferences = loadHangarPreferences({
+      shipId: this.selectedShipId,
+      difficultyId: this.selectedDifficultyId,
+    });
+    this.selectedShipId = preferences.shipId;
+    this.selectedDifficultyId = preferences.difficultyId;
+    this.difficulty = getDifficulty(preferences.difficultyId);
 
     this.rng = new Rng(options.seed);
     this.renderer = createRenderer(canvas);

@@ -122,7 +122,7 @@ src/
     GameWorldFlow.ts      jump spool, contact-facing arrivals and persistent planet swaps
     SpawnSafety.ts        quiet sector-entry solver with guaranteed outer-shell fallback
     GameConstants.ts      travel/system-safety constants + target relationship/role copy
-    GamePreferences.ts    validated one-year ship/difficulty cookies
+    HangarPreferences.ts  read-once, explicit-selection ship/difficulty cookies
     InteractionTargeting.ts boresight loot/body + nearest-neutral queries
     HudProjection.ts      world→screen contacts/radar + dt-smoothed prompt anchors
     WorldCollision.ts     shared sphere/AABB body tests
@@ -153,7 +153,8 @@ test/
   smoke.mjs               thin Chromium lifecycle + ordered scenario runner
   smoke/
     helpers.mjs           static server, browser diagnostics, deterministic stepping
-    hangar.mjs            preferences, hangar geometry, crafting and contact UI
+    preferences.mjs       real menu/hangar preference lifecycle + write-count probe
+    hangar.mjs            hangar geometry, crafting and contact UI
     world.mjs             peace/trade/planet persistence/jump flow + turret clearance
     targeting.mjs         pursuit/contact policy, ordnance warnings/range and flight key chord
     capital.mjs           carrier battery, preview and annihilator probes
@@ -186,14 +187,15 @@ surviving enemy/turret objects and pickup snapshot, so harvested bodies and a
 cleared garrison stay cleared until the sector/sortie is discarded. The
 `Game.world` accessor still presents the active environment to combat.
 
-Hangar ship/difficulty changes write `nebreck_ship` and `nebreck_difficulty`
-synchronously from the selection click (one-year, `Expires` + `Max-Age`,
-`Path=/`, `SameSite=Lax`) and are validated against the current catalogs at
-startup. Valid values from the former `cleverspace_*` keys are migrated on read,
-so the repository rename does not discard existing selections. The click
-contract is route-independent and does not require Engage. Explicit
-`?headless=1` skips startup restore and the Engage fallback; automation that
-actually clicks a hangar card still exercises the real cookie write.
+`GameFoundation` reads `nebreck_hangar_ship` and
+`nebreck_hangar_difficulty` once at startup, validates them against the current
+catalogs, and otherwise keeps the Kestrel/Veteran defaults. Loading is read-only.
+`GameScreens` writes one root-scoped, one-year `SameSite=Lax` cookie synchronously
+only from the corresponding explicit ship-card or difficulty-card callback;
+opening/rendering the hangar and pressing Engage do not write. `HangarVisor`
+forwards a click only when its preceding press began on the already-active visor,
+preventing the menu's Hangar transition click from becoming an accidental card
+selection after it bubbles to `document`.
 
 Planet caves expose a dense `CaveLandmark.route` from the outside ramp onto the
 Catmull-Rom centreline plus known-clear interior/exterior guard anchors. The

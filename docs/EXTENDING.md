@@ -142,10 +142,12 @@ Theme: `THEMES` in `world/Sector.ts`. Beat: `EXPLORE_COMMS` key + a one-shot
 `HangarScreen.ts` owns the DOM state, `HangarVisor.ts` owns the shared curved
 surface/input projection, and `VisorPanels.ts` paints origin-clean panel canvases.
 After a control changes, repaint the affected visor source instead of rebuilding
-the Three.js scene. Add validated cookies through `game/GamePreferences.ts`;
-write synchronously in the selection click callback, not only on Engage. A card
-click is always a real persistence action, even on a staged hangar route; explicit
-`?headless=1` only skips startup restore/Engage fallback.
+the Three.js scene. Add validated cookies through `game/HangarPreferences.ts`.
+Startup reads must be side-effect free; write synchronously only in the explicit
+selection callback, never while mounting, rendering, restoring state, or pressing
+Engage. Keep the cookie root-scoped (`Path=/`) with a unique name. Extend the
+preference lifecycle smoke test so opening Hangar and reloading produce zero
+writes, while a physical visor-card click produces exactly one.
 
 ## Add or move UI styling
 

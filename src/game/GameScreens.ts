@@ -12,10 +12,7 @@ import { DeviceSystem } from './Devices';
 import { getDifficulty } from './Difficulty';
 import { EncounterDirector } from './EncounterDirector';
 import { GameFoundation } from './GameFoundation';
-import {
-  saveDifficultyPreference,
-  saveShipPreference,
-} from './GamePreferences';
+import { saveHangarDifficulty, saveHangarShip } from './HangarPreferences';
 import { Inventory, RECIPES } from './Inventory';
 import { QuestSystem } from './Quests';
 import { getShipDef } from './Ships';
@@ -104,23 +101,17 @@ export abstract class GameScreens extends GameFoundation {
         onRendered: () => this.hangarVisor.mount(),
         onShipSelected: (id) => {
           this.selectedShipId = id;
-          // Clicking a card is the preference commit point; do not defer it
-          // until Engage because the tab may be closed from the hangar.
-          saveShipPreference(id);
+          saveHangarShip(id);
           this.createPlayer(id);
           this.parkShowcaseShip();
         },
         onDifficultySelected: (id) => {
           this.selectedDifficultyId = id;
-          saveDifficultyPreference(id);
+          saveHangarDifficulty(id);
         },
         onEngage: (shipId, difficultyId) => {
           this.selectedShipId = shipId;
           this.selectedDifficultyId = difficultyId;
-          if (this.persistPreferences) {
-            saveShipPreference(shipId);
-            saveDifficultyPreference(difficultyId);
-          }
           this.startMission();
         },
         onBack: () => this.showMenu(),

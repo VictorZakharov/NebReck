@@ -17,6 +17,7 @@ const limits = new Map([
   ['test/smoke.mjs', 100],
   ['test/smoke/helpers.mjs', 120],
   ['test/smoke/hangar.mjs', 400],
+  ['test/smoke/preferences.mjs', 120],
   ['test/smoke/world.mjs', 560],
   ['test/smoke/targeting.mjs', 460],
   ['test/smoke/capital.mjs', 360],

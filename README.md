@@ -16,6 +16,22 @@ Drift by emptying it.
 Everything is procedural: ships, cockpit, nebula skyboxes, planets, asteroid fields,
 particle FX, and even the audio (WebAudio synthesis — zero binary assets in the repo).
 
+## Screenshots
+
+<table width="100%">
+  <tr>
+    <td width="33.333%">
+      <a href="screenshots/nebreck_1.jpg"><img src="screenshots/thumbnails/nebreck_1.jpg" alt="Deep-space exploration through a blue nebula and asteroid field" width="100%"></a>
+    </td>
+    <td width="33.333%">
+      <a href="screenshots/nebreck_2.jpg"><img src="screenshots/thumbnails/nebreck_2.jpg" alt="Planet-surface combat with an incoming missile warning" width="100%"></a>
+    </td>
+    <td width="33.333%">
+      <a href="screenshots/nebreck_3.jpg"><img src="screenshots/thumbnails/nebreck_3.jpg" alt="KV-7 Kestrel selected in the interactive hangar" width="100%"></a>
+    </td>
+  </tr>
+</table>
+
 ## The loop
 
 Launch into a **peaceful first sector** with full jump fuel — mine ore veins, crack
@@ -31,8 +47,9 @@ with a telegraphed annihilator beam — cripple it, destroy it, or outrun its fi
 
 - **Three playable ships** (Kestrel interceptor / Vanta scout / Aegis gunship) chosen
   in an interactive convex-visor hangar, plus three difficulty tiers with real
-  multipliers. The card click itself commits each selection to a one-year browser
-  cookie; Engage or game entry is not required.
+  multipliers. Explicit card clicks commit ship and difficulty to one-year,
+  root-scoped browser cookies, so choices survive reloads without requiring Engage
+  or game entry; opening or rendering the hangar never rewrites them.
 - **Combat**: four primary weapon profiles + lock-on seeker missiles, cover-independent
   soft-targeting with lead pip, enemy AI wings (raiders, rotary interceptors, wardens
   and missile bombers), mixed cannon / rotary / homing-rocket / fast-rocket batteries,

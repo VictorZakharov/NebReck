@@ -8,10 +8,14 @@ const MIME = {
   '.css': 'text/css',
 };
 
-export async function startDistServer(distRoot, port) {
+export async function startDistServer(distRoot, port, mountPath = '') {
   const server = createServer((request, response) => {
     const pathname = new URL(request.url, 'http://localhost').pathname;
-    const filePath = join(distRoot, pathname === '/' ? 'index.html' : pathname);
+    const assetPath =
+      mountPath && (pathname === mountPath || pathname.startsWith(`${mountPath}/`))
+        ? pathname.slice(mountPath.length) || '/'
+        : pathname;
+    const filePath = join(distRoot, assetPath === '/' ? 'index.html' : assetPath);
     try {
       const data = readFileSync(filePath);
       response.writeHead(200, {

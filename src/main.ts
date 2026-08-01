@@ -28,11 +28,7 @@ const uiRoot = document.getElementById('ui-root') as HTMLElement;
 // headless=1 lets automation (the smoke test) opt out of pointer lock and
 // meta persistence without staging a test scene.
 const headless = testScene !== null || params.get('headless') === '1';
-// Visual-review scenes still restore real hangar preferences even though
-// audio/pointer lock are suppressed. Explicit automation skips restore; a
-// deliberate hangar selection click remains a real cookie commit on any route.
-const persistPreferences = params.get('headless') !== '1';
-const game = new Game(canvas, uiRoot, { seed, headless, persistPreferences });
+const game = new Game(canvas, uiRoot, { seed, headless });
 window.game = game; // debugging + test harness access
 window.auditShips = auditShipConnectivity; // structural QA hook (smoke test)
 
