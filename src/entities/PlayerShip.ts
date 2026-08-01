@@ -60,7 +60,7 @@ export class PlayerShip extends Ship {
 
   update(dt: number, input: Input): void {
     const s = this.stats;
-    const { dx, dy } = input.consumeMouseDelta();
+    const { dx, dy } = input.consumeMouseDelta(dt);
 
     // Mouse deflection → target angular rates, smoothed for weight.
     const sens = CONFIG.player.mouseSensitivity;
@@ -70,7 +70,7 @@ export class PlayerShip extends Ship {
     this.yawRate += (clampRate(targetYaw, s.turnRate * 2) - this.yawRate) * smooth;
     this.pitchRate += (clampRate(targetPitch, s.turnRate * 2) - this.pitchRate) * smooth;
 
-    let targetRoll = 0;
+    let targetRoll = input.flightAxis('roll') * s.rollRate;
     if (input.isDown('KeyQ')) targetRoll += s.rollRate;
     if (input.isDown('KeyE')) targetRoll -= s.rollRate;
     targetRoll += this.yawRate * 0.55; // banked turns
@@ -85,13 +85,14 @@ export class PlayerShip extends Ship {
     right.set(1, 0, 0).applyQuaternion(this.object.quaternion);
     up.set(0, 1, 0).applyQuaternion(this.object.quaternion);
 
-    let thrust = 0;
+    const touchThrust = input.flightAxis('thrust');
+    let thrust = touchThrust < 0 ? touchThrust * 0.6 : touchThrust;
     if (input.isDown('KeyW')) thrust += 1;
     if (input.isDown('KeyS')) thrust -= 0.6;
-    let strafeX = 0;
+    let strafeX = input.flightAxis('strafeX');
     if (input.isDown('KeyD')) strafeX += 1;
     if (input.isDown('KeyA')) strafeX -= 1;
-    let strafeY = 0;
+    let strafeY = input.flightAxis('strafeY');
     if (input.isDown('Space')) strafeY += 1;
     if (input.isDown('ControlLeft')) strafeY -= 1;
 

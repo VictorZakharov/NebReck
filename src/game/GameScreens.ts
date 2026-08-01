@@ -98,7 +98,10 @@ export abstract class GameScreens extends GameFoundation {
       this.selectedShipId,
       this.selectedDifficultyId,
       {
-        onRendered: () => this.hangarVisor.mount(),
+        onRendered: () => {
+          if (this.touchControls.enabled) this.hangarVisor.unmount();
+          else this.hangarVisor.mount();
+        },
         onShipSelected: (id) => {
           this.selectedShipId = id;
           saveHangarShip(id);

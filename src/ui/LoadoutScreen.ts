@@ -44,6 +44,14 @@ export class LoadoutScreen {
     const panel = document.createElement('div');
     panel.className = 'ns-panel loadout-panel';
 
+    const closeX = document.createElement('button');
+    closeX.className = 'close-x';
+    closeX.textContent = '✕';
+    closeX.setAttribute('aria-label', 'Return to flight');
+    closeX.addEventListener('mouseenter', this.callbacks.onHover);
+    closeX.addEventListener('click', () => this.callbacks.onClose());
+    panel.appendChild(closeX);
+
     const left = document.createElement('div');
     left.className = 'loadout-left';
     const resources = (Object.keys(RESOURCE_INFO) as ResourceType[])

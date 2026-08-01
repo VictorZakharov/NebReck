@@ -11,6 +11,9 @@ const limits = new Map([
   ['src/game/TestScenes.ts', 120],
   ['src/game/test-scenes/TestSceneShared.ts', 60],
   ['src/game/test-scenes/UiTestScenes.ts', 120],
+  ['src/game/test-scenes/MobileTestScenes.ts', 100],
+  ['src/core/Input.ts', 280],
+  ['src/ui/TouchControls.ts', 260],
   ['src/game/test-scenes/CombatTestScenes.ts', 240],
   ['src/game/test-scenes/TargetingTestScenes.ts', 160],
   ['src/game/test-scenes/WorldTestScenes.ts', 280],
@@ -22,6 +25,8 @@ const limits = new Map([
   ['test/smoke/targeting.mjs', 460],
   ['test/smoke/capital.mjs', 360],
   ['test/smoke/runtime.mjs', 300],
+  ['test/smoke/mobile.mjs', 260],
+  ['test/smoke/mobile-layout.mjs', 140],
   ['test/smoke/assertions.mjs', 320],
 ]);
 

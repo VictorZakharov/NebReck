@@ -301,6 +301,14 @@ export class MainMenu {
       cols.appendChild(col);
     }
     panel.appendChild(cols);
+    const touchGuide = document.createElement('div');
+    touchGuide.className = 'controls-touch-note';
+    touchGuide.innerHTML = `
+      <b>Phone &amp; tablet</b>
+      Landscape touch play uses a left move stick, right aim stick, and dedicated
+      flight, weapon, system, interaction, camera, loadout, and pause controls.
+    `;
+    panel.appendChild(touchGuide);
     this.root.appendChild(panel);
     this.root.appendChild(this.button('Back', () => this.renderMain()));
   }

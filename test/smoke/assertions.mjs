@@ -3,6 +3,7 @@ export function collectSmokeFailures(results) {
   const {
     errors,
     hangarPreferences,
+    mobile,
     hangar,
     world,
     targeting,
@@ -30,6 +31,8 @@ export function collectSmokeFailures(results) {
   } = targeting;
   const { closed, camDist, turretAim, dev, combatStability, aegisMissiles } = runtime;
   const { defaults, settled, clicked, reloaded } = hangarPreferences;
+
+  if (!mobile.passed) failures.push('mobile controls and touch hangar');
 
   if (errors.length > 0) failures.push('browser errors');
   if (

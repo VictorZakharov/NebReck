@@ -2,7 +2,7 @@
 
 All local and CI commands use Node.js 24.
 
-Last updated: 2026-07-31.
+Last updated: 2026-08-01.
 
 The project rule (set by the owner, non-negotiable): **every reported visual issue
 gets its own harness scene, and renders are iterated on — by actually viewing the
@@ -15,7 +15,7 @@ covered by one of the two.
 ```bash
 npm run test:architecture     # controller + smoke-module line-size budgets
 npm run typecheck            # strict TS
-npm run test:visual          # 30 scenes vs local baselines (builds first)
+npm run test:visual          # 36 scenes vs local baselines (builds first)
 npm run test:visual:update   # re-capture local baselines (--scene=<name> for one)
 npm run test:smoke           # full gameplay loop in live headless Chromium
 ```
@@ -57,6 +57,9 @@ actual regression check. Never commit generated PNGs.
 | fleet | all three playable hulls, CLOSE low rear-quarter above the field plane, HUD off — the range+angle where floating-part "ship slop" shows |
 | cloak | predator cloak engaged: glass hull + iridescent rim shell, dimmed engines |
 | controls | keyboard/mouse control reference and device bindings |
+| mobile-controls / mobile-hangar | 844×390 landscape touch deck hit layout and native tappable hangar |
+| mobile-controls-portrait / mobile-hangar-portrait | 390×844 uncluttered portrait deck and vertically scrollable threat selection |
+| mobile-loadout / mobile-trade | 844×390 scrollable Engineering and merchant overlays with direct close control |
 | enemy-variety | raider/warden/bomber silhouettes, cannon and rocket batteries, both rocket families |
 | missile-warning | red imminent-impact warning, countdown and in-flight seeker |
 | capital-superweapon | mixed top/bottom carrier batteries and the 75%-charged annihilator telegraph |
@@ -103,13 +106,23 @@ SwiftShader runs ~4 FPS and dt clamps at 1/20, so sim time ≪ wall time: never
 advance helpers, direct dispatch calls, fixed-step hunter AI/camera updates).
 
 `test/smoke.mjs` is only the ordered runner. Feature probes are split into
-`hangar`, `world`, `targeting`, `capital`, and `runtime` modules; shared server,
+`hangar`, `world`, `targeting`, `capital`, `runtime`, and `mobile` modules; shared server,
 browser-diagnostic, and artificial-time utilities live in `helpers.mjs`, while
 `assertions.mjs` converts their returned results into named failures. Keep probes
 with the system they exercise, return serializable result objects, and preserve
 the runner order when a later module intentionally consumes earlier staged state.
 `test:architecture` enforces the runner and per-module budgets so this split
 cannot silently collapse back into one oversized file.
+
+`mobile.mjs` creates a real `hasTouch`/coarse-pointer Chromium context at 844×390,
+dispatches pointer gestures through the rendered sticks/buttons, and advances game
+time manually. It asserts analog movement/aim, fire, boost, weapon/view switching,
+Engineering round-trip, 44 px hit minimums, viewport containment, zero hit-target
+overlap, and direct native-DOM ship selection in the touch hangar.
+The portrait hangar probe also sends a browser-native CDP touch swipe whose initial
+contact lands on the hardpoint row; it must move the actual hangar scroll container.
+This catches pointer-transparent informational panels that programmatic `scrollTop`
+checks cannot detect.
 
 **Ship connectivity audit** runs first (`window.auditShips()` →
 `auditShipConnectivity` in `ShipMeshAudit.ts`, re-exported by `ShipMesh.ts`):

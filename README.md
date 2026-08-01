@@ -1,6 +1,6 @@
 # Nebula Reckoning
 
-Last updated: 2026-07-31.
+Last updated: 2026-08-01.
 
 [MIT License](LICENSE) · [Contributing](CONTRIBUTING.md) ·
 [Security](SECURITY.md) · [Play the latest production build](https://victorzakharov.github.io/NebReck/)
@@ -50,6 +50,12 @@ with a telegraphed annihilator beam — cripple it, destroy it, or outrun its fi
   multipliers. Explicit card clicks commit ship and difficulty to one-year,
   root-scoped browser cookies, so choices survive reloads without requiring Engage
   or game entry; opening or rendering the hangar never rewrites them.
+- **Phone and tablet controls**: an adaptive portrait/landscape flight deck supplies
+  analog move/aim sticks plus 17 non-overlapping touch targets for maneuvering,
+  weapons, devices, interactions, view, Engineering, and pause. Touch devices use
+  a compact native-DOM hangar so every ship, threat, Engage, and Back choice remains
+  directly tappable and vertical swipes may begin anywhere on the hangar UI,
+  including the selected ship/hardpoint panel; desktop keeps the shared curved visor.
 - **Combat**: four primary weapon profiles + lock-on seeker missiles, cover-independent
   soft-targeting with lead pip, enemy AI wings (raiders, rotary interceptors, wardens
   and missile bombers), mixed cannon / rotary / homing-rocket / fast-rocket batteries,
@@ -137,9 +143,11 @@ deployment credentials.
 | R | Hail, trade, deliver or accept |
 | F / G / H | Cloak / EMP / nanobots |
 | Esc | Pause |
+| Touch | Adaptive portrait/landscape dual move/aim sticks + dedicated flight, combat, system, interaction, view, loadout, and pause controls |
 
 Engage enters app fullscreen and uses browser Keyboard Lock where supported so
 modifier movement chords such as `L-Ctrl + W` remain game input instead of browser shortcuts.
+Coarse-pointer devices automatically use the touch flight deck and skip pointer lock.
 
 The in-game **Field Manual** (main menu) documents every implemented mechanic.
 
@@ -148,13 +156,13 @@ The in-game **Field Manual** (main menu) documents every implemented mechanic.
 ```bash
 npm run test:architecture     # enforce controller and harness line-size budgets
 npm run typecheck            # strict TS, no emit
-npm run test:visual          # compare 30 scenes with local, ignored baselines
+npm run test:visual          # compare 36 scenes with local, ignored baselines
 npm run test:visual:update   # re-capture local baselines after intentional changes
 npm run test:smoke           # end-to-end behavior + persistence regression suite
 ```
 
 The smoke command keeps a thin runner in `test/smoke.mjs`; focused hangar, world,
-targeting, capital, and runtime probes live under `test/smoke/` and share
+targeting, capital, runtime, and real coarse-pointer mobile probes live under `test/smoke/` and share
 deterministic artificial-time helpers.
 
 The visual harness (`test/visual/run.mjs`) builds the app, serves `dist/`, drives
@@ -163,9 +171,10 @@ scene via `/?testScene=<name>&seed=7`, and diffs screenshots with pixelmatch.
 Scenes are staged deterministically (seeded RNG, fixed-step simulation, frozen CSS
 animations) — a same-machine re-render diffs at exactly 0.000%. Baselines are local
 generated artifacts and are intentionally not committed: the first run creates
-them, and subsequent runs compare against them. The 30 scenes cover world art,
+them, and subsequent runs compare against them. The 36 scenes cover world art,
 every major screen, targeting, combat/FX, caves, bases, trade, fleet connectivity,
-cloak, controls, enemy variants, missile warnings and the capital superweapon.
+cloak, desktop controls, phone controls/hangar/overlays, enemy variants, missile warnings
+and the capital superweapon.
 Failure diffs land in `test/visual/diff/`.
 
 ## Documentation

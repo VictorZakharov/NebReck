@@ -7,6 +7,12 @@ import {
 } from './test-scenes/CombatTestScenes';
 import { freezeCssAnimations } from './test-scenes/TestSceneShared';
 import {
+  stageMobileControls,
+  stageMobileHangar,
+  stageMobileLoadout,
+  stageMobileTrade,
+} from './test-scenes/MobileTestScenes';
+import {
   stageCapitalTargeting,
   stageDistantTargeting,
   stageFriendlyTargeting,
@@ -73,6 +79,12 @@ const TEST_SCENES: Readonly<Record<string, (game: Game) => void>> = {
   fleet: stageFleet,
   cloak: stageCloak,
   controls: stageControls,
+  'mobile-controls': stageMobileControls,
+  'mobile-controls-portrait': stageMobileControls,
+  'mobile-hangar': stageMobileHangar,
+  'mobile-hangar-portrait': stageMobileHangar,
+  'mobile-loadout': stageMobileLoadout,
+  'mobile-trade': stageMobileTrade,
   'enemy-variety': stageEnemyVariety,
   'missile-warning': stageMissileWarning,
   'capital-superweapon': stageCapitalSuperweapon,

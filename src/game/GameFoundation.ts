@@ -33,6 +33,7 @@ import { MainMenu } from '../ui/MainMenu';
 import { PauseMenu } from '../ui/PauseMenu';
 import { Radar3D } from '../ui/Radar3D';
 import { TradeScreen } from '../ui/TradeScreen';
+import { TouchControls } from '../ui/TouchControls';
 import { AsteroidDebris } from '../world/AsteroidDebris';
 import { AsteroidBody } from '../world/AsteroidField';
 import { HangarBay } from '../world/HangarBay';
@@ -86,6 +87,7 @@ export abstract class GameFoundation {
   readonly events = new EventBus();
   readonly loop: GameLoop;
   readonly input: Input;
+  readonly touchControls: TouchControls;
   readonly audio = new AudioEngine();
   readonly chaseCam: ChaseCamera;
   postFx: PostFx;
@@ -260,6 +262,7 @@ export abstract class GameFoundation {
     this.voice.muted = options.headless;
     this.hud = new Hud(uiRoot);
     this.input = new Input(canvas);
+    this.touchControls = new TouchControls(uiRoot, this.input);
     this.loop = new GameLoop((dt, elapsed) => this.tick(dt, elapsed));
 
     const game = this;

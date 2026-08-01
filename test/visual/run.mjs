@@ -33,9 +33,19 @@ const SCENES = [
   'boost', 'targeting', 'distant-targeting', 'turret-targeting', 'capital-targeting', 'friendly-targeting', 'resource-targeting', 'fx', 'cave', 'split', 'level', 'wreck', 'planet', 'base', 'trade', 'fleet',
   'cloak', 'controls',
   'enemy-variety', 'missile-warning', 'capital-superweapon',
+  'mobile-controls', 'mobile-controls-portrait',
+  'mobile-hangar', 'mobile-hangar-portrait', 'mobile-loadout', 'mobile-trade',
 ];
 const SEED = 7;
 const VIEWPORT = { width: 1280, height: 720 };
+const SCENE_VIEWPORTS = {
+  'mobile-controls': { width: 844, height: 390 },
+  'mobile-controls-portrait': { width: 390, height: 844 },
+  'mobile-hangar': { width: 844, height: 390 },
+  'mobile-hangar-portrait': { width: 390, height: 844 },
+  'mobile-loadout': { width: 844, height: 390 },
+  'mobile-trade': { width: 844, height: 390 },
+};
 
 const args = process.argv.slice(2);
 const portArg = args.find((argument) => argument.startsWith('--port='))?.split('=')[1];
@@ -108,6 +118,7 @@ const failures = [];
 const results = [];
 
 for (const scene of scenes) {
+  await page.setViewportSize(SCENE_VIEWPORTS[scene] ?? VIEWPORT);
   const url = `http://localhost:${PORT}/?testScene=${scene}&seed=${SEED}`;
   process.stdout.write(`Scene "${scene}" … `);
   await page.goto(url, { waitUntil: 'load' });

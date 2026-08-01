@@ -15,6 +15,7 @@ import {
   startDistServer,
 } from './smoke/helpers.mjs';
 import { runHangarSmoke } from './smoke/hangar.mjs';
+import { runMobileSmoke } from './smoke/mobile.mjs';
 import { runPreferenceSmoke } from './smoke/preferences.mjs';
 import { runRuntimeSmoke } from './smoke/runtime.mjs';
 import { runTargetingSmoke } from './smoke/targeting.mjs';
@@ -33,6 +34,7 @@ try {
   });
 
   const hangarPreferences = await runPreferenceSmoke(browser, BASE_URL, errors);
+  const mobile = await runMobileSmoke(browser, BASE_URL, errors);
 
   const page = await browser.newPage({ viewport: { width: 1280, height: 720 } });
   capturePageErrors(page, errors, 'game page');
@@ -52,6 +54,7 @@ try {
   const failures = collectSmokeFailures({
     errors,
     hangarPreferences,
+    mobile,
     hangar,
     world,
     targeting,

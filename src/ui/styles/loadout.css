@@ -84,6 +84,21 @@
 .trade-tabs { display: flex; gap: 8px; margin-bottom: 12px; }
 
 .controls-panel { max-width: 900px; max-height: 82vh; }
+.controls-touch-note {
+  margin-top: 14px;
+  padding: 10px 14px;
+  border: 1px solid rgba(39, 232, 255, 0.22);
+  background: rgba(39, 232, 255, 0.05);
+  color: rgba(215, 244, 255, 0.72);
+  font-size: 11.5px;
+  line-height: 1.5;
+}
+.controls-touch-note b {
+  color: var(--accent);
+  margin-right: 10px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+}
 .controls-table kbd {
   display: inline-block; min-width: 24px; padding: 3px 8px 4px;
   font-family: var(--font); font-size: 11.5px; letter-spacing: 0.06em;

@@ -1,6 +1,6 @@
 # Systems & balance reference
 
-Last updated: 2026-07-31.
+Last updated: 2026-08-01.
 
 The gameplay rulebook: what every system does, with the actual numbers and where
 they live. When designing a feature, check here first — most mechanics interlock
@@ -13,6 +13,22 @@ Launch (hangar: ship + difficulty) → **peaceful sector 1** (no Vigil, full jum
 fuel, merchant guaranteed) → explore/mine/trade/contract → **hold-J** jump into
 ever-meaner sectors (or dive onto planets) → death banks score÷10 as **credits**
 → Legacy shop → next run. Per-run upgrades die with you; Legacy is permanent.
+
+## Controls & device input
+
+- Desktop uses mouse aim, keyboard flight/system actions, and mouse buttons/wheel
+  for weapons. Immersive flight requests fullscreen, Keyboard Lock, and pointer lock.
+- Coarse-pointer phones/tablets skip pointer lock and expose an adaptive portrait/landscape dual-stick
+  deck: left = thrust/strafe, right = pitch/yaw. Dedicated 46 px-or-larger targets
+  cover roll, vertical strafe, boost, fire/seeker, weapon cycle, cloak/EMP/nanobots,
+  hold-J, use/decline, camera, Engineering, and pause.
+- Both paths merge in `Input`; `PlayerShip`, `WeaponSystem`, and `GameRuntime` consume
+  the same axes/actions, so touch is not a second gameplay implementation.
+- Touch hangars keep the source DOM interactive (rather than rasterizing it onto the
+  curved desktop visor), with native vertical scrolling in portrait and a compact
+  ship/threat/action layout in landscape. The portrait scroll container restores
+  pointer hit testing for its entire surface, so a swipe can start on informational
+  ship copy or hardpoint chips as well as on buttons.
 
 ## Environments
 

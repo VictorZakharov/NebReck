@@ -1,6 +1,6 @@
 # Architecture
 
-Last updated: 2026-07-31.
+Last updated: 2026-08-01.
 
 High-level map of how Nebula Reckoning is put together and why. Companion docs:
 [GOTCHAS.md](GOTCHAS.md) (things that will bite you), [EXTENDING.md](EXTENDING.md)
@@ -33,7 +33,8 @@ src/
   main.ts                 entry: URL params (testScene, seed) → Game → menu or test scene
   core/
     GameLoop.ts           rAF loop + dt clamp + stepManual() for deterministic tests
-    Input.ts              keyboard/mouse + fullscreen keyboard/pointer lock; frame deltas
+    Input.ts              merged keyboard/mouse + virtual touch axes/actions;
+                          fullscreen keyboard/pointer lock for desktop flight
     EventBus.ts           typed pub/sub (GameEvents interface = the event catalog)
     Rng.ts                seeded mulberry32; fork() derives child streams
   rendering/
@@ -102,12 +103,14 @@ src/
     ShipThumbnails.ts     offscreen renderer → data-URL hull portraits for the cards
     Radar3D.ts            sphere radar on its own tiny WebGL canvas (ship-frame blips + stems)
     TargetPreview.ts      centered/fitted health wireframe + GPU silhouette perimeter glow
+    TouchControls.ts      dual-stick coarse-pointer deck mapped into Input actions/axes
     LoadoutScreen.ts      in-run crafting (Tab); pure view over Inventory
     TradeScreen.ts        merchant Buy/Sell view over structured Trade holdings
     ResourceIcons.ts      original inline SVG set for all resources/consumables
     PauseMenu.ts, GameOverScreen.ts
     styles.css            ordered import manifest
-    styles/               foundation, screens, HUD clusters, hangar, loadout, manual
+    styles/               foundation, screens, HUD clusters, hangar, loadout, manual,
+                          responsive touch flight/screen layouts
   audio/
     AudioEngine.ts        procedural WebAudio: capped/cleaned SFX graph, engine hum,
                           ambient pad
@@ -159,6 +162,8 @@ test/
     targeting.mjs         pursuit/contact policy, ordnance warnings/range and flight key chord
     capital.mjs           carrier battery, preview and annihilator probes
     runtime.mjs           hunters, camera, turrets, devices and stress cleanup
+    mobile.mjs            coarse-pointer gestures, hit geometry + native touch hangar
+    mobile-layout.mjs     touch-layout inspection + native Chromium swipe helpers
     assertions.mjs        grouped invariant aggregation and failure labels
 ```
 
@@ -174,7 +179,7 @@ Legacy overlay reachable from the menu.
 
 - `menu`/`hangar`: camera orbits a parked showcase ship; hangar swaps the hull live.
 - `playing`: full simulation. Esc pause · Tab loadout · V camera · hold-J jump ·
-  R hail/dock/accept · X decline · F/G/H devices.
+  R hail/dock/accept · X decline · F/G/H devices; touch buttons feed the same actions.
 - `paused`/`loadout`/`trade`: world frozen (dt withheld) but still rendered.
 - Player death: 2.4 s cinematic delay → gameover (banks Legacy credits).
 
@@ -275,7 +280,7 @@ See `test/visual/run.mjs`, `src/game/TestScenes.ts`, and
 `src/game/test-scenes/`. Deterministic because:
 seeded Rng, `GameLoop.stepManual` (no wall clock), frozen CSS animations
 (injected style pauses everything at t=1s), SwiftShader software GL in headless
-Chromium. Same machine → 0.000% pixel diff. The current 30 scenes cover world art,
+Chromium. Same machine → 0.000% pixel diff. The current 36 scenes cover world art,
 ships, combat/FX, hostile and civilian HUD targeting, every major screen,
 caves/bases/wrecks, trade, fleet connectivity, cloak, controls, enemy ordnance,
-missile warnings and the carrier superweapon.
+missile warnings, the carrier superweapon, and 844×390 phone flight/hangar/overlay layouts.
