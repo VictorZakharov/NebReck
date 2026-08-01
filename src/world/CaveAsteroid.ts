@@ -17,6 +17,7 @@ import { Rng } from '../core/Rng';
 import { TURRET_COLLISION_RADIUS } from '../entities/ShipMeshTypes';
 import { getGlowTexture } from '../fx/textures';
 import { getSurfaceTexture } from '../rendering/SurfaceTextures';
+import { batchStaticMeshes } from '../rendering/StaticMeshBatching';
 import { AsteroidBody, makeBody } from './AsteroidField';
 
 export interface TurretSpawn {
@@ -56,6 +57,9 @@ export class CaveAsteroid {
     // Axis of the two cave mouths.
     const [ax, ay, az] = rng.unitSphere();
     const axis = new Vector3(ax, ay, az).normalize();
+    const shellGroup = new Group();
+    const padGroup = new Group();
+    this.group.add(shellGroup, padGroup);
 
     // Boulder shell: big displaced rocks on a sphere, skipping the axis caps.
     const shell: { position: Vector3; radius: number; mesh: Mesh }[] = [];
@@ -78,7 +82,7 @@ export class CaveAsteroid {
         boulderRadius * rng.range(0.85, 1.15),
       );
       mesh.rotation.set(rng.range(0, 6.28), rng.range(0, 6.28), rng.range(0, 6.28));
-      this.group.add(mesh);
+      shellGroup.add(mesh);
 
       bodies.push(makeBody({
         position: mesh.position.clone().add(center),
@@ -177,13 +181,15 @@ export class CaveAsteroid {
       const pad = new Mesh(new CylinderGeometry(2.2, 2.8, padLength, 10), padMat);
       pad.position.copy(surface).addScaledVector(normal, padLength * 0.5);
       pad.quaternion.setFromUnitVectors(new Vector3(0, 1, 0), normal);
-      this.group.add(pad);
+      padGroup.add(pad);
 
       this.turretSpawns.push({
         position: worldPos,
         lookAt: axis.clone().multiplyScalar(sign * 500).add(center),
       });
     }
+    batchStaticMeshes(shellGroup);
+    batchStaticMeshes(padGroup);
 
     // Cavity ambience: a faint interior glow + haze sprite.
     const glow = new PointLight(0x2ee6c8, 1.4, cavityRadius * 2.4, 1.6);

@@ -20,7 +20,7 @@ export interface ShipAudit {
 export function auditShipConnectivity(eps = 0.045): ShipAudit[] {
   const kinds: ShipKind[] = [
     'kestrel', 'vanta', 'aegis', 'raider', 'brute', 'bomber',
-    'turret', 'rocket-turret', 'hauler', 'capital',
+    'turret', 'autogun-turret', 'rocket-turret', 'hauler', 'capital',
   ];
   const local = new Vector3();
   const clamped = new Vector3();
@@ -39,7 +39,7 @@ export function auditShipConnectivity(eps = 0.045): ShipAudit[] {
     const parts: Part[] = [];
     group.traverse((obj) => {
       const mesh = obj as Mesh;
-      if (!mesh.isMesh) return;
+      if (!mesh.isMesh || mesh.userData.excludeFromConnectivityAudit) return;
       const geo = mesh.geometry;
       geo.computeBoundingBox();
       const pos = geo.attributes.position;

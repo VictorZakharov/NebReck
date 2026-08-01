@@ -263,7 +263,7 @@ export abstract class GameFoundation {
     this.hud = new Hud(uiRoot);
     this.input = new Input(canvas);
     this.touchControls = new TouchControls(uiRoot, this.input);
-    this.loop = new GameLoop((dt, elapsed) => this.tick(dt, elapsed));
+    this.loop = new GameLoop((dt, elapsed, wallDt) => this.tick(dt, elapsed, wallDt));
 
     const game = this;
     this.hudPresenter = new GameHudPresenter({
@@ -549,6 +549,6 @@ export abstract class GameFoundation {
   protected abstract storyComms(key: string): void;
   protected abstract clearEntities(): void;
   protected abstract removeQuestBeacon(id: number): void;
-  protected abstract tick(dt: number, elapsed: number): void;
+  protected abstract tick(dt: number, elapsed: number, wallDt?: number): void;
   abstract spawnEnemy(spec: HunterSpawnSpec): void;
 }

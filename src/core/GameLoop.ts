@@ -7,7 +7,7 @@
  * harness: `loop.stepManual(dt)` advances simulation + render by an exact,
  * fixed amount with no wall-clock involvement.
  */
-export type TickFn = (dt: number, elapsed: number) => void;
+export type TickFn = (dt: number, elapsed: number, wallDt?: number) => void;
 
 const MAX_DT = 1 / 20;
 
@@ -44,7 +44,7 @@ export class GameLoop {
         this.fpsFrames = 0;
       }
 
-      this.tick(dt, this.elapsed);
+      this.tick(dt, this.elapsed, rawDt);
       this.rafId = requestAnimationFrame(frame);
     };
     this.rafId = requestAnimationFrame(frame);

@@ -1,6 +1,7 @@
 import { Color, Vector3 } from 'three';
 import { CapitalBeamContext } from '../entities/CapitalShip';
 import { STYLE_ENGINES } from '../entities/ShipMesh';
+import { AdaptiveResolution } from '../rendering/AdaptiveResolution';
 import { PostFx } from '../rendering/PostFx';
 import {
   CAPITAL_TURRET_LOCK_RANGE_METERS,
@@ -22,11 +23,14 @@ const turretLosOrigin = new Vector3();
  * state is constructed, avoiding event callbacks against a half-built object.
  */
 export abstract class GameRuntime extends GameInteractions {
+  readonly renderResolution = new AdaptiveResolution(
+    window.innerWidth, window.innerHeight, window.devicePixelRatio,
+  );
   private resizeRaf = 0;
   private resizeSettleTimer = 0;
-  private viewportWidth = 0;
-  private viewportHeight = 0;
-  private viewportPixelRatio = 0;
+  private viewportWidth = Math.max(1, window.innerWidth);
+  private viewportHeight = Math.max(1, window.innerHeight);
+  private viewportPixelRatio = this.renderResolution.pixelRatio;
   private missileWarning: 'none' | 'locked' | 'imminent' = 'none';
   private capitalBeamContext!: CapitalBeamContext;
 
@@ -64,7 +68,10 @@ export abstract class GameRuntime extends GameInteractions {
     });
   }
 
-  protected override tick(dt: number, elapsed: number): void {
+  protected override tick(dt: number, elapsed: number, wallDt?: number): void {
+    if (wallDt && this.renderResolution.sampleFrame(wallDt)) {
+      this.applyRenderResolution();
+    }
     if (this.state === 'playing') {
       this.updatePlaying(dt);
     } else if (this.state === 'menu' || this.state === 'hangar') {
@@ -508,7 +515,8 @@ export abstract class GameRuntime extends GameInteractions {
       1,
       Math.round(bounds.height || document.documentElement.clientHeight),
     );
-    const pixelRatio = Math.min(window.devicePixelRatio, 2);
+    this.renderResolution.resize(width, height, window.devicePixelRatio);
+    const pixelRatio = this.renderResolution.pixelRatio;
     const layoutChanged =
       width !== this.viewportWidth || height !== this.viewportHeight;
     const ratioChanged = pixelRatio !== this.viewportPixelRatio;
@@ -542,5 +550,20 @@ export abstract class GameRuntime extends GameInteractions {
     }
     this.renderer.resetState();
     this.postFx.render(0);
+  }
+
+  private applyRenderResolution(): void {
+    const pixelRatio = this.renderResolution.pixelRatio;
+    if (
+      Math.abs(pixelRatio - this.viewportPixelRatio) <= 1e-4 ||
+      this.viewportWidth < 1 ||
+      this.viewportHeight < 1
+    ) return;
+    this.viewportPixelRatio = pixelRatio;
+    this.renderer.setPixelRatio(pixelRatio);
+    this.postFx.setSize(this.viewportWidth, this.viewportHeight);
+    this.hangarVisor.resize(
+      this.viewportWidth, this.viewportHeight, pixelRatio, false, true,
+    );
   }
 }

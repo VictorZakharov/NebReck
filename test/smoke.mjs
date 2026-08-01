@@ -20,6 +20,10 @@ import {
 } from './smoke/helpers.mjs';
 import { runHangarSmoke } from './smoke/hangar.mjs';
 import { runMobileSmoke } from './smoke/mobile.mjs';
+import {
+  collectPerformanceFailures,
+  runPerformanceSmoke,
+} from './smoke/performance.mjs';
 import { runPreferenceSmoke } from './smoke/preferences.mjs';
 import { runRuntimeSmoke } from './smoke/runtime.mjs';
 import { runTargetingSmoke } from './smoke/targeting.mjs';
@@ -50,6 +54,7 @@ try {
   // feature groups, while all gameplay time remains deterministic.
   const hangar = await runHangarSmoke(page);
   const desktopInput = await runDesktopInputSmoke(page);
+  const performance = await runPerformanceSmoke(page);
   const world = await runWorldSmoke(page);
   const targeting = await runTargetingSmoke(page);
   const capitalSystems = await runCapitalSmoke(page);
@@ -67,6 +72,7 @@ try {
     runtime,
   });
   failures.push(...collectDesktopInputFailures(desktopInput));
+  failures.push(...collectPerformanceFailures(performance));
   console.log(
     'smoke result:',
     failures.length === 0 ? 'PASS' : `FAIL: ${failures.join(', ')}`,

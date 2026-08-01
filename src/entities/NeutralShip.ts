@@ -30,6 +30,7 @@ export class NeutralShip extends Ship {
     if (isMerchant) {
       // Gold livery + green trade beacon: unmistakable at a glance.
       this.exterior.traverse((obj) => {
+        if (obj.userData.renderBatchSource) return;
         const material = (obj as Mesh).material as MeshStandardMaterial | undefined;
         if (material && material.color) {
           material.color.lerp(new Color(0xd8a33a), 0.45);

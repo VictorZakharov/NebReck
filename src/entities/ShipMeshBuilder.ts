@@ -13,6 +13,7 @@ import {
 } from 'three';
 import { getGlowTexture } from '../fx/textures';
 import { getSurfaceTexture } from '../rendering/SurfaceTextures';
+import { batchStaticMeshes } from '../rendering/StaticMeshBatching';
 import {
   NAV_LIGHTS,
   ShipKind,
@@ -245,6 +246,8 @@ export function finishShipBuild(
     group.add(sprite);
     engineGlows.push(sprite);
   }
+
+  batchStaticMeshes(group);
 
   return {
     group,

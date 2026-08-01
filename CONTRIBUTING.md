@@ -28,6 +28,7 @@ Run the checks relevant to your change before opening a pull request:
 ```bash
 npm run test:architecture
 npm run typecheck
+npm run test:performance
 npm run test:smoke
 npm run test:visual
 ```
@@ -37,6 +38,11 @@ Git. On a fresh clone, the first visual run creates local baselines; run the
 command again to compare against them. Use `npm run test:visual:update` only for
 intentional visual changes, inspect every affected image, and never commit
 generated PNGs or `dist/`.
+
+`test:performance` reports comparable production-renderer diagnostics without a
+machine-specific timing threshold, and enforces the deterministic hostile scene's
+330-draw-call structural budget. Include its before/after framebuffer workload,
+draw calls, and timing table when a pull request changes rendering performance.
 
 Read [docs/TESTING.md](docs/TESTING.md) for the complete test contract and
 [docs/GOTCHAS.md](docs/GOTCHAS.md) before changing world generation, cameras,

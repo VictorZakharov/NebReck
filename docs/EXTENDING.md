@@ -176,3 +176,8 @@ idle at `intensity 0`, never `visible false`; capped budgets: particles 4096,
 projectiles 320, explosion lights 4, spin-updates ⅓ of instances; pixel ratio ≤2;
 bloom and full-resolution visor repaints are the expensive presentation paths.
 Repaint visor panels only on state/resize changes, never every animation frame.
+Ships and indestructible cave-shell primitives must pass through
+`StaticMeshBatching`; do not remove their retained layer-31 source parts because
+connectivity audits and physical breakup need them. Mark any animated/dynamic mesh
+`excludeFromBatching`. Prefer instanced geometry or one shader batch for repeated
+billboards instead of one SpriteMaterial/draw call per decoration.

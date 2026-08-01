@@ -184,7 +184,7 @@ export class TargetPreview {
     const solids = new Group();
     src.traverse((child) => {
       const mesh = child as Mesh;
-      if (!mesh.isMesh) return;
+      if (!mesh.isMesh || mesh.userData.renderBatchSource) return;
       const seg = new LineSegments(new EdgesGeometry(mesh.geometry, 18), this.mat);
       seg.applyMatrix4(mesh.matrixWorld);
       lines.add(seg);

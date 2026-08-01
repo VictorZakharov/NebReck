@@ -40,6 +40,8 @@ src/
     Rng.ts                seeded mulberry32; fork() derives child streams
   rendering/
     createRenderer.ts     WebGLRenderer config (no MSAA — SMAA is a post pass)
+    AdaptiveResolution.ts initial framebuffer pixel budget + sustained-load scaling
+    StaticMeshBatching.ts material-wise geometry fusion; preserves source parts on layer 31
     PostFx.ts             EffectComposer: bloom | chromAb + vignette + ACES | SMAA + grain;
                           recreates targets after browser-fullscreen transitions
     ChaseCamera.ts        third-person follow + first-person cockpit eye, blended; trauma shake
@@ -52,11 +54,11 @@ src/
     Sun.ts                HDR core + depth-tested extended corona + key light;
                           visible fragments bloom independently when partly occluded
     Planet.ts             procedural surface shader, terminator, atmosphere rim, rings
-    AsteroidField.ts      4 displaced geometry variants × InstancedMesh; ore veins; hp;
+    AsteroidField.ts      3 displaced variants × 4 palette families; ore veins; hp;
                           colliders; reserved slots for split-off child rocks
     AsteroidDebris.ts     pooled tumbling fragments when a rock shatters
     CaveAsteroid.ts       hollow hero asteroids: boulder shell + crystals + stash + turret posts
-    FogBanks.ts           noise-blob sprites drifting through the sector (volumetric stand-in)
+    FogBanks.ts           three instanced noise-billboard batches (volumetric stand-in)
     WreckSite.ts          derelict hulks with lootable blackboxes (unmarked POIs)
     PlanetSurface.ts      landable terrain/collision core + revisit-stable landmarks
     PlanetSurfaceBase.ts independent Vigil base-template builder
@@ -216,7 +218,8 @@ exclusion zones and other cave mouths before terrain is built.
 ## Frame flow (playing)
 
 ```
-GameLoop.tick(dt)
+GameLoop.tick(dt, elapsed, wallDt)
+  AdaptiveResolution.sampleFrame(wallDt) → resize renderer/composer only on a scale step
   GameRuntime.updatePlaying
     input: Esc/Tab/V · GameWorldFlow jump spool (release/hit cancels) ·
            R hail|dock|accept · X decline · F cloak · G EMP · H nanobots
@@ -266,7 +269,21 @@ pass: its depth-tested corona is an extended emitter, so a clipped limb or gaps
 between asteroids contribute only their visible fragments. Anything that should
 bloom is either emissive with intensity > 1 or a `toneMapped: false` material with
 color components > 1. Fullscreen resize recreates the composer before refilling
-its targets, avoiding a persistent black background after F11.
+its targets, avoiding a persistent black background after F11. The DOM HUD remains
+at native CSS resolution while `AdaptiveResolution` controls only the WebGL
+framebuffer. Initial allocation is capped at a 1920×1080 pixel workload (including
+high-DPR displays); sustained sub-52-FPS timing steps quality down after 0.8 s,
+with a 1280×720 floor, while sustained 58+-FPS headroom recovers quality after 4 s.
+Resize/fullscreen transitions preserve the current pixel workload instead of
+silently restoring an expensive native 4K target.
+
+Procedural ships are authored as connected primitive parts, then
+`StaticMeshBatching` fuses parts sharing a material for rendering. Originals stay
+visible to gameplay traversals on camera-disabled layer 31; batches carry
+`excludeFromDebris`/`excludeFromConnectivityAudit`, so destruction and structural
+tests still consume real components rather than one artificial combined shell.
+Target previews and cloak shells likewise traverse only the rendered copy. Cave
+shells use the same mechanism, and fog uses instanced camera-facing quads.
 
 ## Events (EventBus)
 
