@@ -33,8 +33,9 @@ src/
   main.ts                 entry: URL params (testScene, seed) → Game → menu or test scene
   core/
     GameLoop.ts           rAF loop + dt clamp + stepManual() for deterministic tests
-    Input.ts              merged keyboard/mouse + virtual touch axes/actions;
-                          fullscreen keyboard/pointer lock for desktop flight
+    Input.ts              merged keyboard/mouse + virtual touch axes/actions
+    DesktopFlightCapture.ts pointer-lock-first fullscreen/Keyboard Lock orchestration;
+                          consumed canvas-click recapture for rejected desktop locks
     EventBus.ts           typed pub/sub (GameEvents interface = the event catalog)
     Rng.ts                seeded mulberry32; fork() derives child streams
   rendering/

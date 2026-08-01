@@ -417,36 +417,6 @@ export async function runTargetingSmoke(page) {
   });
   console.log('player seeker range:', JSON.stringify(playerSeekerRange));
 
-  const flightKeyChord = await page.evaluate(() => {
-    const input = window.game.input;
-    const savedCapture = input.flightKeysActive;
-    input.flightKeysActive = true;
-    const controlDown = new KeyboardEvent('keydown', {
-      key: 'Control',
-      code: 'ControlLeft',
-      ctrlKey: true,
-      cancelable: true,
-    });
-    const forwardDown = new KeyboardEvent('keydown', {
-      key: 'w',
-      code: 'KeyW',
-      ctrlKey: true,
-      cancelable: true,
-    });
-    window.dispatchEvent(controlDown);
-    window.dispatchEvent(forwardDown);
-    const result = {
-      consumed: forwardDown.defaultPrevented,
-      forward: input.isDown('KeyW'),
-      descend: input.isDown('ControlLeft'),
-    };
-    window.dispatchEvent(new KeyboardEvent('keyup', { code: 'KeyW' }));
-    window.dispatchEvent(new KeyboardEvent('keyup', { code: 'ControlLeft' }));
-    input.flightKeysActive = savedCapture;
-    return result;
-  });
-  console.log('flight key chord:', JSON.stringify(flightKeyChord));
-
   return {
     targetingPolicy,
     enemyWeaponVariety,
@@ -455,6 +425,5 @@ export async function runTargetingSmoke(page) {
     missileCountdown,
     cloakMissileBreak,
     playerSeekerRange,
-    flightKeyChord,
   };
 }

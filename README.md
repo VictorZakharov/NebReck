@@ -147,6 +147,9 @@ deployment credentials.
 
 Engage enters app fullscreen and uses browser Keyboard Lock where supported so
 modifier movement chords such as `L-Ctrl + W` remain game input instead of browser shortcuts.
+Desktop pointer lock is requested before fullscreen so Safari retains the launch
+click's required user activation. If a browser rejects the first request, click
+the game canvas once to recapture the mouse; that click is consumed and does not fire.
 Coarse-pointer devices automatically use the touch flight deck and skip pointer lock.
 
 The in-game **Field Manual** (main menu) documents every implemented mechanic.
