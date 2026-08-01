@@ -2,7 +2,7 @@ export function collectSmokeFailures(results) {
   const failures = [];
   const {
     errors,
-    preferencesPersist,
+    hangarPreferences,
     hangar,
     world,
     targeting,
@@ -29,9 +29,38 @@ export function collectSmokeFailures(results) {
     flightKeyChord,
   } = targeting;
   const { closed, camDist, turretAim, dev, combatStability, aegisMissiles } = runtime;
+  const { defaults, settled, clicked, reloaded } = hangarPreferences;
 
   if (errors.length > 0) failures.push('browser errors');
-  if (!preferencesPersist) failures.push('hangar preferences');
+  if (
+    defaults.ship !== 'kestrel' ||
+    defaults.playerShip !== 'kestrel' ||
+    defaults.selectedCard !== 'KV-7 Kestrel' ||
+    defaults.shipCookie !== null ||
+    defaults.difficulty !== 'veteran' ||
+    defaults.difficultyCookie !== null ||
+    defaults.cookieWrites !== 0 ||
+    settled.ship !== 'vanta' ||
+    settled.playerShip !== 'vanta' ||
+    settled.selectedCard !== 'SX-2 Vanta' ||
+    settled.shipCookie !== 'vanta' ||
+    settled.difficulty !== 'rookie' ||
+    settled.difficultyCookie !== 'rookie' ||
+    settled.cookieWrites !== 0 ||
+    settled.shipWrites !== 0 ||
+    clicked.ship !== 'kestrel' ||
+    clicked.playerShip !== 'kestrel' ||
+    clicked.selectedCard !== 'KV-7 Kestrel' ||
+    clicked.shipCookie !== 'kestrel' ||
+    clicked.cookieWrites !== 1 ||
+    clicked.shipWrites !== 1 ||
+    reloaded.ship !== 'kestrel' ||
+    reloaded.playerShip !== 'kestrel' ||
+    reloaded.selectedCard !== 'KV-7 Kestrel' ||
+    reloaded.shipCookie !== 'kestrel' ||
+    reloaded.cookieWrites !== 0 ||
+    reloaded.shipWrites !== 0
+  ) failures.push('hangar preference lifecycle');
   if (disconnected.length > 0) failures.push('ship connectivity');
   if (hangarAlignment.delta > 2) failures.push('hangar fullscreen alignment');
   if (

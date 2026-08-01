@@ -10,6 +10,7 @@ export class HangarVisor {
   private readonly panels: VisorPanels;
   private renderQueued = false;
   private drag = false;
+  private panelPress = false;
   private yaw = 0;
   private lift = 0;
   private zoom = 10.5;
@@ -59,8 +60,12 @@ export class HangarVisor {
 
   private bindPointerControls(): void {
     document.addEventListener('mousedown', (event) => {
+      this.panelPress = false;
       if (!this.isHangarActive()) return;
-      if (this.panels.hitTest(event.clientX, event.clientY, this.camera)) return;
+      if (this.panels.hitTest(event.clientX, event.clientY, this.camera)) {
+        this.panelPress = true;
+        return;
+      }
       if ((event.target as HTMLElement).closest?.('button, .ship-card, .ns-panel')) return;
       this.drag = true;
     });
@@ -76,9 +81,17 @@ export class HangarVisor {
       this.drag = false;
     });
     document.addEventListener('click', (event) => {
+      const forwardPanelClick = this.panelPress;
+      this.panelPress = false;
       if (!this.isHangarActive()) return;
+      // The menu's Hangar click changes state before it finishes bubbling to
+      // document. Only forward a click whose own mousedown began on an already
+      // active visor panel, never the transition click that opened the screen.
+      if (!forwardPanelClick) return;
       // Synthetic clicks forwarded by VisorPanels bubble through document.
-      if ((event.target as HTMLElement).closest?.('.visor-src')) return;
+      if (event.composedPath().some(
+        (node) => node instanceof HTMLElement && node.classList.contains('visor-src'),
+      )) return;
       if (this.panels.click(event.clientX, event.clientY, this.camera)) event.preventDefault();
     });
     document.addEventListener('contextmenu', (event) => {

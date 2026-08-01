@@ -14,7 +14,8 @@ import {
   settleBrowserFrames,
   startDistServer,
 } from './smoke/helpers.mjs';
-import { runHangarSmoke, runPreferenceSmoke } from './smoke/hangar.mjs';
+import { runHangarSmoke } from './smoke/hangar.mjs';
+import { runPreferenceSmoke } from './smoke/preferences.mjs';
 import { runRuntimeSmoke } from './smoke/runtime.mjs';
 import { runTargetingSmoke } from './smoke/targeting.mjs';
 import { runWorldSmoke } from './smoke/world.mjs';
@@ -23,7 +24,7 @@ const DIST = fileURLToPath(new URL('../dist/', import.meta.url));
 const PORT = 8127;
 const BASE_URL = `http://localhost:${PORT}`;
 const errors = [];
-const server = await startDistServer(DIST, PORT);
+const server = await startDistServer(DIST, PORT, '/NebReck');
 let browser;
 
 try {
@@ -31,7 +32,7 @@ try {
     args: ['--use-angle=swiftshader', '--mute-audio'],
   });
 
-  const preferencesPersist = await runPreferenceSmoke(browser, BASE_URL, errors);
+  const hangarPreferences = await runPreferenceSmoke(browser, BASE_URL, errors);
 
   const page = await browser.newPage({ viewport: { width: 1280, height: 720 } });
   capturePageErrors(page, errors, 'game page');
@@ -50,7 +51,7 @@ try {
   console.log('page errors:', errors.length === 0 ? 'none' : errors.join('\n'));
   const failures = collectSmokeFailures({
     errors,
-    preferencesPersist,
+    hangarPreferences,
     hangar,
     world,
     targeting,

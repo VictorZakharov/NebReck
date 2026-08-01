@@ -122,9 +122,14 @@ capital burner discs, kestrel wingtip cluster).
 
 Asserted, in order:
 
-1. On the exact `?testScene=hangar&seed=7` route, ship/difficulty clicks write
-   cookies while state is still `hangar` (Engage is never pressed), survive
-   reload, restore the selected card, and construct the matching preview hull.
+1. A cookie-free real Launch/Hangar flow settles on Kestrel/Veteran with no cookie
+   creation. Then seed Vanta/Rookie root cookies, repeat the menu flow, settle four
+   browser frames, and require the runtime, selected card, preview hull, and
+   cookies to remain Vanta/Rookie with **zero** initialization writes. A physical
+   click at the Kestrel visor card must switch the runtime/UI and perform
+   **exactly one** cookie write. Reloading and repeating the real menu flow must
+   restore Kestrel with another zero-write settle. This catches both
+   transition-click autoselection and duplicate source/visor dispatch.
 2. Hangar actions remain aligned with the ship-card baseline through fullscreen;
    hardpoints/no-rack slots do not shift.
 3. Vanta-style `missileRate=0` rejects craft/buy calls without changing the wallet

@@ -313,10 +313,20 @@ Real issues hit while building this game, kept here so they only get paid for on
   it, firing `pointerlockchange` → the auto-pause listener froze the smoke test
   mid-run (this happened). Automation must load with `?headless=1` so the game
   never requests the lock.
-- Ship/difficulty preferences are real cookies on visual/manual hangar routes,
-  including `hangar-live`. Only explicit `?headless=1` isolates them. Do not infer
-  “headless” from the presence of any `testScene`, or static capture can
-  accidentally change what the next manual launch selects.
+- **A transition click can outlive the screen it clicked.** The menu's Hangar
+  button calls `showHangar()` before its click finishes bubbling. A document-level
+  visor listener that checks only the *current* state can then raycast that same
+  click into a newly mounted ship card and overwrite the restored preference
+  (Aegis happened to sit under the button). Forward only when the preceding press
+  began on the already-active visor.
+- The hidden `.visor-src` DOM is a paint/input proxy, not a second interactive UI.
+  Descendants must remain non-pointer targets and source-originated synthetic
+  clicks must be ignored via `event.composedPath()`; otherwise one physical visor
+  click can write twice after the source card rerenders and disconnects.
+- Preference initialization is read-only. The lifecycle regression enters Hangar
+  through the real menu, settles several frames, and requires zero cookie writes;
+  it then physically clicks a different visor card and requires exactly one write,
+  followed by another zero-write restore after reload.
 
 - **Turrets must gate FIRE on line-of-sight, not just tracking** — otherwise they
   blast their own mounting rock/roof or a hillside all day (this happened on

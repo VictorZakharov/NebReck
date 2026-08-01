@@ -44,6 +44,9 @@
   opacity: 0 !important;
   pointer-events: none !important;
 }
+.visor-src * {
+  pointer-events: none !important;
+}
 .hangar-stats, .hangar-ships, .hangar-right, .hangar-actions {
   color: var(--text);
   font-family: var(--font);
