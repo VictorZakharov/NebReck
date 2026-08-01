@@ -1,0 +1,496 @@
+/* ---------- coarse-pointer flight deck ---------- */
+.touch-controls {
+  --touch-size: 46px;
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+  display: none;
+  pointer-events: none;
+  touch-action: none;
+  -webkit-tap-highlight-color: transparent;
+}
+.touch-controls.visible { display: block; }
+.touch-controls button,
+.touch-stick {
+  pointer-events: auto;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.touch-controls button {
+  min-width: var(--touch-size);
+  min-height: var(--touch-size);
+  padding: 0 8px;
+  color: rgba(215, 244, 255, 0.88);
+  background:
+    linear-gradient(145deg, rgba(39, 232, 255, 0.14), rgba(4, 12, 20, 0.78));
+  border: 1px solid rgba(39, 232, 255, 0.42);
+  border-left-width: 2px;
+  clip-path: polygon(7px 0, 100% 0, 100% calc(100% - 7px), calc(100% - 7px) 100%, 0 100%, 0 7px);
+  box-shadow: inset 0 0 16px rgba(39, 232, 255, 0.06), 0 0 14px rgba(0, 0, 0, 0.4);
+  font: 600 9px/1 var(--font);
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  text-shadow: 0 0 7px rgba(39, 232, 255, 0.55);
+}
+.touch-controls button.active {
+  color: #fff;
+  border-color: var(--accent);
+  background: linear-gradient(145deg, rgba(39, 232, 255, 0.46), rgba(12, 61, 74, 0.84));
+  box-shadow: inset 0 0 18px rgba(39, 232, 255, 0.25), 0 0 20px rgba(39, 232, 255, 0.45);
+  transform: scale(0.96);
+}
+
+.touch-stick {
+  position: absolute;
+  width: 134px;
+  height: 134px;
+  border: 1px solid rgba(39, 232, 255, 0.34);
+  border-radius: 50%;
+  background:
+    radial-gradient(circle, rgba(39, 232, 255, 0.08) 0 30%, transparent 31%),
+    repeating-radial-gradient(circle, transparent 0 27px, rgba(39, 232, 255, 0.1) 28px 29px);
+  box-shadow: inset 0 0 30px rgba(39, 232, 255, 0.06), 0 0 18px rgba(0, 0, 0, 0.55);
+}
+.touch-stick::before,
+.touch-stick::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  background: rgba(39, 232, 255, 0.2);
+  transform: translate(-50%, -50%);
+}
+.touch-stick::before { width: 78%; height: 1px; }
+.touch-stick::after { width: 1px; height: 78%; }
+.touch-stick-rings {
+  position: absolute;
+  inset: 11px;
+  border: 1px dashed rgba(39, 232, 255, 0.2);
+  border-radius: 50%;
+}
+.touch-stick-knob {
+  --stick-x: 0px;
+  --stick-y: 0px;
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 48px;
+  height: 48px;
+  border: 1px solid rgba(159, 240, 255, 0.8);
+  border-radius: 50%;
+  background: radial-gradient(circle at 38% 32%, rgba(180, 250, 255, 0.46), rgba(11, 69, 82, 0.82));
+  box-shadow: inset 0 0 15px rgba(39, 232, 255, 0.32), 0 0 16px rgba(39, 232, 255, 0.42);
+  transform: translate(calc(-50% + var(--stick-x)), calc(-50% + var(--stick-y)));
+}
+.touch-stick > span {
+  position: absolute;
+  left: 50%;
+  bottom: 10px;
+  transform: translateX(-50%);
+  color: rgba(159, 240, 255, 0.56);
+  font: 600 8px/1 var(--font);
+  letter-spacing: 0.32em;
+  text-indent: 0.32em;
+  text-transform: uppercase;
+}
+.touch-stick.active { border-color: rgba(39, 232, 255, 0.85); }
+
+.touch-left-deck {
+  position: absolute;
+  left: max(12px, env(safe-area-inset-left));
+  bottom: max(10px, env(safe-area-inset-bottom));
+  width: 290px;
+  height: 164px;
+}
+.touch-move-stick { left: 0; bottom: 0; }
+.touch-maneuver {
+  position: absolute;
+  left: 140px;
+  top: 0;
+  display: grid;
+  grid-template-columns: repeat(2, 58px);
+  gap: 5px;
+}
+.touch-maneuver button { min-height: 46px; }
+.touch-boost {
+  position: absolute;
+  left: 140px;
+  bottom: 0;
+  width: 121px;
+  height: 58px;
+  color: #e7c9ff !important;
+  border-color: rgba(194, 106, 255, 0.68) !important;
+  background: linear-gradient(145deg, rgba(194, 106, 255, 0.24), rgba(26, 10, 41, 0.84)) !important;
+}
+
+.touch-right-deck {
+  position: absolute;
+  right: max(12px, env(safe-area-inset-right));
+  bottom: max(10px, env(safe-area-inset-bottom));
+  width: 320px;
+  height: 164px;
+}
+.touch-aim-stick { left: 0; bottom: 0; }
+.touch-actions { position: absolute; inset: 0 0 0 142px; }
+.touch-actions button { position: absolute; }
+.touch-fire {
+  right: 0;
+  bottom: 64px;
+  width: 78px;
+  height: 78px;
+  color: #fff4dc !important;
+  border-color: rgba(255, 179, 71, 0.82) !important;
+  background: radial-gradient(circle, rgba(255, 179, 71, 0.34), rgba(55, 25, 5, 0.86)) !important;
+  border-radius: 50%;
+  clip-path: none !important;
+}
+.touch-seeker {
+  right: 84px;
+  bottom: 95px;
+  width: 58px;
+  height: 58px;
+  color: #ffcf92 !important;
+  border-color: rgba(255, 179, 71, 0.6) !important;
+}
+.touch-actions [data-touch-action='weapon'] { right: 84px; bottom: 48px; width: 66px; }
+.touch-actions [data-touch-action='interact'] { right: 6px; bottom: 8px; width: 72px; }
+.touch-actions [data-touch-action='decline'] { right: 84px; bottom: 0; min-width: 48px; }
+
+.touch-system-tray {
+  position: absolute;
+  left: 46.5%;
+  bottom: max(8px, env(safe-area-inset-bottom));
+  display: flex;
+  gap: 4px;
+  transform: translateX(-50%);
+}
+.touch-system-tray button { width: 46px; padding: 0 3px; }
+.touch-system-tray .touch-jump {
+  width: 52px;
+  color: #a8fff1;
+  border-color: rgba(46, 230, 200, 0.62);
+}
+.touch-utility {
+  position: absolute;
+  right: max(10px, env(safe-area-inset-right));
+  top: max(9px, env(safe-area-inset-top));
+  display: flex;
+  gap: 5px;
+}
+.touch-utility button { min-height: 46px; }
+
+html.touch-layout,
+html.touch-layout body,
+html.touch-layout #game-canvas,
+html.touch-layout #ui-root { touch-action: none; }
+html.touch-layout .hud-hint { display: none; }
+html.touch-layout .hud-vitals { left: 16px; bottom: 194px; }
+html.touch-layout .hud-drive { left: 238px; bottom: 194px; }
+html.touch-layout .hud-kit { bottom: 190px; }
+html.touch-layout .hud-weapons { right: 16px; bottom: 194px; }
+html.touch-layout .radar-wrap { right: 272px; bottom: 178px; }
+html.touch-layout .hud-resources { right: 18px; bottom: 345px; }
+html.touch-layout .interact-prompt { bottom: 362px; }
+
+/* Every pre-flight and overlay screen must remain operable without a mouse. */
+html.touch-layout .screen {
+  overflow-y: auto;
+  padding: 14px;
+  overscroll-behavior-y: contain;
+  touch-action: pan-y;
+  -webkit-overflow-scrolling: touch;
+}
+html.touch-layout .ns-btn { min-height: 50px; }
+html.touch-layout .close-x { width: 46px; height: 46px; }
+html.touch-layout .manual-panel,
+html.touch-layout .controls-panel { max-width: 96vw; max-height: 84vh; overflow-y: auto; }
+html.touch-layout .loadout-panel { width: min(94vw, 860px); max-height: 84vh; }
+
+/* On touch, keep the hangar as native, scrollable DOM instead of a rasterized
+   visor. This preserves direct card/button semantics and reliable hit targets. */
+html.touch-layout .screen.hangar {
+  align-items: stretch;
+  overflow-y: auto;
+  padding: 10px 12px;
+  /* #ui-root is pointer-transparent during flight. Restore hit testing at
+     the scroll container so a swipe may begin on non-button hangar content,
+     including the selected hull description and its hardpoint chips. */
+  pointer-events: auto;
+}
+html.touch-layout .screen.hangar > h2 { align-self: center; margin-bottom: 14px; }
+html.touch-layout .hangar-body {
+  display: block;
+  width: 100%;
+  min-height: max-content;
+  flex: none;
+  padding: 8px 2px 80px;
+  overflow: visible;
+}
+html.touch-layout .hangar-center,
+html.touch-layout .hangar-stats { display: none; }
+html.touch-layout .hangar-ships {
+  width: 100%;
+  overflow-x: auto;
+  gap: 9px;
+  padding: 3px 2px 10px;
+  scroll-snap-type: x mandatory;
+}
+html.touch-layout .hangar-ships .ship-card {
+  flex: 0 0 min(64vw, 240px);
+  max-width: 240px;
+  scroll-snap-align: center;
+}
+html.touch-layout .hangar-right { width: 100%; margin-top: 10px; }
+html.touch-layout .hangar-actions {
+  position: sticky;
+  right: auto;
+  bottom: 0;
+  width: 100%;
+  margin-top: 10px;
+  padding: 8px 0 max(6px, env(safe-area-inset-bottom));
+  background: linear-gradient(transparent, rgba(0, 5, 10, 0.94) 28%);
+  z-index: 3;
+}
+
+@media (max-height: 560px) {
+  html.touch-layout .hud-fps,
+  html.touch-layout .hud-kit,
+  html.touch-layout .hud-resources,
+  html.touch-layout .radar-wrap,
+  html.touch-layout .target-preview { display: none !important; }
+  html.touch-layout .hud-score {
+    left: 8px; top: 8px;
+    padding: 7px 10px;
+    transform: scale(0.8);
+    transform-origin: top left;
+  }
+  html.touch-layout .hud-vitals { left: 8px; top: 69px; bottom: auto; width: 145px; }
+  html.touch-layout .hud-drive { left: 163px; top: 69px; bottom: auto; width: 145px; }
+  html.touch-layout .hud-weapons {
+    right: 8px; top: 57px; bottom: auto;
+    width: 174px; padding: 7px 10px;
+  }
+  html.touch-layout .hud-weapons .panel-title { display: none; }
+  html.touch-layout .weapon-name { font-size: 11px; }
+  html.touch-layout .comms-feed {
+    left: 242px; top: 8px; width: min(310px, 38vw);
+  }
+  html.touch-layout .comms-line { padding: 5px 8px; font-size: 10px; }
+  html.touch-layout .interact-prompt {
+    bottom: 174px;
+    max-width: 42vw;
+    padding: 5px 10px;
+    font-size: 10px;
+    letter-spacing: 0.18em;
+  }
+  html.touch-layout .offer-panel { right: 10px; top: 116px; width: 280px; padding: 10px 12px; }
+  html.touch-layout .wave-banner { top: 18%; font-size: 20px; }
+  html.touch-layout .screen { justify-content: flex-start; }
+  html.touch-layout .title { margin-top: 5vh; font-size: clamp(31px, 9vw, 54px); }
+  html.touch-layout .subtitle { margin: 8px 0 20px; font-size: 10px; }
+  html.touch-layout .controls-cols,
+  html.touch-layout .manual-cols { flex-direction: column; gap: 12px; }
+  html.touch-layout .loadout-panel {
+    height: 84vh;
+    flex-direction: row;
+    gap: 12px;
+    overflow: hidden;
+  }
+  html.touch-layout .loadout-left {
+    width: 35%;
+    flex-shrink: 0;
+    overflow-y: auto;
+  }
+  html.touch-layout .loadout-right { min-width: 0; overflow-y: auto; }
+  html.touch-layout .recipe-row { padding: 8px; }
+  html.touch-layout .trade-panel { height: 84vh; width: 94vw; }
+  html.touch-layout .screen.hangar > h2 { min-width: 280px; font-size: 21px; }
+  html.touch-layout .hangar-body { padding-bottom: 4px; }
+  html.touch-layout .hangar-main { display: block; }
+  html.touch-layout .hangar-ships { overflow: visible; padding-bottom: 4px; }
+  html.touch-layout .hangar-ships .ship-card {
+    flex: 1 1 0;
+    max-width: none;
+    padding-bottom: 7px;
+  }
+  html.touch-layout .ship-thumb { height: 70px; }
+  html.touch-layout .hangar-ships .stat-row { display: none; }
+  html.touch-layout .hangar-right {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 6px;
+    margin-top: 4px;
+  }
+  html.touch-layout .hangar-right .ship-detail { display: none; }
+  html.touch-layout .hangar-right > .hangar-subhead { grid-column: 1 / -1; }
+  html.touch-layout .diff-btn {
+    min-height: 54px;
+    padding: 6px 8px;
+    gap: 7px;
+    align-items: center;
+  }
+  html.touch-layout .diff-icon { width: 24px; height: 24px; }
+  html.touch-layout .diff-btn b { margin: 0; font-size: 12px; }
+  html.touch-layout .diff-btn .diff-text > span { display: none; }
+  html.touch-layout .hangar-actions {
+    position: static;
+    margin-top: 7px;
+    padding: 0;
+    background: none;
+  }
+  html.touch-layout .hangar-actions .ns-btn { min-height: 46px; padding-block: 8px; }
+}
+
+@media (orientation: portrait) {
+  .touch-controls { --touch-size: 44px; }
+  .touch-stick { width: 104px; height: 104px; }
+  .touch-stick-knob { width: 44px; height: 44px; }
+  .touch-left-deck,
+  .touch-right-deck {
+    bottom: max(8px, env(safe-area-inset-bottom));
+    width: 104px;
+    height: 158px;
+  }
+  .touch-left-deck { left: max(8px, env(safe-area-inset-left)); }
+  .touch-right-deck { right: max(8px, env(safe-area-inset-right)); }
+  .touch-move-stick,
+  .touch-aim-stick { left: 0; bottom: 0; }
+  .touch-maneuver {
+    position: fixed;
+    left: 50%;
+    top: auto;
+    bottom: max(8px, env(safe-area-inset-bottom));
+    grid-template-columns: repeat(2, 52px);
+    gap: 4px;
+    transform: translateX(-50%);
+  }
+  .touch-maneuver button { min-width: 52px; min-height: 48px; padding: 0 3px; }
+  .touch-boost {
+    left: 0;
+    bottom: 112px;
+    width: 104px;
+    height: 46px;
+  }
+  .touch-actions {
+    position: fixed;
+    left: max(120px, calc(env(safe-area-inset-left) + 120px));
+    right: max(8px, env(safe-area-inset-right));
+    top: auto;
+    bottom: max(120px, calc(env(safe-area-inset-bottom) + 120px));
+    display: flex;
+    gap: 3px;
+    transform: none;
+  }
+  .touch-actions button,
+  .touch-fire,
+  .touch-seeker,
+  .touch-actions [data-touch-action='weapon'],
+  .touch-actions [data-touch-action='interact'],
+  .touch-actions [data-touch-action='decline'] {
+    position: static;
+    flex: 1 1 0;
+    width: auto;
+    min-width: 44px;
+    height: 46px;
+    min-height: 46px;
+    padding: 0 2px;
+    border-radius: 0;
+    clip-path: polygon(7px 0, 100% 0, 100% calc(100% - 7px), calc(100% - 7px) 100%, 0 100%, 0 7px) !important;
+  }
+  .touch-system-tray {
+    left: 50%;
+    bottom: max(172px, calc(env(safe-area-inset-bottom) + 172px));
+    transform: translateX(-50%);
+  }
+  .touch-system-tray button { width: 48px; }
+  .touch-utility {
+    left: 50%;
+    right: auto;
+    top: auto;
+    bottom: max(224px, calc(env(safe-area-inset-bottom) + 224px));
+    transform: translateX(-50%);
+  }
+  .touch-utility button { width: 56px; padding: 0 3px; }
+
+  html.touch-layout .hud-vitals,
+  html.touch-layout .hud-drive,
+  html.touch-layout .hud-kit,
+  html.touch-layout .hud-resources,
+  html.touch-layout .hud-fps,
+  html.touch-layout .target-preview,
+  html.touch-layout .comms-feed { display: none !important; }
+  html.touch-layout .hud-score {
+    left: max(7px, env(safe-area-inset-left));
+    top: max(7px, env(safe-area-inset-top));
+    max-width: 225px;
+    padding: 6px 9px;
+  }
+  html.touch-layout .hud-score .score-line {
+    overflow: hidden;
+    font-size: 9px;
+    letter-spacing: 0.18em;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  html.touch-layout .hud-score .quest-tracker { display: none; }
+  html.touch-layout .hud-weapons {
+    right: max(7px, env(safe-area-inset-right));
+    top: max(65px, calc(env(safe-area-inset-top) + 65px));
+    bottom: auto;
+    width: 138px;
+    padding: 6px 8px;
+  }
+  html.touch-layout .hud-weapons .panel-title { display: none; }
+  html.touch-layout .weapon-name { font-size: 10px; letter-spacing: 0.18em; }
+  html.touch-layout .weapon-row { gap: 6px; margin: 4px 0; }
+  html.touch-layout .weapon-slot { width: 23px; height: 18px; line-height: 18px; }
+  html.touch-layout .missile-status { font-size: 8px; letter-spacing: 0.15em; }
+  html.touch-layout .radar-wrap {
+    left: max(7px, env(safe-area-inset-left));
+    right: auto;
+    top: max(65px, calc(env(safe-area-inset-top) + 65px));
+    bottom: auto;
+    width: 82px;
+    height: 82px;
+    opacity: 0.72;
+  }
+  html.touch-layout .radar-wrap .radar-canvas {
+    width: 100% !important;
+    height: 100% !important;
+  }
+  html.touch-layout .interact-prompt { bottom: 286px; max-width: 72vw; }
+
+  html.touch-layout .screen.hangar {
+    display: block;
+    height: 100%;
+    overflow-y: scroll;
+    padding-bottom: max(18px, env(safe-area-inset-bottom));
+  }
+  html.touch-layout .screen.hangar > h2 { min-width: 0; width: 100%; }
+  html.touch-layout .hangar-body { padding-bottom: 16px; }
+  html.touch-layout .hangar-actions {
+    position: static;
+    margin-top: 14px;
+    padding: 0 0 max(10px, env(safe-area-inset-bottom));
+    background: none;
+  }
+  html.touch-layout .loadout-panel {
+    height: auto;
+    flex-direction: column;
+    gap: 12px;
+    overflow-y: auto;
+  }
+  html.touch-layout .loadout-left { width: 100%; overflow: visible; }
+  html.touch-layout .loadout-right { overflow: visible; }
+}
+
+@media (orientation: portrait) and (max-width: 340px) {
+  .touch-actions {
+    bottom: max(120px, calc(env(safe-area-inset-bottom) + 120px));
+    display: grid;
+    grid-template-columns: repeat(3, minmax(44px, 1fr));
+  }
+  .touch-system-tray { bottom: max(220px, calc(env(safe-area-inset-bottom) + 220px)); }
+  .touch-utility { bottom: max(272px, calc(env(safe-area-inset-bottom) + 272px)); }
+}

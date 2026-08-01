@@ -9,6 +9,7 @@
 @import './styles/hud-weapons.css';
 @import './styles/hud-comms.css';
 @import './styles/hud-overlays.css';
+@import './styles/mobile-controls.css';
 @import './styles/hangar.css';
 @import './styles/loadout.css';
 @import './styles/manual.css';

@@ -1,6 +1,6 @@
 # Nebula Reckoning — agent guide
 
-Last updated: 2026-07-31.
+Last updated: 2026-08-01.
 
 Everspace-inspired exploration space-dogfighter. three.js + TypeScript + webpack,
 100% procedural (no binary assets). Read the docs before coding:
@@ -82,13 +82,18 @@ Per-hull seeker issuance/fabrication belongs in `PlayerShipDef`: Aegis starts at
 16 and regenerates one every 10 seconds; Kestrel starts at 8 with no regeneration.
 Sector and orbit arrivals face the equal-weight mean contact bearing; exclude
 capital-mounted turrets so one carrier does not count as thirteen contacts.
+Physical and touch input converge in `core/Input.ts`; gameplay systems must read
+the shared actions/axes rather than DOM gestures. `TouchControls` owns pointer
+capture and virtual bindings. Coarse-pointer hangars keep native DOM active instead
+of mounting the rasterized visor, restore hit testing on the full hangar scroll
+container, and keep mobile touch targets at least 44 CSS px.
 
 ## Verify loop (run all four before claiming done)
 
 ```bash
 npm run test:architecture   # Game/controller and smoke-module size budgets
 npm run typecheck
-npm run test:visual          # 30 scenes vs local baselines; 0.000% on this machine
+npm run test:visual          # 36 scenes vs local baselines; 0.000% on this machine
 npm run test:smoke           # full loop: peace→contract→merchant→planet→jump→combat→devices
 ```
 

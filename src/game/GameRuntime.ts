@@ -55,6 +55,7 @@ export abstract class GameRuntime extends GameInteractions {
       if (performance.now() < this.autoPauseGraceUntil) return;
       if (
         !this.headless &&
+        !this.input.usesTouchControls &&
         this.state === 'playing' &&
         !this.input.isPointerLocked
       ) {
@@ -100,6 +101,7 @@ export abstract class GameRuntime extends GameInteractions {
       this.state === 'playing' && this.player.boosting,
     );
     this.postFx.render(dt);
+    this.touchControls.setVisible(this.state === 'playing');
     this.input.endFrame();
   }
 

@@ -1,6 +1,6 @@
 # Extending the game
 
-Last updated: 2026-07-31.
+Last updated: 2026-08-01.
 
 Cookbook for the most likely additions. Read [GOTCHAS.md](GOTCHAS.md) first —
 especially the determinism and lookAt sections — and check
@@ -68,6 +68,8 @@ a `GameInteractions.activateX` method bound to a key in
 `GameRuntime.updatePlaying`; HUD chip in the
 `device-row`; smoke assertion in the devices block. Consumables: count on
 `Inventory`, craft via a recipe case, optionally merchant stock.
+Add its touch binding in `ui/TouchControls.ts`; both physical and virtual paths
+must converge on the same `Input` action rather than calling gameplay directly.
 
 ## Add a merchant trade
 
@@ -154,6 +156,9 @@ writes, while a physical visor-card click produces exactly one.
 `ui/styles.css` is an ordered import manifest. Put rules in the narrowest module
 under `ui/styles/` (`hangar.css`, `loadout.css`, a HUD cluster, and so on) and
 preserve import order when selectors intentionally override earlier layers.
+Touch-specific flight and responsive overlay rules live in
+`ui/styles/mobile-controls.css`. Keep actionable touch targets at least 44 CSS px,
+inside the viewport, and non-overlapping; extend `smoke/mobile.mjs` when adding one.
 
 ## Tuning knobs
 `game/Config.ts` (camera follow/boost pull/FOV kick, bloom, world densities) ·

@@ -1,6 +1,6 @@
 # Gotchas
 
-Last updated: 2026-07-31.
+Last updated: 2026-08-01.
 
 Real issues hit while building this game, kept here so they only get paid for once.
 
@@ -303,6 +303,19 @@ Real issues hit while building this game, kept here so they only get paid for on
 - `requestPointerLock()` only works from a user-gesture call stack (button click) —
   fine for Launch/Resume; impossible in headless tests (hence `headless` option).
 - Tab and Space are `preventDefault`ed in `Input` so they don't move browser focus.
+- Touch controls must feed `Input`'s virtual actions/axes, never invoke game methods
+  directly. That keeps pressed-this-frame semantics, cooldowns, and fixed-step tests
+  identical to keyboard/mouse behavior.
+- Every held pointer needs capture plus `pointerup`, `pointercancel`, and
+  `lostpointercapture` cleanup. Reset all virtual state when controls hide or a blur
+  can leave thrust/fire stuck on mobile.
+- The curved hangar visor is a rasterized desktop interaction surface. Coarse-pointer
+  devices must leave its source DOM visible and unmount the visor; otherwise taps hit
+  hidden proxy panels and ship selection becomes unreliable.
+- `#ui-root` is intentionally pointer-transparent during flight. A native mobile
+  hangar must explicitly restore `pointer-events: auto` on its scroll container;
+  restoring it only on buttons makes informational cards (notably hardpoints) pass
+  swipes through to the canvas even though button-origin swipes appear to work.
 
 - **Toggling a light's `visible` changes the scene's light COUNT** → three.js
   recompiles every lit material → a guaranteed frame hitch, typically on the first
