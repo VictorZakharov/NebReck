@@ -67,6 +67,7 @@ export abstract class GameScreens extends GameFoundation {
     this.menu = new MainMenu(this.uiRoot, {
       onLaunch: () => this.showHangar(),
       onLegacy: () => this.showLegacy(),
+      onToggleFullscreen: () => { void this.input.toggleFullscreen(); },
       onHover: () => this.audio.uiHover(),
       onClick: () => {
         this.audio.init();
@@ -130,8 +131,8 @@ export abstract class GameScreens extends GameFoundation {
   }
 
   startMission(): void {
-    // Called directly from Engage/Retry user activation, before synchronous
-    // world setup consumes the opportunity to enter keyboard-lock fullscreen.
+    // Called directly from Engage/Retry user activation so Safari receives a
+    // synchronous pointer-lock request. Fullscreen remains an explicit choice.
     if (!this.headless) this.input.enterFlightMode();
     this.hangarVisor.unmount();
     if (this.hangarBay) this.scene.remove(this.hangarBay.group);
@@ -207,6 +208,7 @@ export abstract class GameScreens extends GameFoundation {
       onResume: () => this.resume(),
       onRestart: () => this.startMission(),
       onQuitToMenu: () => this.showMenu(),
+      onToggleFullscreen: () => { void this.input.toggleFullscreen(); },
       onHover: () => this.audio.uiHover(),
       onClick: () => this.audio.uiClick(),
     });
@@ -297,7 +299,7 @@ export abstract class GameScreens extends GameFoundation {
 
   protected gameOver(): void {
     this.state = 'gameover';
-    if (!this.headless) this.input.leaveFlightMode(false);
+    if (!this.headless) this.input.leaveFlightMode();
     else this.input.exitPointerLock();
     this.hud.setVisible(false);
     const minutes = Math.floor(this.missionTime / 60);

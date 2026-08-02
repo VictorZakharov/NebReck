@@ -186,10 +186,11 @@ Real issues hit while building this game, kept here so they only get paid for on
   normalized bearings so range does not dominate, and omit `capitalTurrets` when
   the capital hull is already included; otherwise one carrier's twelve mounts turn
   the intended majority direction into a carrier-only direction.
-- **Chrome reserves Ctrl+W before ordinary page key handling.** Flight enters
-  JavaScript fullscreen and locks physical `KeyW`, which forwards every modifier
-  chord to `Input`; the handler must still `preventDefault()` while retaining both
-  `ControlLeft` and `KeyW` so descend + forward works. Pointer lock alone is not enough.
+- **Chrome reserves Ctrl+W before ordinary page key handling.** The explicit app
+  fullscreen toggle locks physical `KeyW`, which forwards every modifier chord to
+  `Input`; the handler must still `preventDefault()` while retaining both
+  `ControlLeft` and `KeyW` so descend + forward works. Pointer lock alone is not
+  enough, and outside app fullscreen the browser shortcut remains platform-owned.
 - **Removing an Object3D does not free its GPU allocations.** Every ship mesh is
   procedurally instantiated, so kills, sector swaps, hangar hull changes, parked
   planet visits, and an abandoned space stash must call `Ship.dispose()` after
@@ -312,13 +313,13 @@ Real issues hit while building this game, kept here so they only get paid for on
 
 ## Pointer lock / input
 
-- **Pointer lock must be requested before fullscreen in the same user gesture.**
-  Fullscreen consumes transient activation; awaiting it first left Safari with no
-  permission to lock the mouse. This ordering is required by the current
-  [Pointer Lock specification](https://www.w3.org/TR/pointerlock-2/), not a UA quirk.
-  `DesktopFlightCapture.enter()` calls `requestPointerLock()` synchronously, then
-  starts fullscreen. An unlocked canvas mousedown supplies a fresh retry and is
-  consumed so acquiring the mouse never fires the primary weapon.
+- **Entering flight and toggling fullscreen are separate user choices.**
+  `DesktopFlightCapture.enter()` calls `requestPointerLock()` synchronously from
+  Engage/Resume so Safari retains transient activation, but it must not call
+  `requestFullscreen()` or exit an existing fullscreen session. The title/pause
+  toggle owns app fullscreen and Keyboard Lock. An unlocked canvas mousedown supplies
+  a fresh pointer retry and is consumed so acquiring the mouse never fires the
+  primary weapon.
 - Browser Esc force-exits pointer lock. The `pointerlockchange` listener auto-pauses
   — it checks `state === 'playing'`, so any transition that intentionally exits lock
   (loadout, pause) must **change state first, then** call `exitPointerLock()`.

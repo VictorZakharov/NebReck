@@ -2,6 +2,7 @@ export interface PauseCallbacks {
   onResume: () => void;
   onRestart: () => void;
   onQuitToMenu: () => void;
+  onToggleFullscreen: () => void;
   onHover: () => void;
   onClick: () => void;
 }
@@ -29,6 +30,7 @@ export class PauseMenu {
       this.root.appendChild(b);
     };
     button('Resume', callbacks.onResume);
+    button('Toggle fullscreen', callbacks.onToggleFullscreen);
     button('Restart mission', callbacks.onRestart);
     button('Abandon to menu', callbacks.onQuitToMenu, 'danger');
     parent.appendChild(this.root);
