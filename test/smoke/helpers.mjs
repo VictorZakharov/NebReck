@@ -39,6 +39,18 @@ export function capturePageErrors(page, errors, label) {
   });
 }
 
+/** Open an isolated desktop scenario and stop rendering before DOM settling. */
+export async function openSmokePage(browser, baseUrl, errors) {
+  const context = await browser.newContext({ viewport: { width: 1280, height: 720 } });
+  const page = await context.newPage();
+  capturePageErrors(page, errors, 'game page');
+  await page.goto(`${baseUrl}/?seed=99&headless=1`, { waitUntil: 'load' });
+  await page.waitForFunction(() => Boolean(window.game));
+  await page.evaluate(() => window.game.loop.stop());
+  await settleBrowserFrames(page);
+  return page;
+}
+
 /** Wait for browser layout/font work without pretending wall time is game time. */
 export async function settleBrowserFrames(page, frameCount = 2) {
   await page.evaluate(async (frames) => {
@@ -54,7 +66,13 @@ export async function advanceGameTime(page, seconds, hz = 60) {
   await page.evaluate(({ frameCount, dt }) => {
     const game = window.game;
     game.loop.stop();
-    for (let frame = 0; frame < frameCount; frame++) game.loop.stepManual(dt);
+    const render = game.postFx.render;
+    game.postFx.render = () => {};
+    try {
+      for (let frame = 0; frame < frameCount; frame++) game.loop.stepManual(dt);
+    } finally {
+      game.postFx.render = render;
+    }
   }, { frameCount: Math.ceil(seconds * hz), dt: 1 / hz });
 }
 

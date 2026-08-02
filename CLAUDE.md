@@ -108,6 +108,12 @@ explicit title/pause-screen toggle (or browser F11). App fullscreen may add Keyb
 Lock for `KeyW`. The first unlocked canvas click retries capture and must never leak
 through as a weapon press.
 
+Smoke tests run against SwiftShader. Stop the game loop before DOM-only layout or
+preference settling, and use `advanceGameTime` for deterministic simulation; that
+helper intentionally suppresses post-processing during its unobserved intermediate
+frames. Renderer-specific probes must issue their own explicit render. Keep desktop,
+preference, and coarse-pointer sessions in isolated browser contexts.
+
 ## Verify loop (run all five before claiming done)
 
 ```bash

@@ -104,6 +104,12 @@ Real issues hit while building this game, kept here so they only get paid for on
   the isolated `advanceProjectileTime` helper, or fast-forward state directly
   (e.g. `waveDirector.countdown = 0.01`). Browser layout synchronization waits
   for fonts plus actual animation frames instead of arbitrary millisecond sleeps.
+- **Artificial time does not need invisible WebGL frames.** Calling
+  `GameLoop.stepManual` dozens of times rendered the full post-processing chain on
+  every step and made CI spend minutes in SwiftShader. `advanceGameTime` temporarily
+  replaces `PostFx.render` and restores it in `finally`; rendering assertions issue
+  one explicit render themselves. Likewise, stop the live loop before DOM-only
+  hangar settling so a layout wait cannot accidentally benchmark the scene.
 - Smoothing everywhere uses `1 - Math.exp(-k*dt)` — copy that form, never a bare
   `0.1` lerp factor (frame-rate dependent).
 - Projectiles use swept segment-vs-sphere tests (`ProjectileSystem`) — a naive

@@ -20,8 +20,7 @@ import {
   runDesktopInputSmoke,
 } from './smoke/desktop-input.mjs';
 import {
-  capturePageErrors,
-  settleBrowserFrames,
+  openSmokePage,
   startDistServer,
 } from './smoke/helpers.mjs';
 import { runHangarSmoke } from './smoke/hangar.mjs';
@@ -50,12 +49,7 @@ try {
 
   const hangarPreferences = await runPreferenceSmoke(browser, BASE_URL, errors);
   const mobile = await runMobileSmoke(browser, BASE_URL, errors);
-
-  const page = await browser.newPage({ viewport: { width: 1280, height: 720 } });
-  capturePageErrors(page, errors, 'game page');
-  await page.goto(`${BASE_URL}/?seed=99&headless=1`, { waitUntil: 'load' });
-  await page.waitForFunction(() => Boolean(window.game));
-  await settleBrowserFrames(page);
+  const page = await openSmokePage(browser, BASE_URL, errors);
 
   // Ordering is intentional: later probes reuse world state staged by earlier
   // feature groups, while all gameplay time remains deterministic.
