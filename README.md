@@ -184,8 +184,10 @@ npm run test:smoke           # end-to-end behavior + persistence regression suit
 ```
 
 The smoke command keeps a thin runner in `test/smoke.mjs`; focused hangar, world,
-targeting, capital, runtime, and real coarse-pointer mobile probes live under `test/smoke/` and share
-deterministic artificial-time helpers.
+targeting, capital, runtime, and real coarse-pointer mobile probes live under
+`test/smoke/`. DOM-only checks stop the live loop, while deterministic artificial
+time skips unobserved post-processing frames. This preserves the full behavior
+coverage without making CI pay software-rendering cost for invisible frames.
 
 The performance command stages both a real hostile sector and a dense planetary
 base in the production build. It reports framebuffer size, draw calls, triangles,

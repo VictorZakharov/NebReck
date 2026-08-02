@@ -135,8 +135,11 @@ behavior. The normal webpack dev-server default remains port 8080.
 Live build with explicit browser-frame settling for DOM/font checks and
 deterministic stepping for gameplay time, `/?seed=99&headless=1` (headless=1
 is mandatory — headless Chromium grants-then-drops pointer lock,
-phantom-firing auto-pause). `advanceGameTime` drives the full loop;
-`advanceProjectileTime` isolates swept collision without moving other actors.
+phantom-firing auto-pause). `advanceGameTime` drives the full simulation loop but
+temporarily suppresses `PostFx.render` for intermediate frames nobody observes;
+renderer/memory probes explicitly render at the point they inspect. The helper
+restores the original renderer in `finally`. `advanceProjectileTime` isolates swept
+collision without moving other actors.
 Both harnesses launch Chromium with `--mute-audio` — the game's synth audio
 otherwise plays through the user's speakers mid-test.
 SwiftShader runs ~4 FPS and dt clamps at 1/20, so sim time ≪ wall time: never
@@ -152,6 +155,13 @@ with the system they exercise, return serializable result objects, and preserve
 the runner order when a later module intentionally consumes earlier staged state.
 `test:architecture` enforces the runner and per-module budgets so this split
 cannot silently collapse back into one oversized file.
+
+Preference, coarse-pointer mobile, and desktop gameplay run in isolated browser
+contexts so cookie and device emulation cannot leak between scenarios. DOM-only
+hangar checks stop the live game loop before waiting for fonts/layout; otherwise
+each real animation-frame wait also performs a full SwiftShader render. On the
+reference Windows machine these harness changes reduce the unchanged full suite
+from 52.2 seconds to 27.2 seconds.
 
 `mobile.mjs` creates a real `hasTouch`/coarse-pointer Chromium context at 844×390,
 dispatches pointer gestures through the rendered sticks/buttons, and advances game

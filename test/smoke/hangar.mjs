@@ -3,7 +3,10 @@ import { settleBrowserFrames } from './helpers.mjs';
 export async function runHangarSmoke(page) {
   // Fullscreen-like tall viewport: the independent action visor must retain
   // the ship-selector row's bottom baseline.
-  await page.evaluate(() => window.game.showHangar());
+  await page.evaluate(() => {
+    window.game.loop.stop();
+    window.game.showHangar();
+  });
   await page.setViewportSize({ width: 1920, height: 1080 });
   await settleBrowserFrames(page);
   const hangarAlignment = await page.evaluate(() => {

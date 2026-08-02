@@ -168,7 +168,8 @@ Behavioral automation follows the same ownership split:
 test/
   smoke.mjs               thin Chromium lifecycle + ordered scenario runner
   smoke/
-    helpers.mjs           static server, browser diagnostics, deterministic stepping
+    helpers.mjs           static server, isolated desktop page, diagnostics;
+                          render-free deterministic simulation stepping
     preferences.mjs       real menu/hangar preference lifecycle + write-count probe
     hangar.mjs            hangar geometry, crafting and contact UI
     world.mjs             peace/trade/planet persistence/jump flow + turret clearance

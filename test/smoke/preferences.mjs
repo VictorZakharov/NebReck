@@ -4,6 +4,7 @@ const SHIP_COOKIE = 'nebreck_hangar_ship';
 const DIFFICULTY_COOKIE = 'nebreck_hangar_difficulty';
 
 async function openHangarLikeAPlayer(page) {
+  await page.evaluate(() => window.game.loop.stop());
   await page.getByRole('button', { name: 'Launch', exact: true }).click();
   await page.getByRole('button', { name: 'Hangar', exact: true }).click();
   await page.waitForFunction(() => window.game.state === 'hangar');
@@ -38,7 +39,8 @@ async function preferenceState(page) {
 }
 
 export async function runPreferenceSmoke(browser, baseUrl, errors) {
-  const page = await browser.newPage({ viewport: { width: 1280, height: 720 } });
+  const context = await browser.newContext({ viewport: { width: 1280, height: 720 } });
+  const page = await context.newPage();
   capturePageErrors(page, errors, 'hangar preference page');
   await page.addInitScript(() => {
     const descriptor = Object.getOwnPropertyDescriptor(Document.prototype, 'cookie');
@@ -82,7 +84,7 @@ export async function runPreferenceSmoke(browser, baseUrl, errors) {
   await page.waitForFunction(() => Boolean(window.game));
   await openHangarLikeAPlayer(page);
   const reloaded = await preferenceState(page);
-  await page.close();
+  await context.close();
 
   console.log(
     'hangar preference lifecycle:',
