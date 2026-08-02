@@ -17,8 +17,9 @@ ever-meaner sectors (or dive onto planets) → death banks score÷10 as **credit
 ## Controls & device input
 
 - Desktop uses mouse aim, keyboard flight/system actions, and mouse buttons/wheel
-  for weapons. Immersive flight requests pointer lock synchronously before the
-  activation-consuming fullscreen request, then adds Keyboard Lock where supported.
+  for weapons. Entering flight requests pointer lock synchronously but leaves the
+  current fullscreen state untouched. The title/pause **Toggle Fullscreen** control
+  is opt-in and adds Keyboard Lock where supported; F11 remains the browser toggle.
   A canvas click retries a rejected pointer lock and is consumed rather than firing.
 - Coarse-pointer phones/tablets skip pointer lock and expose an adaptive portrait/landscape dual-stick
   deck: left = thrust/strafe, right = pitch/yaw. Dedicated 46 px-or-larger targets

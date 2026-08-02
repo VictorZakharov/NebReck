@@ -23,6 +23,7 @@ const limits = new Map([
   ['src/game/test-scenes/WorldTestScenes.ts', 280],
   ['test/smoke.mjs', 100],
   ['test/smoke/desktop-input.mjs', 100],
+  ['test/smoke/browser-capture-mock.mjs', 80],
   ['test/performance.mjs', 100],
   ['test/smoke/helpers.mjs', 120],
   ['test/smoke/hangar.mjs', 400],

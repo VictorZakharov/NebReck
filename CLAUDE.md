@@ -97,9 +97,11 @@ capture and virtual bindings. Coarse-pointer hangars keep native DOM active inst
 of mounting the rasterized visor, restore hit testing on the full hangar scroll
 container, and keep mobile touch targets at least 44 CSS px.
 Desktop browser capture lives in `core/DesktopFlightCapture.ts`. Pointer lock must
-remain the first synchronous activation-gated request, before fullscreen; awaiting
-fullscreen first breaks Safari. The first unlocked canvas click retries capture
-and must never leak through as a weapon press.
+remain a synchronous activation-gated request from Engage/Resume so Safari can
+grant it. Entering flight must never request or exit fullscreen: fullscreen is an
+explicit title/pause-screen toggle (or browser F11). App fullscreen may add Keyboard
+Lock for `KeyW`. The first unlocked canvas click retries capture and must never leak
+through as a weapon press.
 
 ## Verify loop (run all five before claiming done)
 

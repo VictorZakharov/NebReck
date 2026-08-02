@@ -149,13 +149,16 @@ deployment credentials.
 | R | Hail, trade, deliver or accept |
 | F / G / H | Cloak / EMP / nanobots |
 | Esc | Pause |
+| F11 / Fullscreen button | Toggle fullscreen |
 | Touch | Adaptive portrait/landscape dual move/aim sticks + dedicated flight, combat, system, interaction, view, loadout, and pause controls |
 
-Engage enters app fullscreen and uses browser Keyboard Lock where supported so
-modifier movement chords such as `L-Ctrl + W` remain game input instead of browser shortcuts.
-Desktop pointer lock is requested before fullscreen so Safari retains the launch
-click's required user activation. If a browser rejects the first request, click
-the game canvas once to recapture the mouse; that click is consumed and does not fire.
+Engage captures the desktop pointer but never changes fullscreen state. Use the
+**Toggle Fullscreen** control on the title or pause screen when you want app
+fullscreen; F11 remains the browser-level toggle. App fullscreen uses Keyboard
+Lock where supported so modifier movement chords such as `L-Ctrl + W` remain game
+input instead of browser shortcuts. If a browser rejects the first pointer-lock
+request, click the game canvas once to recapture the mouse; that click is consumed
+and does not fire.
 Coarse-pointer devices automatically use the touch flight deck and skip pointer lock.
 
 The in-game **Field Manual** (main menu) documents every implemented mechanic.

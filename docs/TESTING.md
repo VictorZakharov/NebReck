@@ -144,8 +144,11 @@ contact lands on the hardpoint row; it must move the actual hangar scroll contai
 This catches pointer-transparent informational panels that programmatic `scrollTop`
 checks cannot detect.
 
-`desktop-input.mjs` replaces the browser capture APIs with ordered spies and
-requires pointer lock to be requested before fullscreen in the same activation.
+`desktop-input.mjs` replaces the browser capture APIs with ordered spies and proves
+that entering flight requests pointer lock without requesting fullscreen. It then
+exercises the explicit fullscreen enter/exit toggle and Keyboard Lock separately.
+The page-realm API stubs live in `browser-capture-mock.mjs` so the scenario remains
+below its smoke-module size budget.
 It also sends a canvas mousedown while unlocked and proves that the fresh-gesture
 retry occurs without leaking the click into primary fire, while retaining the
 Ctrl+W forward-plus-descend keyboard chord.

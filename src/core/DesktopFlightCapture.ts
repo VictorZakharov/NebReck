@@ -1,4 +1,4 @@
-/** Browser-level desktop flight capture: pointer lock, fullscreen, and KeyW lock. */
+/** Browser-level desktop flight capture: pointer lock and opt-in fullscreen key capture. */
 export class DesktopFlightCapture {
   private pointerLocked = false;
   private flightModeActive = false;
@@ -24,23 +24,35 @@ export class DesktopFlightCapture {
     return this.flightModeActive;
   }
 
-  /**
-   * Pointer lock must be requested before fullscreen: fullscreen consumes the
-   * transient activation Safari/WebKit requires for the lock request.
-   */
+  /** Enter flight without changing the user's browser/fullscreen preference. */
   enter(): void {
     this.flightModeActive = true;
     if (!this.usesTouchControls) this.requestPointerLock();
-    void this.enterFullscreenAndLockKeys();
+    void this.lockFlightKeys();
   }
 
-  leave(exitFullscreen = true): void {
+  leave(): void {
     this.flightModeActive = false;
     this.exitPointerLock();
     this.unlockFlightKeys();
-    if (exitFullscreen && document.fullscreenElement) {
-      void document.exitFullscreen().catch(() => {});
+  }
+
+  /** Fullscreen is an explicit user choice, separate from entering flight. */
+  async toggleFullscreen(): Promise<void> {
+    if (document.fullscreenElement) {
+      try {
+        await document.exitFullscreen();
+      } catch { /* fullscreen rejected or unsupported */ }
+      return;
     }
+    if (!document.fullscreenEnabled) return;
+    try {
+      const options = {
+        navigationUI: 'hide',
+        keyboardLock: 'browser',
+      } as FullscreenOptions & { keyboardLock: 'browser' };
+      await document.documentElement.requestFullscreen(options);
+    } catch { /* fullscreen rejected or unsupported */ }
   }
 
   /** Consume the first in-game click as a user-activated lock retry. */
@@ -74,19 +86,6 @@ export class DesktopFlightCapture {
 
   exitPointerLock(): void {
     if (this.pointerLocked) document.exitPointerLock();
-  }
-
-  private async enterFullscreenAndLockKeys(): Promise<void> {
-    if (!document.fullscreenElement && document.fullscreenEnabled) {
-      try {
-        const options = {
-          navigationUI: 'hide',
-          keyboardLock: 'browser',
-        } as FullscreenOptions & { keyboardLock: 'browser' };
-        await document.documentElement.requestFullscreen(options);
-      } catch { /* fullscreen rejected or unsupported */ }
-    }
-    await this.lockFlightKeys();
   }
 
   private async lockFlightKeys(): Promise<void> {

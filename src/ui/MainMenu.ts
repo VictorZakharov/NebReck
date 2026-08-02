@@ -3,6 +3,7 @@ import { GAME_SUBTITLE, GAME_TITLE, INTRO_LINES } from '../game/Story';
 export interface MenuCallbacks {
   onLaunch: () => void;
   onLegacy: () => void;
+  onToggleFullscreen: () => void;
   onHover: () => void;
   onClick: () => void;
 }
@@ -53,6 +54,7 @@ export class MainMenu {
       this.button('Legacy', () => this.callbacks.onLegacy()),
       this.button('Field Manual', () => this.renderManual()),
       this.button('Controls', () => this.renderControls()),
+      this.button('Toggle Fullscreen', () => this.callbacks.onToggleFullscreen()),
     );
 
     const footer = document.createElement('div');
@@ -225,6 +227,7 @@ export class MainMenu {
         ['Shift', 'Boost'],
         ['J (hold)', 'Jump / land on aimed planet / lift off'],
         ['V', 'Toggle cockpit / chase camera'],
+        ['F11', 'Browser fullscreen (or use the menu toggle)'],
       ]],
       ['Combat & Systems', [
         ['LMB', 'Fire primary weapon'],

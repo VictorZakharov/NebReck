@@ -65,18 +65,19 @@ export class Input {
     element.addEventListener('contextmenu', (e) => e.preventDefault());
   }
 
-  /**
-   * Enter browser-game fullscreen and capture KeyW with every modifier, making
-   * Left Ctrl + W available as descend + forward instead of Chrome's close-tab
-   * accelerator. Unsupported browsers still retain ordinary pointer lock.
-   */
+  /** Capture the desktop pointer without forcing a fullscreen transition. */
   enterFlightMode(): void {
     this.desktopCapture.enter();
   }
 
-  /** Stop capturing browser accelerators; optionally leave app fullscreen. */
-  leaveFlightMode(exitFullscreen = true): void {
-    this.desktopCapture.leave(exitFullscreen);
+  /** Stop capturing flight input without changing the fullscreen preference. */
+  leaveFlightMode(): void {
+    this.desktopCapture.leave();
+  }
+
+  /** User-invoked app fullscreen toggle; enables Keyboard Lock when available. */
+  toggleFullscreen(): Promise<void> {
+    return this.desktopCapture.toggleFullscreen();
   }
 
   requestPointerLock(): void {

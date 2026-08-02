@@ -1,29 +1,21 @@
+import { exposeBrowserCaptureMock } from './browser-capture-mock.mjs';
+
 export async function runDesktopInputSmoke(page) {
+  await page.evaluate(exposeBrowserCaptureMock);
   const result = await page.evaluate(async () => {
     const input = window.game.input;
     const canvas = window.game.renderer.domElement;
-    const calls = [];
-    const pointerDescriptor = Object.getOwnPropertyDescriptor(canvas, 'requestPointerLock');
-    const fullscreenDescriptor = Object.getOwnPropertyDescriptor(
-      document.documentElement, 'requestFullscreen',
-    );
-    const enabledDescriptor = Object.getOwnPropertyDescriptor(document, 'fullscreenEnabled');
-
-    Object.defineProperty(document, 'fullscreenEnabled', { configurable: true, value: true });
-    Object.defineProperty(canvas, 'requestPointerLock', {
-      configurable: true,
-      value: () => { calls.push('pointer'); return Promise.resolve(); },
-    });
-    Object.defineProperty(document.documentElement, 'requestFullscreen', {
-      configurable: true,
-      value: () => { calls.push('fullscreen'); return Promise.resolve(); },
-    });
+    const mock = window.__installBrowserCaptureMock(canvas);
 
     try {
-      input.leaveFlightMode(false);
+      input.leaveFlightMode();
       input.endFrame();
       input.enterFlightMode();
-      const activationOrder = [...calls];
+      const activationCalls = [...mock.calls];
+      mock.calls.length = 0;
+      await input.toggleFullscreen();
+      const fullscreenEntryCalls = [...mock.calls];
+      mock.calls.length = 0;
       const active = input.capturesFlightKeys;
       const controlDown = new KeyboardEvent('keydown', {
         code: 'ControlLeft', ctrlKey: true, cancelable: true,
@@ -40,19 +32,25 @@ export async function runDesktopInputSmoke(page) {
       };
       window.dispatchEvent(new KeyboardEvent('keyup', { code: 'KeyW' }));
       window.dispatchEvent(new KeyboardEvent('keyup', { code: 'ControlLeft' }));
-      calls.length = 0;
+      await input.toggleFullscreen();
+      const fullscreenExitCalls = [...mock.calls];
+      mock.calls.length = 0;
       const captureClick = new MouseEvent('mousedown', {
         bubbles: true,
         button: 0,
         cancelable: true,
       });
       canvas.dispatchEvent(captureClick);
-      const recaptureCalls = [...calls];
+      const recaptureCalls = [...mock.calls];
       const captureClickConsumed = captureClick.defaultPrevented;
       const captureClickDidNotFire = !input.isButtonDown(0) && !input.wasButtonPressed(0);
       await Promise.resolve();
       return {
-        activationOrder,
+        activationCalls,
+        fullscreenEntryCalls,
+        fullscreenExitCalls,
+        keyboardLocks: [...mock.locks],
+        keyboardUnlocks: mock.unlocks,
         active,
         flightKeyChord,
         recaptureCalls,
@@ -60,15 +58,8 @@ export async function runDesktopInputSmoke(page) {
         captureClickDidNotFire,
       };
     } finally {
-      input.leaveFlightMode(false);
-      restoreProperty(canvas, 'requestPointerLock', pointerDescriptor);
-      restoreProperty(document.documentElement, 'requestFullscreen', fullscreenDescriptor);
-      restoreProperty(document, 'fullscreenEnabled', enabledDescriptor);
-    }
-
-    function restoreProperty(target, name, descriptor) {
-      if (descriptor) Object.defineProperty(target, name, descriptor);
-      else delete target[name];
+      input.leaveFlightMode();
+      mock.restore();
     }
   });
   console.log('desktop flight capture:', JSON.stringify(result));
@@ -76,11 +67,15 @@ export async function runDesktopInputSmoke(page) {
 }
 
 export function collectDesktopInputFailures(result) {
-  const ordered = result.activationOrder.join(',') === 'pointer,fullscreen';
+  const entersWithoutFullscreen = result.activationCalls.join(',') === 'pointer';
+  const explicitEntry = result.fullscreenEntryCalls.join(',') === 'fullscreen';
+  const explicitExit = result.fullscreenExitCalls.join(',') === 'exit-fullscreen';
+  const keyboardLock = result.keyboardLocks.includes('KeyW') && result.keyboardUnlocks > 0;
   const recaptures = result.recaptureCalls.join(',') === 'pointer';
   const chord = result.flightKeyChord;
   if (
-    !ordered || !result.active || !recaptures ||
+    !entersWithoutFullscreen || !explicitEntry || !explicitExit || !keyboardLock ||
+    !result.active || !recaptures ||
     !result.captureClickConsumed || !result.captureClickDidNotFire ||
     !chord.consumed || !chord.forward || !chord.descend
   ) return ['desktop pointer capture'];
