@@ -30,10 +30,11 @@ const DIFF_DIR = join(__dirname, 'diff');
 
 const SCENES = [
   'nebula', 'ship', 'asteroids', 'combat', 'hud', 'menu', 'cockpit', 'hangar', 'loadout',
-  'boost', 'targeting', 'distant-targeting', 'turret-targeting', 'capital-targeting', 'friendly-targeting', 'resource-targeting', 'fx', 'fx-volume', 'smoke-volume', 'shield-impact', 'damage-shake', 'asteroid-impact', 'ship-breakup', 'cave', 'split', 'level', 'wreck', 'planet', 'base', 'trade', 'fleet',
+  'boost', 'tutorial', 'targeting', 'distant-targeting', 'turret-targeting', 'capital-targeting', 'friendly-targeting', 'resource-targeting', 'fx', 'fx-volume', 'smoke-volume', 'shield-impact', 'damage-shake', 'asteroid-impact', 'ship-breakup', 'cave', 'split', 'level', 'wreck', 'planet', 'base', 'trade', 'fleet',
   'cloak', 'controls',
   'enemy-variety', 'missile-warning', 'capital-superweapon', 'capital-charge-guide',
   'mobile-controls', 'mobile-controls-portrait',
+  'mobile-tutorial', 'mobile-tutorial-portrait',
   'mobile-hangar', 'mobile-hangar-portrait', 'mobile-loadout', 'mobile-trade',
 ];
 const SEED = 7;
@@ -41,6 +42,8 @@ const VIEWPORT = { width: 1280, height: 720 };
 const SCENE_VIEWPORTS = {
   'mobile-controls': { width: 844, height: 390 },
   'mobile-controls-portrait': { width: 390, height: 844 },
+  'mobile-tutorial': { width: 844, height: 390 },
+  'mobile-tutorial-portrait': { width: 390, height: 844 },
   'mobile-hangar': { width: 844, height: 390 },
   'mobile-hangar-portrait': { width: 390, height: 844 },
   'mobile-loadout': { width: 844, height: 390 },

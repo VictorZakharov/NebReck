@@ -12,6 +12,14 @@ export function stageMobileControls(game: Game): void {
   game.touchControls.setVisible(true);
 }
 
+/** Touch tutorial lesson with irrelevant controls gated and EMP called out. */
+export function stageMobileTutorial(game: Game): void {
+  game.touchControls.enableForTest();
+  game.startTutorial();
+  game.tutorial.stageForTest('emp');
+  steps(game, 30);
+}
+
 /** Touch-native hangar: real DOM cards and buttons, never a rasterized visor. */
 export function stageMobileHangar(game: Game): void {
   game.touchControls.enableForTest();

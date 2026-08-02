@@ -37,6 +37,7 @@ const COLOR_FAR = 0x96a5af;
 const COLOR_NEUTRAL = 0x9fdcff;
 const COLOR_OBJECTIVE = 0xffd24a;
 const COLOR_MERCHANT = 0x8aff9f;
+const COLOR_NAVIGATION = 0x27e8ff;
 
 /**
  * Elite-style holographic sphere radar: contacts are shown in the SHIP's
@@ -186,7 +187,8 @@ export class Radar3D {
       // Color semantics match the HUD: red ship / amber turret / blue neutral
       // / grey out-of-range.
       const hex =
-        contact.kind === 'objective' ? COLOR_OBJECTIVE
+        contact.kind === 'navigation' ? COLOR_NAVIGATION
+        : contact.kind === 'objective' ? COLOR_OBJECTIVE
         : contact.kind === 'merchant' ? COLOR_MERCHANT
         : contact.kind === 'neutral' ? COLOR_NEUTRAL
         : contact.inRange === false ? COLOR_FAR
@@ -196,7 +198,11 @@ export class Radar3D {
 
       blip.visible = true;
       blip.position.copy(toEnemy);
-      blip.scale.setScalar(contact.kind === 'brute' ? 1.5 : contact.kind === 'bomber' ? 1.3 : 1);
+      blip.scale.setScalar(
+        contact.kind === 'navigation' ? 1.55
+          : contact.kind === 'brute' ? 1.5
+            : contact.kind === 'bomber' ? 1.3 : 1,
+      );
 
       // Stem from the blip straight down/up to the equator plane.
       this.stemColor.setHex(hex);

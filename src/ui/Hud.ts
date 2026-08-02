@@ -34,6 +34,14 @@ export interface HudContactMarker {
   inRange: boolean;
 }
 
+export interface HudNavigationMarker {
+  x: number;
+  y: number;
+  distance: number;
+  label: string;
+  edge: boolean;
+}
+
 export interface HudFrameState {
   hull: number;
   hullMax: number;
@@ -87,6 +95,8 @@ export interface HudFrameState {
   /** Visible hostiles that are not the locked target — every one gets a bracket. */
   contacts: HudContactMarker[];
   offscreen: HudOffscreenMarker[];
+  /** Player-assigned or guided destination, projected independently of combat contacts. */
+  navigation: HudNavigationMarker | null;
   resources: { scrap: number; crystal: number; flux: number };
 }
 
@@ -133,6 +143,9 @@ export class Hud {
       <div class="target-box" data-el="targetBox" style="opacity:0"></div>
       <div class="target-dist" data-el="targetDist" style="opacity:0"></div>
       <div class="lead-pip" data-el="leadPip" style="opacity:0"></div>
+      <div class="nav-marker" data-el="navMarker">
+        <i></i><strong data-el="navLabel"></strong><span data-el="navDistance"></span>
+      </div>
       <div class="hud-cluster hud-vitals">
         <div class="bar-label"><span>Shield</span><span data-el="shieldText"></span></div>
         <div class="bar shield"><i data-el="shieldBar"></i></div>
@@ -159,7 +172,7 @@ export class Hud {
           <span class="res-flux"><i>${holdingIconSvg('flux')}</i><b data-el="resFlux">0</b></span>
         </div>
       </div>
-      <div class="hud-hint">Tab loadout · V view · F cloak · G emp · H repair · J jump</div>
+      <div class="hud-hint">Tab loadout · V view · N nav · F cloak · G emp · H repair · J jump</div>
       <div class="hud-corner hud-weapons hud-panel">
         <div class="panel-title">Armament</div>
         <div class="weapon-name" data-el="weaponName"></div>
@@ -383,6 +396,16 @@ export class Hud {
     if (t.leadVisible) {
       e.leadPip.style.left = `${t.leadX}px`;
       e.leadPip.style.top = `${t.leadY}px`;
+    }
+
+    const nav = s.navigation;
+    e.navMarker.classList.toggle('show', nav !== null);
+    if (nav) {
+      e.navMarker.style.left = `${nav.x}px`;
+      e.navMarker.style.top = `${nav.y}px`;
+      e.navMarker.classList.toggle('edge', nav.edge);
+      e.navLabel.textContent = nav.label;
+      e.navDistance.textContent = `${Math.round(nav.distance)} m`;
     }
 
     // On-screen contact brackets: every visible hostile gets marked — the

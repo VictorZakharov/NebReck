@@ -57,6 +57,7 @@ export abstract class GameScreens extends GameFoundation {
   showMenu(): void {
     if (!this.headless) this.input.leaveFlightMode();
     this.state = 'menu';
+    this.tutorial.stop();
     this.hangarVisor.unmount();
     if (this.hangarBay) this.scene.remove(this.hangarBay.group);
     for (const object of this.sector.backdropFx) object.visible = true;
@@ -88,7 +89,18 @@ export abstract class GameScreens extends GameFoundation {
   }
 
   showHangar(): void {
+    const leavingTutorial = this.tutorial.active;
     this.state = 'hangar';
+    this.tutorial.stop();
+    this.hud.setVisible(false);
+    if (leavingTutorial) {
+      this.warp.progress = 0;
+      this.warp.update(0);
+      if (!this.headless) this.input.leaveFlightMode();
+      this.discardSurface();
+      this.clearMission();
+      this.createPlayer(this.selectedShipId);
+    }
     this.closeOverlays();
     if (!this.hangarBay) this.hangarBay = new HangarBay();
     this.scene.add(this.hangarBay.group);
@@ -118,6 +130,7 @@ export abstract class GameScreens extends GameFoundation {
           this.selectedDifficultyId = difficultyId;
           this.startMission();
         },
+        onTutorial: () => this.startTutorial(),
         onBack: () => this.showMenu(),
         onHover: () => this.audio.uiHover(),
         onClick: () => this.audio.uiClick(),
@@ -131,20 +144,36 @@ export abstract class GameScreens extends GameFoundation {
   }
 
   startMission(): void {
-    // Called directly from Engage/Retry user activation so Safari receives a
-    // synchronous pointer-lock request. Fullscreen remains an explicit choice.
-    if (!this.headless) this.input.enterFlightMode();
+    this.tutorial.stop();
+    this.beginMission(this.selectedShipId, false, true);
+  }
+
+  startTutorial(): void {
+    this.tutorial.stop();
+    // The tutorial supplies its own pointer-locked cursor, so flight can keep
+    // the mouse captured without making LYRA's controls inaccessible.
+    this.beginMission('kestrel', true, true);
+    this.tutorial.start();
+  }
+
+  private beginMission(shipId: string, tutorialMode: boolean, capturePointer: boolean): void {
+    // Called directly from Engage/Tutorial/Retry user activation: Safari needs
+    // the synchronous pointer-lock request, then app fullscreen can safely lock
+    // KeyW so the browser cannot consume the valid Ctrl+W flight chord.
+    if (!this.headless && capturePointer) this.input.enterFlightMode();
     this.hangarVisor.unmount();
     if (this.hangarBay) this.scene.remove(this.hangarBay.group);
     for (const object of this.sector.backdropFx) object.visible = true;
     this.discardSurface();
     this.clearMission();
     this.closeOverlays();
+    this.warp.progress = 0;
+    this.warp.update(0);
 
     // A new sortie receives a newly themed first sector. The seed stream keeps
     // explicit ?seed= test launches deterministic.
     this.rebuildSector();
-    const shipDef = getShipDef(this.selectedShipId);
+    const shipDef = getShipDef(shipId);
     this.weapons.setLoadout(
       shipDef.weapons,
       shipDef.missileRate,
@@ -157,7 +186,7 @@ export abstract class GameScreens extends GameFoundation {
     this.missionTime = 0;
     this.worldFlow.resetTravelState();
     this.storyFired.clear();
-    this.difficulty = getDifficulty(this.selectedDifficultyId);
+    this.difficulty = getDifficulty(tutorialMode ? 'rookie' : this.selectedDifficultyId);
     this.inventory = new Inventory();
     this.inventory.missiles = shipDef.startingMissiles;
     this.devices = new DeviceSystem();
@@ -171,7 +200,7 @@ export abstract class GameScreens extends GameFoundation {
     }
 
     // Fresh hull with fresh stats; crafting upgrades do not cross sorties.
-    this.createPlayer(this.selectedShipId);
+    this.createPlayer(shipId);
     const player = this.player;
     player.object.visible = true;
     this.weapons.energy = this.weapons.energyMax;
@@ -191,7 +220,7 @@ export abstract class GameScreens extends GameFoundation {
 
     this.deploySectorEntities();
     this.placePlayerSafely();
-    this.storyComms('mission-start');
+    if (!tutorialMode) this.storyComms('mission-start');
 
     this.hud.setVisible(true);
     this.chaseCam.mode = 'third';
@@ -202,12 +231,14 @@ export abstract class GameScreens extends GameFoundation {
 
   pause(): void {
     if (this.state !== 'playing') return;
+    const inTutorial = this.tutorial.active;
     this.state = 'paused';
     this.input.exitPointerLock();
     this.pauseMenu = new PauseMenu(this.uiRoot, {
       onResume: () => this.resume(),
       onRestart: () => this.startMission(),
       onQuitToMenu: () => this.showMenu(),
+      onExitTutorial: inTutorial ? () => this.showHangar() : undefined,
       onToggleFullscreen: () => { void this.input.toggleFullscreen(); },
       onHover: () => this.audio.uiHover(),
       onClick: () => this.audio.uiClick(),
@@ -294,6 +325,7 @@ export abstract class GameScreens extends GameFoundation {
         player.shield += 25;
         break;
     }
+    this.tutorial.notifyCraft();
     return true;
   }
 

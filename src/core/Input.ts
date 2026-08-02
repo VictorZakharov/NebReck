@@ -1,5 +1,13 @@
 import { DesktopFlightCapture } from './DesktopFlightCapture';
 
+export interface InputControlGate {
+  keys?: readonly string[];
+  buttons?: readonly number[];
+  move?: boolean;
+  look?: boolean;
+  wheel?: boolean;
+}
+
 /**
  * Unified physical and virtual input. Mouse and touch-look movement accumulate
  * into per-frame deltas that gameplay consumes once per tick, keeping aim
@@ -14,6 +22,8 @@ export class Input {
   private buttons = new Set<number>();
   private virtualButtons = new Set<number>();
   private buttonsPressedThisFrame = new Set<number>();
+  private carriedKeyPresses = new Set<string>();
+  private carriedButtonPresses = new Set<number>();
   private wheelDelta = 0;
   private readonly desktopCapture: DesktopFlightCapture;
   private virtualThrust = 0;
@@ -24,6 +34,8 @@ export class Input {
   private virtualLookY = 0;
   private virtualLookTargetX = 0;
   private virtualLookTargetY = 0;
+  private lookIntentThisFrame = false;
+  private controlGate: InputControlGate | null = null;
   readonly usesTouchControls: boolean;
 
   constructor(element: HTMLElement) {
@@ -33,10 +45,12 @@ export class Input {
       window.matchMedia('(pointer: coarse)').matches || compactTouchViewport;
     this.desktopCapture = new DesktopFlightCapture(element, this.usesTouchControls);
     window.addEventListener('keydown', (e) => {
-      if (!this.keys.has(e.code)) this.pressedThisFrame.add(e.code);
+      if (!e.repeat && !this.keys.has(e.code)) this.pressedThisFrame.add(e.code); // autorepeat is not a fresh action
       this.keys.add(e.code);
       if (
         e.code === 'Tab' || e.code === 'Space' ||
+        (this.desktopCapture.capturesFlightKeys &&
+          (e.code === 'ArrowLeft' || e.code === 'ArrowRight')) ||
         (this.desktopCapture.capturesFlightKeys && e.code === 'KeyW' && (e.ctrlKey || e.metaKey))
       ) e.preventDefault();
     });
@@ -44,12 +58,17 @@ export class Input {
     window.addEventListener('blur', () => {
       this.keys.clear();
       this.buttons.clear();
+      this.carriedKeyPresses.clear();
+      this.carriedButtonPresses.clear();
       this.resetVirtualControls();
     });
     element.addEventListener('mousemove', (e) => {
       if (this.desktopCapture.isPointerLocked) {
         this.mouseDx += e.movementX;
         this.mouseDy += e.movementY;
+        if (Math.abs(e.movementX) + Math.abs(e.movementY) > 0.5) {
+          this.lookIntentThisFrame = true;
+        }
       }
     });
     element.addEventListener('mousedown', (e) => {
@@ -98,23 +117,32 @@ export class Input {
   }
 
   isDown(code: string): boolean {
+    if (!this.keyAllowed(code)) return false;
     return this.keys.has(code) || this.virtualKeys.has(code);
   }
 
   wasPressed(code: string): boolean {
+    if (!this.keyAllowed(code)) return false;
     return this.pressedThisFrame.has(code);
   }
 
   isButtonDown(button: number): boolean {
+    if (!this.buttonAllowed(button)) return false;
     return this.buttons.has(button) || this.virtualButtons.has(button);
   }
 
   wasButtonPressed(button: number): boolean {
+    if (!this.buttonAllowed(button)) return false;
     return this.buttonsPressedThisFrame.has(button);
   }
 
   /** Physical mouse delta plus a gradually accelerated touch-stick delta. */
   consumeMouseDelta(dt = 1 / 60): { dx: number; dy: number } {
+    if (this.controlGate && !this.controlGate.look) {
+      this.mouseDx = 0;
+      this.mouseDy = 0;
+      return { dx: 0, dy: 0 };
+    }
     const response = 1 - Math.exp(-6 * dt);
     this.virtualLookX += (this.virtualLookTargetX - this.virtualLookX) * response;
     this.virtualLookY += (this.virtualLookTargetY - this.virtualLookY) * response;
@@ -128,6 +156,10 @@ export class Input {
   }
 
   consumeWheel(): number {
+    if (this.controlGate && !this.controlGate.wheel) {
+      this.wheelDelta = 0;
+      return 0;
+    }
     const w = this.wheelDelta;
     this.wheelDelta = 0;
     return w;
@@ -170,6 +202,7 @@ export class Input {
   setVirtualLook(x: number, y: number): void {
     this.virtualLookTargetX = clampUnit(x);
     this.virtualLookTargetY = clampUnit(y);
+    if (Math.abs(x) + Math.abs(y) > 0.08) this.lookIntentThisFrame = true;
   }
 
   setVirtualVertical(value: number): void {
@@ -181,6 +214,7 @@ export class Input {
   }
 
   flightAxis(axis: 'thrust' | 'strafeX' | 'strafeY' | 'roll'): number {
+    if (this.controlGate && !this.controlGate.move) return 0;
     if (axis === 'thrust') return this.virtualThrust;
     if (axis === 'strafeX') return this.virtualStrafeX;
     if (axis === 'strafeY') return this.virtualStrafeY;
@@ -200,10 +234,78 @@ export class Input {
     this.virtualLookTargetY = 0;
   }
 
+  /** Whether a mouse or touch-stick gesture is waiting to turn the ship. */
+  hasLookIntent(): boolean {
+    if (this.controlGate && !this.controlGate.look) return false;
+    return this.lookIntentThisFrame ||
+      Math.abs(this.mouseDx) + Math.abs(this.mouseDy) > 0.5 ||
+      Math.abs(this.virtualLookTargetX) + Math.abs(this.virtualLookTargetY) > 0.08;
+  }
+
+  /** Restrict the live tutorial to only the controls taught by its current lesson. */
+  setControlGate(gate: InputControlGate | null, preserveHeld = false): void {
+    this.controlGate = gate;
+    if (!preserveHeld) {
+      this.keys.clear();
+      this.buttons.clear();
+      this.pressedThisFrame.clear();
+      this.buttonsPressedThisFrame.clear();
+      this.carriedKeyPresses.clear();
+      this.carriedButtonPresses.clear();
+      this.mouseDx = 0;
+      this.mouseDy = 0;
+      this.lookIntentThisFrame = false;
+      this.wheelDelta = 0;
+      this.resetVirtualControls();
+      return;
+    }
+    this.keys = filtered(this.keys, (code) => this.keyAllowed(code));
+    this.virtualKeys = filtered(this.virtualKeys, (code) => this.keyAllowed(code));
+    this.buttons = filtered(this.buttons, (button) => this.buttonAllowed(button));
+    this.virtualButtons = filtered(this.virtualButtons, (button) => this.buttonAllowed(button));
+    this.pressedThisFrame = filtered(this.pressedThisFrame, (code) => this.keyAllowed(code));
+    this.buttonsPressedThisFrame = filtered(
+      this.buttonsPressedThisFrame,
+      (button) => this.buttonAllowed(button),
+    );
+    this.carriedKeyPresses = new Set([...this.keys, ...this.virtualKeys, ...this.pressedThisFrame]);
+    this.carriedButtonPresses = new Set([
+      ...this.buttons,
+      ...this.virtualButtons,
+      ...this.buttonsPressedThisFrame,
+    ]);
+    if (!gate?.look) {
+      this.mouseDx = 0;
+      this.mouseDy = 0;
+      this.virtualLookX = 0;
+      this.virtualLookY = 0;
+      this.virtualLookTargetX = 0;
+      this.virtualLookTargetY = 0;
+    }
+    if (!gate?.move) {
+      this.virtualThrust = 0;
+      this.virtualStrafeX = 0;
+      this.virtualStrafeY = 0;
+      this.virtualRoll = 0;
+    }
+    if (!gate?.wheel) this.wheelDelta = 0;
+  }
+
   /** Call at the end of each frame. */
   endFrame(): void {
-    this.pressedThisFrame.clear();
-    this.buttonsPressedThisFrame.clear();
+    this.pressedThisFrame = this.carriedKeyPresses;
+    this.buttonsPressedThisFrame = this.carriedButtonPresses;
+    this.carriedKeyPresses = new Set<string>();
+    this.carriedButtonPresses = new Set<number>();
+    this.lookIntentThisFrame = false;
+  }
+
+  private keyAllowed(code: string): boolean {
+    return !this.controlGate || this.controlGate.keys?.includes(code) === true;
+  }
+
+  private buttonAllowed(button: number): boolean {
+    return !this.controlGate || this.controlGate.buttons?.includes(button) === true;
   }
 
 }
@@ -214,4 +316,8 @@ function clampUnit(value: number): number {
 
 function curvedStick(value: number): number {
   return Math.sign(value) * Math.pow(Math.abs(value), 1.35);
+}
+
+function filtered<T>(values: Set<T>, predicate: (value: T) => boolean): Set<T> {
+  return new Set([...values].filter(predicate));
 }

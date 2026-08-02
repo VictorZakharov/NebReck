@@ -72,3 +72,10 @@ export function stageTrade(game: Game): void {
   game.openTrade();
   steps(game, 3);
 }
+
+/** Paused shield lesson: live HUD highlight, impact hemisphere, and LYRA card. */
+export function stageTutorial(game: Game): void {
+  game.startTutorial();
+  game.tutorial.stageForTest('shield');
+  steps(game, 3);
+}

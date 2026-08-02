@@ -7,8 +7,10 @@ import { CAPITAL_TURRET_LOCK_RANGE_METERS } from './GameConstants';
 import {
   HudContactMarker,
   HudFrameState,
+  HudNavigationMarker,
   HudOffscreenMarker,
 } from '../ui/Hud';
+import { NavigationDestination } from './NavigationSystem';
 
 export interface RadarContact {
   position: Vector3;
@@ -21,6 +23,7 @@ export interface HudProjectionResult {
   contacts: HudContactMarker[];
   offscreen: HudOffscreenMarker[];
   radarContacts: RadarContact[];
+  navigation: HudNavigationMarker | null;
 }
 
 /**
@@ -42,6 +45,7 @@ export class HudProjector {
     target: TargetInfo | null,
     shootables: readonly Ship[],
     objectives: readonly Vector3[],
+    navigation: NavigationDestination | null,
     weaponReach: number,
     width: number,
     height: number,
@@ -89,6 +93,9 @@ export class HudProjector {
     const radarContacts: RadarContact[] = [];
     camera.updateMatrixWorld();
     this.cameraInverse.copy(camera.matrixWorld).invert();
+    const navigationMarker = navigation
+      ? this.projectNavigation(camera, playerPosition, navigation, width, height)
+      : null;
 
     for (const hostile of shootables) {
       const distance = hostile.position.distanceTo(playerPosition);
@@ -166,7 +173,39 @@ export class HudProjector {
       }
     }
 
-    return { target: targetState, contacts, offscreen, radarContacts };
+    if (navigation) {
+      radarContacts.unshift({ position: navigation.position, kind: 'navigation', inRange: true });
+    }
+
+    return { target: targetState, contacts, offscreen, radarContacts, navigation: navigationMarker };
+  }
+
+  private projectNavigation(
+    camera: PerspectiveCamera,
+    playerPosition: Vector3,
+    destination: NavigationDestination,
+    width: number,
+    height: number,
+  ): HudNavigationMarker {
+    this.cameraSpace.copy(destination.position).applyMatrix4(this.cameraInverse);
+    this.projected.copy(destination.position).project(camera);
+    if (this.cameraSpace.z >= 0) {
+      this.projected.x *= -1;
+      this.projected.y *= -1;
+    }
+    const rawX = (this.projected.x * 0.5 + 0.5) * width;
+    const rawY = (-this.projected.y * 0.5 + 0.5) * height;
+    const marginX = Math.min(84, width * 0.16);
+    const marginY = Math.min(92, height * 0.18);
+    const x = Math.max(marginX, Math.min(width - marginX, rawX));
+    const y = Math.max(marginY, Math.min(height - marginY, rawY));
+    return {
+      x,
+      y,
+      distance: destination.position.distanceTo(playerPosition),
+      label: destination.label,
+      edge: this.cameraSpace.z >= 0 || Math.abs(x - rawX) > 1 || Math.abs(y - rawY) > 1,
+    };
   }
 
   projectAnchor(

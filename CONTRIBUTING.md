@@ -59,6 +59,17 @@ not receive deployment credentials.
   `Math.random()` or wall-clock time, for render-affecting behavior.
 - Keep per-frame code allocation-free where practical.
 - Add a regression assertion or visual scene for every bug fix.
+- Guided-course changes must extend the focused interactive tutorial smoke modules;
+  a staged overlay screenshot alone does not prove an objective is completable.
+  Visible results remain held until the next prompted gameplay action (or a named
+  scripted transition), and control gates cover physical and virtual input with
+  matching mobile highlights. Chevrons must stage a playable lesson, not a preview;
+  taught controls arm immediately and deliberate actions may cancel narration, while
+  passive scripted effects wait for it; Enter may mirror only an offered transition.
+  desktop chevron clicks must work through the locked software cursor without
+  firing. Focus loss must not mount another screen; Escape may mount only the
+  tutorial-aware pause menu, whose Resume preserves the course and whose explicit
+  Exit Tutorial action performs normal training teardown.
 - Put new visual staging in the focused module under `src/game/test-scenes/`;
   keep `TestScenes.ts` as the small name-to-stage dispatcher.
 - Update the relevant documentation when behavior or architecture changes.

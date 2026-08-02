@@ -29,6 +29,56 @@
 .merchant-note { color: #8aff9f; }
 .planet-tag { color: #ffd24a; }
 
+/* Player navigation destination: cyan, labelled, and independent of combat lock. */
+.nav-marker {
+  position: absolute;
+  z-index: 5;
+  display: none;
+  width: 34px;
+  height: 34px;
+  transform: translate(-50%, -50%);
+  filter: drop-shadow(0 0 7px rgba(39, 232, 255, 0.75));
+  pointer-events: none;
+}
+.nav-marker.show { display: block; }
+.nav-marker i {
+  position: absolute;
+  inset: 5px;
+  border: 1px solid rgba(159, 240, 255, 0.9);
+  transform: rotate(45deg);
+}
+.nav-marker strong,
+.nav-marker span {
+  position: absolute;
+  left: 50%;
+  min-width: 92px;
+  transform: translateX(-50%);
+  color: #9ff0ff;
+  background: rgba(3, 10, 17, 0.82);
+  text-align: center;
+  white-space: nowrap;
+  text-shadow: 0 0 7px rgba(39, 232, 255, 0.7);
+}
+.nav-marker strong {
+  bottom: calc(100% + 7px);
+  padding: 2px 6px 1px;
+  font-size: 9px;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+}
+.nav-marker span {
+  top: calc(100% + 5px);
+  padding: 1px 5px;
+  font-size: 10.5px;
+  letter-spacing: 0.12em;
+}
+.nav-marker.edge {
+  filter: drop-shadow(0 0 7px rgba(255, 210, 74, 0.75));
+}
+.nav-marker.edge i { border-color: #ffd24a; }
+.nav-marker.edge strong,
+.nav-marker.edge span { color: #ffd24a; }
+
 /* interaction prompt + contract tracker */
 .interact-prompt {
   position: absolute; left: 50%; bottom: 218px; transform: translateX(-50%);

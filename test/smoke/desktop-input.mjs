@@ -13,9 +13,7 @@ export async function runDesktopInputSmoke(page) {
       input.enterFlightMode();
       const activationCalls = [...mock.calls];
       mock.calls.length = 0;
-      await input.toggleFullscreen();
-      const fullscreenEntryCalls = [...mock.calls];
-      mock.calls.length = 0;
+      await Promise.resolve();
       const active = input.capturesFlightKeys;
       const controlDown = new KeyboardEvent('keydown', {
         code: 'ControlLeft', ctrlKey: true, cancelable: true,
@@ -35,6 +33,9 @@ export async function runDesktopInputSmoke(page) {
       await input.toggleFullscreen();
       const fullscreenExitCalls = [...mock.calls];
       mock.calls.length = 0;
+      await input.toggleFullscreen();
+      const fullscreenReentryCalls = [...mock.calls];
+      mock.calls.length = 0;
       const captureClick = new MouseEvent('mousedown', {
         bubbles: true,
         button: 0,
@@ -47,8 +48,8 @@ export async function runDesktopInputSmoke(page) {
       await Promise.resolve();
       return {
         activationCalls,
-        fullscreenEntryCalls,
         fullscreenExitCalls,
+        fullscreenReentryCalls,
         keyboardLocks: [...mock.locks],
         keyboardUnlocks: mock.unlocks,
         active,
@@ -67,14 +68,16 @@ export async function runDesktopInputSmoke(page) {
 }
 
 export function collectDesktopInputFailures(result) {
-  const entersWithoutFullscreen = result.activationCalls.join(',') === 'pointer';
-  const explicitEntry = result.fullscreenEntryCalls.join(',') === 'fullscreen';
+  // This ordering is the real Ctrl+W safeguard: pointer first for Safari, then
+  // automatic app fullscreen so Keyboard Lock can reserve physical KeyW.
+  const automaticEntry = result.activationCalls.join(',') === 'pointer,fullscreen';
   const explicitExit = result.fullscreenExitCalls.join(',') === 'exit-fullscreen';
+  const explicitReentry = result.fullscreenReentryCalls.join(',') === 'fullscreen';
   const keyboardLock = result.keyboardLocks.includes('KeyW') && result.keyboardUnlocks > 0;
   const recaptures = result.recaptureCalls.join(',') === 'pointer';
   const chord = result.flightKeyChord;
   if (
-    !entersWithoutFullscreen || !explicitEntry || !explicitExit || !keyboardLock ||
+    !automaticEntry || !explicitExit || !explicitReentry || !keyboardLock ||
     !result.active || !recaptures ||
     !result.captureClickConsumed || !result.captureClickDidNotFire ||
     !chord.consumed || !chord.forward || !chord.descend

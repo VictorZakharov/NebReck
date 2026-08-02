@@ -18,7 +18,9 @@ import { EncounterDirector } from './EncounterDirector';
 import { JUMP_FLUX_COST, JUMP_SPOOL_TIME, targetPresentation } from './GameConstants';
 import { HudProjector } from './HudProjection';
 import { Inventory } from './Inventory';
+import { NavigationSystem } from './NavigationSystem';
 import { Quest, QuestSystem } from './Quests';
+import { TutorialStepId } from './TutorialCards';
 
 const jumpDirection = new Vector3();
 
@@ -46,6 +48,8 @@ export interface GameHudHost {
   readonly jumpSpool: number;
   readonly jumpSuppressed: boolean;
   readonly jumpConsumesFlux: boolean;
+  readonly navigation: NavigationSystem;
+  readonly tutorialStep: TutorialStepId | null;
   findAimedPlanet(): number | null;
   planetPosition(index: number): Vector3 | null;
   nearestNeutral(): NeutralShip | null;
@@ -91,29 +95,33 @@ export class GameHudPresenter {
     const objectives = host.quests.active
       .filter((quest) => quest.kind === 'delivery' && quest.destination)
       .map((quest) => quest.destination!);
+    const navigation = host.navigation.current;
     const {
       target: targetState,
       contacts,
       offscreen,
       radarContacts,
+      navigation: navigationMarker,
     } = this.projector.project(
       camera,
       player.position,
       target,
       host.shootables,
       objectives,
+      navigation,
       weaponReach,
       width,
       height,
     );
 
+    const tutorialStep = host.tutorialStep;
     const nearHauler = host.nearestNeutral();
     const aimedPlanetIndex = !host.surface ? host.findAimedPlanet() : null;
     const aimedPlanetPosition = aimedPlanetIndex === null
       ? null
       : host.planetPosition(aimedPlanetIndex);
     let objectPrompt: { text: string; point: Vector3; key: object } | null = null;
-    if (!host.pendingOffer && nearHauler) {
+    if (!host.pendingOffer && nearHauler && allowsTutorialPrompt(tutorialStep, 'merchant')) {
       objectPrompt = {
         text: nearHauler.isMerchant
           ? 'R · Dock & trade'
@@ -125,6 +133,7 @@ export class GameHudPresenter {
       };
     } else if (
       !host.pendingOffer && host.lootAimed &&
+      allowsTutorialPrompt(tutorialStep, host.lootAimed) &&
       host.lootAimPoint && host.lootAimBody
     ) {
       objectPrompt = {
@@ -134,7 +143,10 @@ export class GameHudPresenter {
         point: host.lootAimPoint,
         key: host.lootAimBody,
       };
-    } else if (!host.pendingOffer && aimedPlanetPosition) {
+    } else if (
+      !host.pendingOffer && aimedPlanetPosition &&
+      allowsTutorialPrompt(tutorialStep, 'planet')
+    ) {
       objectPrompt = {
         text: 'Hold J · Land on planet',
         point: aimedPlanetPosition,
@@ -253,6 +265,7 @@ export class GameHudPresenter {
       target: targetState,
       contacts,
       offscreen,
+      navigation: navigationMarker,
       resources: {
         scrap: host.inventory.counts.scrap,
         crystal: host.inventory.counts.crystal,
@@ -271,17 +284,40 @@ export class GameHudPresenter {
         frac: fraction,
       };
     }
+    if (host.tutorialStep && !['planet', 'lift', 'jump'].includes(host.tutorialStep)) {
+      return { label: 'Training lock', frac: 0 };
+    }
     if (host.surface) {
       host.player.forward(jumpDirection);
       return jumpDirection.y > 0.5
         ? { label: 'J · Lift off', frac: 1 }
         : { label: 'Aim skyward', frac: 0 };
     }
-    if (host.findAimedPlanet() !== null) return { label: 'J · Land', frac: 1 };
+    if (host.tutorialStep === 'planet') {
+      return host.findAimedPlanet() !== null
+        ? { label: 'J · Land', frac: 1 }
+        : { label: 'Align with planet', frac: 0 };
+    }
+    if (host.tutorialStep === null && host.findAimedPlanet() !== null) {
+      return { label: 'J · Land', frac: 1 };
+    }
     if (host.jumpSuppressed) return { label: 'Suppressed', frac: 0 };
     if (host.inventory.counts.flux < JUMP_FLUX_COST) {
       return { label: `${fluxCount} · Low flux`, frac: 0 };
     }
     return { label: `J · Flux ${fluxCount}`, frac: 1 };
   }
+}
+
+type TutorialPromptKind = 'merchant' | 'stash' | 'vein' | 'planet';
+
+function allowsTutorialPrompt(
+  step: TutorialStepId | null,
+  kind: TutorialPromptKind,
+): boolean {
+  if (step === null) return true;
+  return (step === 'trade-open' && kind === 'merchant') ||
+    (step === 'mine' && kind === 'vein') ||
+    (step === 'surface-stash' && kind === 'stash') ||
+    (step === 'planet' && kind === 'planet');
 }

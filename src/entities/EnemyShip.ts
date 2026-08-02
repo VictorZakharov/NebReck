@@ -65,6 +65,8 @@ export class EnemyShip extends Ship {
   readonly autoGun: boolean;
   /** True for dispatched hunter wings (vs. sector-resident patrols). */
   hunter = false;
+  /** Tutorial range target: damageable and targetable, but never attacks. */
+  training = false;
   /** Seconds of EMP stun remaining — no steering, no firing. */
   stunTimer = 0;
   private readonly brain: EnemyBrain;
@@ -112,6 +114,14 @@ export class EnemyShip extends Ship {
     playerVisible = true,
   ): void {
     if (!this.alive) return;
+    if (this.training) {
+      this.stunTimer = Math.max(0, this.stunTimer - dt);
+      this.velocity.multiplyScalar(Math.pow(0.25, dt));
+      this.position.addScaledVector(this.velocity, dt);
+      this.throttle = 0.12;
+      this.updateCommon(dt);
+      return;
+    }
 
     // EMP stun: dead stick — drift on momentum, no thinking, no shooting.
     if (this.stunTimer > 0) {

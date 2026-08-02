@@ -35,6 +35,7 @@ export interface TurretSpawn {
 export class CaveAsteroid {
   readonly group = new Group();
   readonly center: Vector3;
+  readonly maxMountLength: number;
   /** Where Game should place defense turrets. */
   readonly turretSpawns: TurretSpawn[] = [];
 
@@ -63,6 +64,7 @@ export class CaveAsteroid {
 
     // Boulder shell: big displaced rocks on a sphere, skipping the axis caps.
     const shell: { position: Vector3; radius: number; mesh: Mesh }[] = [];
+    let maxMountLength = 0;
     const boulderCount = 10;
     let placed = 0;
     let guard = 0;
@@ -161,27 +163,29 @@ export class CaveAsteroid {
     });
     for (const sign of [1, -1]) {
       const mouth = axis.clone().multiplyScalar(sign * cavityRadius);
-      let nearest = shell[0];
-      for (const b of shell) {
-        if (b.position.distanceToSquared(mouth) < nearest.position.distanceToSquared(mouth)) {
-          nearest = b;
-        }
+      let mount: { normal: Vector3; surface: Vector3; worldPos: Vector3; length: number } | null = null;
+      // Evaluate every shell boulder. Choosing only the closest mouth rock can
+      // require an enormous pedestal when another body blocks its outward ray.
+      for (const candidate of shell) {
+        const normal = mouth.clone().sub(candidate.position).normalize();
+        const surfaceDistance = supportDistance(candidate.mesh, normal);
+        const surface = candidate.position.clone().addScaledVector(normal, surfaceDistance);
+        const rootDistance = Math.max(surfaceDistance, candidate.radius) +
+          TURRET_COLLISION_RADIUS + 0.35;
+        const worldPos = clearTurretSpawn(
+          candidate.position.clone().add(center).addScaledVector(normal, rootDistance),
+          normal,
+          bodies,
+        );
+        const length = worldPos.clone().sub(center).sub(surface).dot(normal);
+        if (!mount || length < mount.length) mount = { normal, surface, worldPos, length };
       }
-      // Surface point on the boulder facing the mouth.
-      const normal = mouth.clone().sub(nearest.position).normalize();
-      const surfaceDistance = supportDistance(nearest.mesh, normal);
-      const surface = nearest.position.clone().addScaledVector(normal, surfaceDistance);
-      const rootDistance = Math.max(surfaceDistance, nearest.radius) +
-        TURRET_COLLISION_RADIUS + 0.35;
-      const worldPos = clearTurretSpawn(
-        nearest.position.clone().add(center).addScaledVector(normal, rootDistance),
-        normal,
-        bodies,
-      );
+      if (!mount) continue;
+      const { normal, surface, worldPos } = mount;
       // Stretch the mounting pedestal from the real displaced surface to the
       // collision-clear root. This avoids both embedded and visibly floating guns.
-      const finalRootDistance = worldPos.clone().sub(center).sub(surface).dot(normal);
-      const padLength = Math.max(1.2, finalRootDistance - 0.65);
+      const padLength = Math.max(1.2, mount.length - 0.65);
+      maxMountLength = Math.max(maxMountLength, padLength);
       const pad = new Mesh(new CylinderGeometry(2.2, 2.8, padLength, 10), padMat);
       pad.position.copy(surface).addScaledVector(normal, padLength * 0.5);
       pad.quaternion.setFromUnitVectors(new Vector3(0, 1, 0), normal);
@@ -192,6 +196,7 @@ export class CaveAsteroid {
         lookAt: axis.clone().multiplyScalar(sign * 500).add(center),
       });
     }
+    this.maxMountLength = maxMountLength;
     batchStaticMeshes(shellGroup);
     batchStaticMeshes(padGroup);
 

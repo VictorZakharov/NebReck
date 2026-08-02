@@ -1,4 +1,4 @@
-import { Input } from '../core/Input';
+import { Input, InputControlGate } from '../core/Input';
 
 type StickSetter = (x: number, y: number) => void;
 
@@ -22,6 +22,7 @@ export class TouchControls {
     this.root.innerHTML = `
       <div class="touch-utility" aria-label="Flight menu controls">
         <button data-touch-action="loadout" aria-label="Open engineering loadout">Load</button>
+        <button data-touch-action="nav" aria-label="Set or clear navigation point">Nav</button>
         <button data-touch-action="view" aria-label="Toggle cockpit view">View</button>
         <button data-touch-action="pause" aria-label="Pause game">Pause</button>
       </div>
@@ -75,6 +76,7 @@ export class TouchControls {
     this.bindKey('interact', 'KeyR');
     this.bindKey('decline', 'KeyX');
     this.bindKey('loadout', 'Tab');
+    this.bindKey('nav', 'KeyN');
     this.bindKey('view', 'KeyV');
     this.bindKey('pause', 'Escape');
     this.bindButton('fire', 0);
@@ -106,6 +108,24 @@ export class TouchControls {
         knob.style.setProperty('--stick-x', '0px');
         knob.style.setProperty('--stick-y', '0px');
       });
+    }
+  }
+
+  /** Mirror the tutorial input gate visually and prevent irrelevant touch actions. */
+  setControlGate(gate: InputControlGate | null): void {
+    const relevant = gate ? relevantTouchActions(gate) : null;
+    this.root.classList.toggle('tutorial-gated', gate !== null);
+    for (const button of this.root.querySelectorAll<HTMLButtonElement>('[data-touch-action]')) {
+      const allowed = relevant?.has(button.dataset.touchAction ?? '') ?? true;
+      button.disabled = !allowed;
+      button.classList.toggle('tutorial-relevant', gate !== null && allowed);
+      button.classList.toggle('tutorial-disabled', !allowed);
+    }
+    for (const stick of this.root.querySelectorAll<HTMLElement>('[data-touch-stick]')) {
+      const allowed = gate === null || (stick.dataset.touchStick === 'move' ? gate.move : gate.look);
+      stick.setAttribute('aria-disabled', String(!allowed));
+      stick.classList.toggle('tutorial-relevant', gate !== null && allowed === true);
+      stick.classList.toggle('tutorial-disabled', !allowed);
     }
   }
 
@@ -197,4 +217,22 @@ export class TouchControls {
     button.addEventListener('pointerup', release);
     button.addEventListener('pointercancel', release);
   }
+}
+
+const touchKeys: Readonly<Record<string, string>> = {
+  KeyQ: 'roll-left', KeyE: 'roll-right', Space: 'up', ControlLeft: 'down',
+  ShiftLeft: 'boost', KeyJ: 'jump', KeyF: 'cloak', KeyG: 'emp', KeyH: 'nano',
+  KeyR: 'interact', KeyX: 'decline', KeyN: 'nav', Tab: 'loadout', KeyV: 'view', Escape: 'pause',
+};
+
+function relevantTouchActions(gate: InputControlGate): Set<string> {
+  const actions = new Set<string>();
+  for (const key of gate.keys ?? []) {
+    const action = touchKeys[key];
+    if (action) actions.add(action);
+  }
+  if (gate.buttons?.includes(0)) actions.add('fire');
+  if (gate.buttons?.includes(2)) actions.add('seeker');
+  if (gate.wheel) actions.add('weapon');
+  return actions;
 }

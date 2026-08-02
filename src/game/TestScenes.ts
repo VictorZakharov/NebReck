@@ -20,6 +20,7 @@ import {
   stageMobileControls,
   stageMobileHangar,
   stageMobileLoadout,
+  stageMobileTutorial,
   stageMobileTrade,
 } from './test-scenes/MobileTestScenes';
 import {
@@ -40,6 +41,7 @@ import {
   stageLoadout,
   stageMenu,
   stageTrade,
+  stageTutorial,
 } from './test-scenes/UiTestScenes';
 import {
   stageAsteroids,
@@ -54,11 +56,7 @@ import {
   stageWreck,
 } from './test-scenes/WorldTestScenes';
 
-declare global {
-  interface Window {
-    __RENDER_DONE__?: boolean;
-  }
-}
+declare global { interface Window { __RENDER_DONE__?: boolean; } }
 
 const TEST_SCENES: Readonly<Record<string, (game: Game) => void>> = {
   nebula: stageNebula,
@@ -71,6 +69,7 @@ const TEST_SCENES: Readonly<Record<string, (game: Game) => void>> = {
   hangar: stageHangar,
   loadout: stageLoadout,
   boost: stageBoost,
+  tutorial: stageTutorial,
   targeting: stageTargeting,
   'distant-targeting': stageDistantTargeting,
   'turret-targeting': stageTurretTargeting,
@@ -96,6 +95,8 @@ const TEST_SCENES: Readonly<Record<string, (game: Game) => void>> = {
   controls: stageControls,
   'mobile-controls': stageMobileControls,
   'mobile-controls-portrait': stageMobileControls,
+  'mobile-tutorial': stageMobileTutorial,
+  'mobile-tutorial-portrait': stageMobileTutorial,
   'mobile-hangar': stageMobileHangar,
   'mobile-hangar-portrait': stageMobileHangar,
   'mobile-loadout': stageMobileLoadout,

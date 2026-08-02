@@ -40,6 +40,20 @@
   box-shadow: inset 0 0 18px rgba(39, 232, 255, 0.25), 0 0 20px rgba(39, 232, 255, 0.45);
   transform: scale(0.96);
 }
+.touch-controls.tutorial-gated .tutorial-disabled {
+  pointer-events: none;
+  opacity: 0.16;
+  filter: grayscale(0.85);
+}
+.touch-controls.tutorial-gated .tutorial-relevant {
+  opacity: 1;
+  border-color: #fff !important;
+  box-shadow:
+    inset 0 0 22px rgba(39, 232, 255, 0.28),
+    0 0 10px rgba(39, 232, 255, 0.95),
+    0 0 26px rgba(39, 232, 255, 0.58) !important;
+  animation: tutorial-touch-control 0.8s ease-in-out infinite alternate;
+}
 
 .touch-stick {
   position: absolute;
@@ -95,6 +109,10 @@
   text-transform: uppercase;
 }
 .touch-stick.active { border-color: rgba(39, 232, 255, 0.85); }
+
+@keyframes tutorial-touch-control {
+  to { filter: brightness(1.35); transform: scale(1.045); }
+}
 
 .touch-left-deck {
   position: absolute;

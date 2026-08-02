@@ -463,6 +463,22 @@ export class ProjectileSystem {
     return threat;
   }
 
+  /** Commit incoming seekers to their current path (tutorial dodge / cloak-like break). */
+  releaseIncomingTarget(target: Ship): number {
+    let released = 0;
+    for (const projectile of this.pool) {
+      if (
+        projectile.active && projectile.faction === 'enemy' &&
+        projectile.kind === 'missile' && projectile.target === target
+      ) {
+        projectile.target = null;
+        projectile.warningEta = Infinity;
+        released++;
+      }
+    }
+    return released;
+  }
+
   /** Test-harness snapshot; intentionally allocates only when explicitly called. */
   debugSnapshot(): ProjectileSnapshot[] {
     return this.pool
