@@ -19,6 +19,7 @@ import { ExplosionSystem } from '../fx/ExplosionSystem';
 import { ParticleSystem } from '../fx/ParticleSystem';
 import { PulseRing } from '../fx/PulseRing';
 import { ShieldFx } from '../fx/ShieldFx';
+import { ShipDebris } from '../fx/ShipDebris';
 import { WarpTunnel } from '../fx/WarpTunnel';
 import { ChaseCamera } from '../rendering/ChaseCamera';
 import { createRenderer } from '../rendering/createRenderer';
@@ -34,8 +35,7 @@ import { PauseMenu } from '../ui/PauseMenu';
 import { Radar3D } from '../ui/Radar3D';
 import { TradeScreen } from '../ui/TradeScreen';
 import { TouchControls } from '../ui/TouchControls';
-import { AsteroidDebris } from '../world/AsteroidDebris';
-import { AsteroidBody } from '../world/AsteroidField';
+import { AsteroidBody, ChildAsteroidMotion } from '../world/AsteroidField';
 import { HangarBay } from '../world/HangarBay';
 import { PlanetSurface } from '../world/PlanetSurface';
 import { Sector } from '../world/Sector';
@@ -96,7 +96,7 @@ export abstract class GameFoundation {
   readonly explosions: ExplosionSystem;
   readonly projectiles: ProjectileSystem;
   readonly pickups: PickupSystem;
-  debris!: AsteroidDebris;
+  shipDebris!: ShipDebris;
   readonly targeting = new Targeting();
   readonly weapons: WeaponSystem;
   readonly hud: Hud;
@@ -139,6 +139,7 @@ export abstract class GameFoundation {
       radius: number,
       rng: Rng,
       palette?: number,
+      motion?: ChildAsteroidMotion,
     ): AsteroidBody | null;
   } {
     return this.surface ?? this.sector.asteroids;
@@ -230,8 +231,9 @@ export abstract class GameFoundation {
     this.scene.add(this.projectiles.group);
     this.pickups = new PickupSystem();
     this.scene.add(this.pickups.group);
-    this.debris = new AsteroidDebris(this.rng.fork());
-    this.scene.add(this.debris.group);
+    this.rng.fork(); // Preserve the former debris RNG slot for seeded world stability.
+    this.shipDebris = new ShipDebris();
+    this.scene.add(this.shipDebris.group);
     this.scene.add(this.pulses.group);
     // The warp tunnel rides the camera, which must be in the scene graph for
     // its children to render.
@@ -337,7 +339,7 @@ export abstract class GameFoundation {
       projectiles: this.projectiles,
       explosions: this.explosions,
       pickups: this.pickups,
-      debris: this.debris,
+      shipDebris: this.shipDebris,
       chaseCam: this.chaseCam,
       hud: this.hud,
       events: this.events,

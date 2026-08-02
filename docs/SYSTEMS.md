@@ -105,6 +105,13 @@ same planet.
   `projectileSpeed × life` (pulse ≈ 544, scatter ≈ 243, lance ≈ 774) — drives the
   grey out-of-range markers. Missiles: 68-damage soft-lock seekers, 1.35 s cooldown,
   hard 1,050 m traveled-path range with its final collision sweep clamped to range.
+- Asteroid hits refine the conservative gameplay collider against the live rotated,
+  stretched instanced rock mesh. Both bolts and missiles report the visible entry
+  point and transformed triangle normal. Their impact effect origin is nudged along
+  that exact normal so the flash, fireball, and smoke begin outside sloped surfaces
+  instead of appearing inside the rock. Visible ore spikes add matching swept sphere
+  volumes to the same owning body, so firing at a protruding crystal damages the vein
+  rather than requiring a shot through its hidden base.
 - Enemy bombers and rocket batteries use two deterministic payload families:
   **Seeker** (56 dmg, 92→205 u/s, 1.55 rad/s turn, 8 s life) or **Lance Rocket**
   (24 dmg, unguided 285 u/s, 4.6 s life). Only a live seeker target raises the
@@ -172,6 +179,28 @@ same planet.
 - EMP stun: hostiles dead-stick (velocity decay, no fire). Cloak: brains go blind —
   patrollers keep patrolling, engaged ships drift on their personal offset vector.
 - Ramming, asteroid scrapes, terrain impacts: speed-scaled hull damage.
+- Damage presentation is proportional too: `DamageFeedback` drives a deterministic
+  positional/rotational camera kick, with hull strikes stronger than shield strikes;
+  closely spaced heavy hits compound to make multi-rocket salvos unmistakable.
+  A shield hit renders an expanding cyan ripple only on the struck hemisphere and
+  only when shield energy remains after the hit. Energy/laser impacts use a clean
+  flash/spark preset with zero smoke. Missiles and destroyed ships use instanced,
+  noise-distorted 3D fireball lobes and spherical shock fronts, followed by
+  increasingly dense curling smoke clouds that expand far beyond the hull, surround
+  a ship flying through them, cool to soot, and fully dissipate.
+- Ship and turret breakup clones the largest actual mesh components from the destroyed
+  craft, including their geometry, proportions, transforms, and materials. These
+  bounded fragments omit transient weapon beams plus rod-like antenna/light trim;
+  hull-relative extent and offset caps reject a malformed part even when its aspect
+  ratio alone looks acceptable.
+  inherit craft velocity, tumble ballistically in space, and use
+  the existing `PlanetSurface.heightAt` terrain sampler for gravity, bounce, friction,
+  and rest on planetary surfaces—without a second physics/world representation.
+- Asteroids never emit cosmetic rock stand-ins. A destroyed eligible rock is replaced
+  by 2–3 smaller `AsteroidBody` children registered in the live world, each with its
+  own collider and HP and capable of being destroyed again. The real child instances
+  coast and tumble outward with damped breakup momentum. Terminal small rocks
+  simply vanish after their impact flash; the capital beam uses the same split path.
 
 ## Marker color language (HUD + edge chevrons + radar, always consistent)
 
@@ -216,7 +245,10 @@ Jumping voids in-sector deliveries; planetfall does NOT (sector persists).
 - Scrap, crystal, flux, nanobots and seekers share original inline SVG marks in
   HUD/hold/cost UI (`ResourceIcons.ts`); canvas/text-only feedback keeps compact
   fallback symbols.
-- Ore mechanics: veins crack at `oreHp` (26 + scale·0.8); rock death releases buried
+- Ore mechanics: space veins crack at `oreHp` (26 + scale·0.8), while surface and cave
+  formations use finite 30/45-point veins; the preview bar reads live `oreHp/oreHpMax`.
+  Crystal size and placement derive from the transformed local surface radius rather
+  than the asteroid's conservative longest-axis collider. Rock death releases buried
   ore. Rocks ≥9 radius calve into 2–3 palette-matched children (reserved instance
   slots); smaller rocks pop. No calving on planets. The “Mine the vein” prompt
   attaches to the owning vein's centroid and is exponentially damped in screen

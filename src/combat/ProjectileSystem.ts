@@ -10,6 +10,7 @@ import { Ship } from '../entities/Ship';
 import { ParticleSystem } from '../fx/ParticleSystem';
 import { AsteroidBody } from '../world/AsteroidField';
 import { ENEMY_ROCKETS, EnemyRocketMode, MISSILE } from './WeaponDefs';
+import { segmentExitsAsteroidBody, segmentHitsAsteroid } from './ProjectileCollision';
 
 export type Faction = 'player' | 'enemy';
 
@@ -32,6 +33,8 @@ export interface ProjectileHit {
   damage: number;
   faction: Faction;
   wasMissile: boolean;
+  /** Exact outward contact normal when an asteroid mesh supplied the hit. */
+  normal?: Vector3;
 }
 
 export interface MissileThreat {
@@ -74,10 +77,10 @@ interface Projectile {
 }
 
 const newPos = new Vector3();
-const seg = new Vector3();
-const toCenter = new Vector3();
 const closest = new Vector3();
 const bestPoint = new Vector3();
+const closestNormal = new Vector3();
+const bestNormal = new Vector3();
 const lookPoint = new Vector3();
 const steer = new Vector3();
 const trailVel = new Vector3();
@@ -305,6 +308,7 @@ export class ProjectileSystem {
       let hitSomething = false;
       let hitShip: Ship | null = null;
       let hitAsteroid: AsteroidBody | null = null;
+      let hitNormal: Vector3 | null = null;
       let hitDistanceSq = Infinity;
       if (terrainHit?.(p.mesh.position, newPos, closest)) {
         hitSomething = true;
@@ -322,6 +326,7 @@ export class ProjectileSystem {
             hitDistanceSq = distanceSq;
             hitShip = ship;
             hitAsteroid = null;
+            hitNormal = null;
             bestPoint.copy(closest);
           }
         }
@@ -336,10 +341,10 @@ export class ProjectileSystem {
           // A bolt that STARTS inside a body's bound is exiting its own
           // mount (rooftop turret, asteroid emplacement) — it can't hit that
           // body until it's outside, or it detonates at the muzzle.
-          if (insideBody(p.mesh.position, a)) continue;
-          const bodyHit = a.box
-            ? segmentHitsAabb(p.mesh.position, newPos, a, closest)
-            : segmentHitsSphere(p.mesh.position, newPos, a.position, a.radius, closest);
+          if (segmentExitsAsteroidBody(p.mesh.position, newPos, a)) continue;
+          const bodyHit = segmentHitsAsteroid(
+            p.mesh.position, newPos, a, closest, closestNormal,
+          );
           if (bodyHit) {
             const distanceSq = closest.distanceToSquared(p.mesh.position);
             if (distanceSq < hitDistanceSq) {
@@ -347,6 +352,8 @@ export class ProjectileSystem {
               hitDistanceSq = distanceSq;
               hitShip = null;
               hitAsteroid = a;
+              bestNormal.copy(closestNormal);
+              hitNormal = bestNormal;
               bestPoint.copy(closest);
             }
           }
@@ -361,6 +368,7 @@ export class ProjectileSystem {
           damage: p.damage,
           faction: p.faction,
           wasMissile: p.kind === 'missile',
+          normal: hitNormal?.clone(),
         });
         this.release(p);
         continue;
@@ -493,55 +501,4 @@ function acceleratingTravelTime(
     return (Math.sqrt(start * start + 2 * acceleration * distance) - start) / acceleration;
   }
   return accelerationTime + (distance - accelerationDistance) / maximumSpeed;
-}
-
-function insideBody(point: Vector3, body: AsteroidBody): boolean {
-  if (body.box) {
-    return (
-      Math.abs(point.x - body.position.x) < body.box.hx &&
-      Math.abs(point.y - body.position.y) < body.box.hy &&
-      Math.abs(point.z - body.position.z) < body.box.hz
-    );
-  }
-  return point.distanceToSquared(body.position) < body.radius * body.radius;
-}
-
-/** Slab-method segment vs axis-aligned box; writes entry point to `out`. */
-function segmentHitsAabb(a: Vector3, b: Vector3, body: AsteroidBody, out: Vector3): boolean {
-  const box = body.box!;
-  let tMin = 0;
-  let tMax = 1;
-  const axes: ['x' | 'y' | 'z', number][] = [['x', box.hx], ['y', box.hy], ['z', box.hz]];
-  for (const [axis, half] of axes) {
-    const start = a[axis] - body.position[axis];
-    const delta = b[axis] - a[axis];
-    if (Math.abs(delta) < 1e-8) {
-      if (Math.abs(start) > half) return false;
-      continue;
-    }
-    let t1 = (-half - start) / delta;
-    let t2 = (half - start) / delta;
-    if (t1 > t2) [t1, t2] = [t2, t1];
-    tMin = Math.max(tMin, t1);
-    tMax = Math.min(tMax, t2);
-    if (tMin > tMax) return false;
-  }
-  out.copy(a).lerp(b, tMin);
-  return true;
-}
-
-/** Closest-approach test of segment AB vs sphere; writes hit point to `out`. */
-function segmentHitsSphere(
-  a: Vector3,
-  b: Vector3,
-  center: Vector3,
-  radius: number,
-  out: Vector3,
-): boolean {
-  seg.copy(b).sub(a);
-  toCenter.copy(center).sub(a);
-  const segLenSq = seg.lengthSq();
-  const t = segLenSq > 1e-8 ? Math.max(0, Math.min(1, toCenter.dot(seg) / segLenSq)) : 0;
-  out.copy(a).addScaledVector(seg, t);
-  return out.distanceToSquared(center) <= radius * radius;
 }

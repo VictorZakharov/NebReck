@@ -44,7 +44,7 @@ src/
     StaticMeshBatching.ts material-wise geometry fusion; preserves source parts on layer 31
     PostFx.ts             EffectComposer: bloom | chromAb + vignette + ACES | SMAA + grain;
                           recreates targets after browser-fullscreen transitions
-    ChaseCamera.ts        third-person follow + first-person cockpit eye, blended; trauma shake
+    ChaseCamera.ts        blended chase/cockpit views; damage-scaled positional + rotational shake
   world/
     Sector.ts             assembles a sector from a seed; owns THEMES (palettes/sun) and
                           the population `plan` (patrol loops, hauler routes, capital post)
@@ -54,9 +54,9 @@ src/
     Sun.ts                HDR core + depth-tested extended corona + key light;
                           visible fragments bloom independently when partly occluded
     Planet.ts             procedural surface shader, terminator, atmosphere rim, rings
-    AsteroidField.ts      3 displaced variants × 4 palette families; ore veins; hp;
-                          colliders; reserved slots for split-off child rocks
-    AsteroidDebris.ts     pooled tumbling fragments when a rock shatters
+    AsteroidField.ts      4 displaced geometry variants × InstancedMesh; ore veins; hp;
+                          crystal hit volumes; drifting/spinning reserved child slots
+    AsteroidBreakup.ts    replaces shattered rocks with smaller inertial live bodies
     CaveAsteroid.ts       hollow hero asteroids: boulder shell + crystals + stash + turret posts
     FogBanks.ts           three instanced noise-billboard batches (volumetric stand-in)
     WreckSite.ts          derelict hulks with lootable blackboxes (unmarked POIs)
@@ -90,13 +90,18 @@ src/
     WeaponDefs.ts         player weapons/seeker + enemy rotary/homing/fast packages
     WeaponSystem.ts       player firing, energy, switching, damageMult (upgrades)
     ProjectileSystem.ts   pooled ordnance, path-range clamp, homing/threat query, swept collision
+    ProjectileCollision.ts visible rock + vein-volume segment intersection and normals
     CapitalBeam.ts        thick-ray trace: first asteroid absorbs, ships before it are hit
     Targeting.ts          cover-independent aim assist + camera-origin target-sized scan
   fx/
     ParticleSystem.ts     one pooled additive point-sprite system for everything
-    ExplosionSystem.ts    flash + shockwave ring + sparks/embers + pooled point lights
-    ShieldFx.ts           fresnel shell flash with impact-direction highlight
-    textures.ts           shared canvas-generated glow/ring sprites
+    ExplosionSystem.ts    bounded impact/missile/ship/capital presets + pooled lights
+    ExplosionVolumes.ts   two-draw-call instanced 3D fireball lobes + spherical shock fronts
+    VolumetricSmoke.ts    one-draw-call 3D puff pool; delayed expansion/curl/cooling/dissipation
+    ShieldFx.ts           expanding hit ripple clipped to the impacted shield hemisphere
+    ShipDebris.ts         bounded clones of real destroyed-hull parts + terrain fall/bounce
+    ShipDebrisSources.ts  rejects transient VFX and hull-relative oversize/offset rods
+    textures.ts           shared deterministic glow/ring/irregular-cloud canvas textures
   ui/                     all DOM/CSS over the canvas; zero game logic
     Hud.ts                per-frame update(state) + imperative flashes/banners/comms
     MainMenu.ts           title / briefing / field manual / controls views
@@ -124,6 +129,7 @@ src/
     GameInteractions.ts   travel, trade, contracts, devices, story and enemy spawning
     GameRuntime.ts        input, simulation, carrier mount LOS, missile-warning transitions
     GameCombat.ts         hits, hostile ordnance/LOS, carrier-beam effects and collisions
+    DamageFeedback.ts     shared hit-preset, shield-flare, camera-shake, HUD and audio contract
     GameHudPresenter.ts   HUD frame assembly, projections, radar and pickup flyouts
     GameWorldFlow.ts      jump spool, contact-facing arrivals and persistent planet swaps
     SpawnSafety.ts        quiet sector-entry solver with guaranteed outer-shell fallback
@@ -149,7 +155,7 @@ src/
     Story.ts              title, intro, exploration comms beats (fired once on
                           first-contact / first-cave / capital-sighted / …), death lines
     TestScenes.ts         small deterministic scene-name dispatcher
-    test-scenes/          shared stepping + focused UI, combat, targeting and world staging modules
+    test-scenes/          shared stepping + focused UI, combat, targeting, FX and world staging
 ```
 
 Behavioral automation follows the same ownership split:
@@ -164,6 +170,7 @@ test/
     world.mjs             peace/trade/planet persistence/jump flow + turret clearance
     targeting.mjs         pursuit/contact policy, ordnance warnings/range and flight key chord
     capital.mjs           carrier battery, preview and annihilator probes
+    fx.mjs                smoke-preset lifetime + shield/camera feedback probes and assertions
     runtime.mjs           hunters, camera, turrets, devices and stress cleanup
     mobile.mjs            coarse-pointer gestures, hit geometry + native touch hangar
     mobile-layout.mjs     touch-layout inspection + native Chromium swipe helpers
@@ -245,7 +252,7 @@ GameLoop.tick(dt, elapsed, wallDt)
     PickupSystem.update        → GameCombat.collect → Inventory (+first-ore beat)
     GameCombat.resolveShipCollisions (active bodies, capital wall, rams)
     EncounterDirector.update   (space, sector ≥2) → hunter dispatches
-    ChaseCamera.update         → third/first blend, FOV, shake
+    ChaseCamera.update         → third/first blend, FOV, damage-scaled translation/rotation shake
     GameHudPresenter.update    → HudProjector (contacts, ore wireframe, lead marker,
                                  radar and smoothed merchant/loot/planet prompt) →
                                  HudFrameState (jump Flux/devices/offer/quest log) → Hud + Radar3D
@@ -254,7 +261,10 @@ GameLoop.tick(dt, elapsed, wallDt)
 ```
 
 Runtime resource ownership follows the same state graph. Projectile, particle,
-debris, pickup, explosion, and audio one-shot systems are bounded pools/graphs.
+debris, pickup, explosion, volumetric-smoke, and audio one-shot systems are bounded
+pools/graphs. Smoke is one fixed 512-puff draw call; all fireball lobes and shock
+fronts occupy two instanced 3D draw calls; explosion lights remain present at zero
+intensity so combat never changes the scene's light count.
 Actors parked for planetfall remain live and undisposed because lift-off restores
 the exact objects; kills, sector/sortie teardown, discarded visit states, and
 replaced hangar hulls detach and then dispose their unique geometry/materials.
@@ -298,7 +308,8 @@ See `test/visual/run.mjs`, `src/game/TestScenes.ts`, and
 `src/game/test-scenes/`. Deterministic because:
 seeded Rng, `GameLoop.stepManual` (no wall clock), frozen CSS animations
 (injected style pauses everything at t=1s), SwiftShader software GL in headless
-Chromium. Same machine → 0.000% pixel diff. The current 36 scenes cover world art,
+Chromium. Same machine → 0.000% pixel diff. The current 43 scenes cover world art,
 ships, combat/FX, hostile and civilian HUD targeting, every major screen,
 caves/bases/wrecks, trade, fleet connectivity, cloak, controls, enemy ordnance,
-missile warnings, the carrier superweapon, and 844×390 phone flight/hangar/overlay layouts.
+missile warnings, volumetric destruction, the carrier superweapon, and phone
+flight/hangar/overlay layouts.

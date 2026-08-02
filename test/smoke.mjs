@@ -8,6 +8,12 @@ import { fileURLToPath } from 'node:url';
 import { chromium } from 'playwright';
 
 import { collectSmokeFailures } from './smoke/assertions.mjs';
+import {
+  collectAsteroidImpactFailures,
+  runAsteroidImpactSmoke,
+} from './smoke/asteroid-impact.mjs';
+import { collectDebrisFailures, runDebrisSmoke } from './smoke/debris.mjs';
+import { collectFxFailures, runFxSmoke } from './smoke/fx.mjs';
 import { runCapitalSmoke } from './smoke/capital.mjs';
 import {
   collectDesktopInputFailures,
@@ -20,11 +26,12 @@ import {
 } from './smoke/helpers.mjs';
 import { runHangarSmoke } from './smoke/hangar.mjs';
 import { runMobileSmoke } from './smoke/mobile.mjs';
-import {
-  collectPerformanceFailures,
-  runPerformanceSmoke,
-} from './smoke/performance.mjs';
+import { collectPerformanceFailures, runPerformanceSmoke } from './smoke/performance.mjs';
 import { runPreferenceSmoke } from './smoke/preferences.mjs';
+import {
+  collectProjectileDamageFailures,
+  runProjectileDamageSmoke,
+} from './smoke/projectile-damage.mjs';
 import { runRuntimeSmoke } from './smoke/runtime.mjs';
 import { runTargetingSmoke } from './smoke/targeting.mjs';
 import { runWorldSmoke } from './smoke/world.mjs';
@@ -58,6 +65,10 @@ try {
   const world = await runWorldSmoke(page);
   const targeting = await runTargetingSmoke(page);
   const capitalSystems = await runCapitalSmoke(page);
+  const asteroidImpact = await runAsteroidImpactSmoke(page);
+  const debris = await runDebrisSmoke(page);
+  const fx = await runFxSmoke(page);
+  const projectileDamage = await runProjectileDamageSmoke(page);
   const runtime = await runRuntimeSmoke(page);
 
   console.log('page errors:', errors.length === 0 ? 'none' : errors.join('\n'));
@@ -73,6 +84,10 @@ try {
   });
   failures.push(...collectDesktopInputFailures(desktopInput));
   failures.push(...collectPerformanceFailures(performance));
+  failures.push(...collectFxFailures(fx));
+  failures.push(...collectAsteroidImpactFailures(asteroidImpact));
+  failures.push(...collectProjectileDamageFailures(projectileDamage));
+  failures.push(...collectDebrisFailures(debris));
   console.log(
     'smoke result:',
     failures.length === 0 ? 'PASS' : `FAIL: ${failures.join(', ')}`,

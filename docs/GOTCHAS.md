@@ -109,6 +109,16 @@ Real issues hit while building this game, kept here so they only get paid for on
 - Projectiles use swept segment-vs-sphere tests (`ProjectileSystem`) — a naive
   point-in-sphere check tunnels at 430 u/s bolt speeds. The asteroid broadphase
   assumes ≤ ~40 u of travel per frame; raise the margin if projectiles get faster.
+- **Closest approach is not a projectile impact point.** On a centre-directed shot it
+  is the asteroid centre, which buried regular flashes and missile fireballs inside
+  the rock. `ProjectileCollision` computes the true sphere entry fallback and, for
+  instanced field rocks, raycasts the current transformed instance so stretched and
+  rotating visual geometry wins. Preserve the transformed face normal too: a radial
+  center-to-hit offset can still bury an effect behind an irregular, sloped face.
+  The mount guard must skip only a segment moving
+  outward from a body: treating every point inside the conservative radius as a
+  muzzle made incoming shots disappear before reaching a smaller visible surface.
+  Keep the small outward FX offset in `GameCombat`.
 - `as const` on CONFIG makes numeric fields literal types; a mutable class field
   initialized from one must be annotated (`energy: number = CONFIG...`) or TS pins it
   to the literal.
@@ -162,6 +172,11 @@ Real issues hit while building this game, kept here so they only get paid for on
   placed at a fixed fraction of the generator radius can land inside scaled rock.
   Project the actual transformed vertices along the mount normal, clear the full
   turret hit sphere against every body, and stretch the pedestal to the final root.
+- **The longest-axis asteroid radius is also wrong for an ore spike.** On a stretched
+  instance it turns a side-mounted vein into a giant sail. Transform the vein normal
+  into the instance's ellipsoid space, derive that direction's surface radius, and
+  give each rendered crystal a matching swept hit volume. A body-only ray test makes
+  visible tips intangible and leaves `oreHp` unchanged unless the hidden base is hit.
 - **An informational contact is not an aim target.** During active pursuit,
   targeting tries hostiles first, then sensor-only civilians. During
   peace, both relationship sets share the angular comparison, but a winning
@@ -345,6 +360,39 @@ Real issues hit while building this game, kept here so they only get paid for on
   close-range explosion (this happened, reported as "lag when starting to shoot").
   Pooled lights must idle at `intensity = 0`, never `visible = false`. Same reason
   `renderer.compile()` runs at mission start to warm the shader cache.
+- **Layered smoke cannot use the explosion's additive-white treatment.** Several
+  overlapping HDR puffs collapse into one flat bloom disc. `VolumetricSmoke` uses
+  normal blending, low soot albedo, independent 3D positions, delayed births, curl,
+  expansion, and a bounded lifetime; only its very young cores carry heat color.
+  A navigable cloud also needs world-space spread substantially larger than a fighter;
+  enlarging only the billboard sprites still reads as a flat decal from outside.
+  Keep energy/laser hits on the smoke-free `impact` preset.
+- **Camera-facing fireball sprites remain flat no matter how many are layered.** Hot
+  lobes and shock fronts use pooled instanced icospheres with procedural displacement
+  and Fresnel shells. This costs two draw calls for the entire pool and keeps the
+  silhouette/parallax correct when the camera moves around or through a blast.
+- **Generic rock debris cannot represent ship breakup.** It made destroyed fighters
+  appear to explode into asteroids. `ShipDebris` clones selected source meshes before
+  the owning `Ship.dispose()` releases them, including cloned geometry/materials so
+  disposal cannot invalidate a fragment. Planetary motion reuses `heightAt`; a second
+  physics engine or duplicate terrain collider would drift out of sync. Asteroid
+  breakup instead creates real `AsteroidBody` children—never cosmetic rock fragments.
+- **A transparent beam can still be a visible mesh.** The carrier superweapon keeps
+  its meshes present and drives shader opacity to zero; selecting breakup parts by
+  `Object3D.visible` therefore cloned a 1.4 km cylinder into a non-colliding “stick.”
+  Mark transient VFX subtrees `excludeFromDebris` and retain the dimensional
+  elongation guard for antennae, barrels, and light strips. Also cap part extent and
+  center offset relative to hull radius: a malformed beam can have an ordinary aspect
+  ratio and still become a finite but enormous non-colliding rod.
+- **A shield fresnel term by itself lights the entire bubble.** Directional feedback
+  must transform the world hit point into ship-local space and discard fragments
+  whose local normal faces away from that direction. Trigger the shell only if the
+  hit leaves shield energy; a hit that drains the final shield and reaches hull is
+  presented as hull damage.
+- **Using `max(currentTrauma, newTrauma)` erases salvo weight.** Two rockets landing
+  together then feel almost identical to one. Heavy damage keeps a strong base kick
+  but also adds a bounded fraction to both translation and rotation; low-damage
+  rotary fire remains mild because the impulse still scales nonlinearly with damage.
 - **Headless Chromium GRANTS pointer lock without a user gesture** — and then drops
   it, firing `pointerlockchange` → the auto-pause listener froze the smoke test
   mid-run (this happened). Automation must load with `?headless=1` so the game
@@ -383,6 +431,9 @@ Real issues hit while building this game, kept here so they only get paid for on
   last visible position updates and is clamped to the physical arc; losing LOS or
   leaving the cone never cancels the shot. `traceCapitalBeam` stops at and destroys
   only the nearest asteroid, protecting the player and further rocks behind it.
+  Do not render the charge telegraph as one opaque full-range cylinder: near-camera
+  perspective turns it into a giant solid stick. Clamp it just beyond the committed
+  target and discard animated gaps in its shader so it reads as a flowing warning.
 - **Planetfall must DETACH the space world, never dispose it** — the sector has to
   be bit-identical on lift-off (destroyed rocks, live patrols, beacons). See
   `spaceStash` in `GameWorldFlow`; the smoke test scars a rock before landing to

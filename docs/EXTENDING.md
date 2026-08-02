@@ -170,10 +170,23 @@ System safety gates (currently cloak and field crafting) share
 `SYSTEM_LOCKOUT_RANGE_METERS`. Enforce a gate in the model action as well as its
 button state; disabling only the view leaves direct/hotkey calls exploitable.
 
+## Add an explosion or damage effect
+
+Use an `ExplosionSystem` preset rather than assembling transient meshes. `impact`
+is reserved for laser/energy/rock flashes and must remain smoke-free; `missile`,
+`ship`, and `capital` add progressively larger `VolumetricSmoke` clouds. Route
+player hits through `showPlayerDamageFeedback` so shield remainder, one-sided
+shield ripple, damage-scaled camera shake, HUD flash, audio, and events cannot
+drift apart. Keep new particles inside the fixed pools; hot lobes and shock fronts
+belong in the two-draw-call `ExplosionVolumes` instance pool, never per-blast meshes.
+Add a focused scene in `FxTestScenes.ts` plus an artificial-time assertion in
+`test/smoke/fx.mjs`.
+
 ## Performance rules
 Pooled + allocation-free per frame (module-level scratch vectors); pooled lights
 idle at `intensity 0`, never `visible false`; capped budgets: particles 4096,
-projectiles 320, explosion lights 4, spin-updates ⅓ of instances; pixel ratio ≤2;
+projectiles 320, smoke puffs 512 (one draw call), explosion lights 4, spin-updates ⅓
+of instances; pixel ratio ≤2;
 bloom and full-resolution visor repaints are the expensive presentation paths.
 Repaint visor panels only on state/resize changes, never every animation frame.
 Ships and indestructible cave-shell primitives must pass through

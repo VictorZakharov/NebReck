@@ -201,6 +201,8 @@ export async function runCapitalSmoke(page) {
     game.player.position.copy(capital.position).addScaledVector(forward, 320);
     capital.update(1 / 60, arcContext);
     const startedInFront = capital.beamPhase === 'charging';
+    const finiteChargeGuide =
+      capital.beamGuideLength > 70 && capital.beamGuideLength < 400;
     game.player.position
       .copy(capital.position)
       .addScaledVector(forward, 700)
@@ -321,6 +323,8 @@ export async function runCapitalSmoke(page) {
       rejectedFromSide,
       rejectedBeyondActivation,
       startedInFront,
+      finiteChargeGuide,
+      beamGuideLength: Number(capital.beamGuideLength.toFixed(1)),
       committedWithinArc,
       arcDot: Number(arcDot.toFixed(4)),
       beamFired,

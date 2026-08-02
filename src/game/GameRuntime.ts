@@ -3,6 +3,7 @@ import { CapitalBeamContext } from '../entities/CapitalShip';
 import { STYLE_ENGINES } from '../entities/ShipMesh';
 import { AdaptiveResolution } from '../rendering/AdaptiveResolution';
 import { PostFx } from '../rendering/PostFx';
+import { showPlayerDamageFeedback } from './DamageFeedback';
 import {
   CAPITAL_TURRET_LOCK_RANGE_METERS,
   targetPresentation,
@@ -99,7 +100,7 @@ export abstract class GameRuntime extends GameInteractions {
       this.particles.update(dt);
       this.explosions.update(dt);
       this.playerShield.update(dt);
-      this.debris.update(dt);
+      this.shipDebris.update(dt, this.surface);
       this.pulses.update(dt);
       this.warp.update(dt);
     }
@@ -240,13 +241,11 @@ export abstract class GameRuntime extends GameInteractions {
     if (sinkSpeed > 12) {
       const damage = Math.max(3, sinkSpeed * 0.3);
       const result = player.takeDamage(damage);
-      this.playerShield.hit(player.position);
-      this.chaseCam.addTrauma(0.4);
-      this.hud.flashDamage(0.5);
-      this.audio.hitHull();
-      this.events.emit('player-hit', {
+      showPlayerDamageFeedback(this, {
+        point: player.position,
         amount: damage,
         shieldAbsorbed: result.shieldAbsorbed,
+        hudStrength: 0.5,
       });
     }
     player.velocity.y = Math.abs(player.velocity.y) * 0.25;
@@ -421,7 +420,8 @@ export abstract class GameRuntime extends GameInteractions {
     const player = this.player;
     if (!player.alive && this.deathTimer < 0) {
       this.deathTimer = 2.4;
-      this.explosions.spawn(player.position, 2.2);
+      this.explosions.spawn(player.position, 2.2, 'ship');
+      this.shipDebris.spawn(player.object, player.velocity, player.radius, this.rng);
       this.audio.explosion(true);
       this.chaseCam.addTrauma(1);
       player.object.visible = false;

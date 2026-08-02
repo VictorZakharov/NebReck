@@ -109,7 +109,7 @@ through as a weapon press.
 npm run test:architecture   # Game/controller and smoke-module size budgets
 npm run typecheck
 npm run test:performance     # 1080p/native-4K/Retina-4K renderer diagnostics
-npm run test:visual          # 36 scenes vs local baselines; 0.000% on this machine
+npm run test:visual          # full local/release sweep; 43 ignored baselines
 npm run test:smoke           # full loop: peace→contract→merchant→planet→jump→combat→devices
 ```
 
@@ -117,6 +117,9 @@ Visual baselines are local generated artifacts and are intentionally Git-ignored
 On a fresh clone the first run creates them; rerun to perform the comparison.
 After intentional visual changes: `npm run test:visual:update` (optionally
 `-- --scene=<name>`), then view the changed PNGs. Never commit generated PNGs.
+Prefer the affected `--scene` runs during PR iteration; the full serial
+SwiftShader sweep is reserved for broad renderer/release checks and is not a CI
+job. The deterministic smoke suite remains the pull-request behavior gate.
 Dev server: `npm run dev` (port 8080 by default; pass
 `-- --host 127.0.0.1 --port 8123` for the review URL). Static scenes use
 `?testScene=<name>&seed=7`; the interactive rotating hangar uses

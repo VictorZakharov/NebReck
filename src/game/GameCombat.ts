@@ -13,14 +13,16 @@ import { PickupSystem, ResourceType } from '../entities/PickupSystem';
 import { PlayerShip } from '../entities/PlayerShip';
 import { Ship } from '../entities/Ship';
 import { Turret } from '../entities/Turret';
-import { AsteroidDebris } from '../world/AsteroidDebris';
-import { AsteroidBody } from '../world/AsteroidField';
+import { ShipDebris } from '../fx/ShipDebris';
+import { spawnAsteroidChildren } from '../world/AsteroidBreakup';
+import { AsteroidBody, ChildAsteroidMotion } from '../world/AsteroidField';
 import { PlanetSurface } from '../world/PlanetSurface';
 import { ExplosionSystem } from '../fx/ExplosionSystem';
 import { ShieldFx } from '../fx/ShieldFx';
 import { ChaseCamera } from '../rendering/ChaseCamera';
 import { Hud } from '../ui/Hud';
 import { DifficultyDef } from './Difficulty';
+import { showPlayerDamageFeedback, showProjectileImpact } from './DamageFeedback';
 import { EncounterDirector } from './EncounterDirector';
 import { Inventory } from './Inventory';
 import { Quest, QuestSystem } from './Quests';
@@ -28,7 +30,6 @@ import { pointInsideBody, rayHitsBodyBox } from './WorldCollision';
 
 const pushDir = new Vector3();
 const boxClosest = new Vector3();
-const childOffset = new Vector3();
 const losDir = new Vector3();
 const losOff = new Vector3();
 const enemyRel = new Vector3();
@@ -45,6 +46,7 @@ export interface CombatWorld {
     radius: number,
     rng: Rng,
     palette?: number,
+    motion?: ChildAsteroidMotion,
   ): AsteroidBody | null;
 }
 
@@ -59,7 +61,7 @@ export interface GameCombatHost {
   readonly projectiles: ProjectileSystem;
   readonly explosions: ExplosionSystem;
   readonly pickups: PickupSystem;
-  readonly debris: AsteroidDebris;
+  readonly shipDebris: ShipDebris;
   readonly chaseCam: ChaseCamera;
   readonly hud: Hud;
   readonly events: EventBus;
@@ -140,8 +142,9 @@ export class GameCombat {
   resolveHit(hit: ProjectileHit): void {
     const host = this.host;
     if (!hit.ship) {
-      host.explosions.spawn(hit.point, hit.wasMissile ? 1.2 : 0.35);
       const rock = hit.asteroid;
+      const effectPoint = showProjectileImpact(host.explosions, hit.point, hit.wasMissile,
+        1.2, 0.35, rock?.position, hit.normal);
       if (!rock || rock.destroyed || hit.faction !== 'player') return;
 
       if (rock.ore) {
@@ -151,7 +154,7 @@ export class GameCombat {
           host.world.depleteOre(rock);
           const count = type === 'crystal' ? host.rng.int(2, 4) : host.rng.int(3, 5);
           host.pickups.spawn(hit.point, type, count, host.rng);
-          host.explosions.spawn(hit.point, 0.9);
+          host.explosions.spawn(effectPoint, 0.9, 'impact');
           host.audio.explosion(false);
         }
       }
@@ -160,8 +163,7 @@ export class GameCombat {
       if (rock.hp <= 0) {
         const buriedOre: ResourceType | null = rock.ore;
         host.world.destroyRock(rock);
-        host.debris.spawn(rock.position, rock.radius, host.rng);
-        host.explosions.spawn(rock.position, Math.min(2.4, 0.7 + rock.radius * 0.06));
+        host.explosions.spawn(rock.position, Math.min(2.4, 0.7 + rock.radius * 0.06), 'impact');
         host.audio.explosion(rock.radius > 14);
         if (buriedOre) {
           host.pickups.spawn(rock.position, buriedOre, host.rng.int(2, 4), host.rng);
@@ -172,19 +174,7 @@ export class GameCombat {
           host.pickups.spawn(rock.position, 'flux', 2, host.rng);
           host.audio.pickup();
           host.storyComms('first-stash');
-        } else if (rock.radius >= 9) {
-          const children = host.rng.int(2, 3);
-          for (let i = 0; i < children; i++) {
-            const [dx, dy, dz] = host.rng.unitSphere();
-            childOffset.set(dx, dy, dz).multiplyScalar(rock.radius * 0.55);
-            host.world.spawnChild(
-              childOffset.add(rock.position),
-              rock.radius * host.rng.range(0.32, 0.48),
-              host.rng,
-              rock.palette,
-            );
-          }
-        }
+        } else spawnAsteroidChildren(host.world, rock, host.rng);
       }
       return;
     }
@@ -192,35 +182,38 @@ export class GameCombat {
     const result = hit.ship.takeDamage(hit.damage);
     if (hit.ship === host.player) {
       if (host.jumpSpool >= 0) host.cancelJump('Jump disrupted — taking fire!');
-      host.playerShield.hit(hit.point);
-      host.hud.flashDamage(result.shieldAbsorbed ? 0.35 : 0.7);
-      host.chaseCam.addTrauma(result.shieldAbsorbed ? 0.25 : 0.45);
-      if (result.shieldAbsorbed) host.audio.hitShield();
-      else host.audio.hitHull();
-      host.events.emit('player-hit', {
+      showPlayerDamageFeedback(host, {
+        point: hit.point,
         amount: hit.damage,
         shieldAbsorbed: result.shieldAbsorbed,
+        hudStrength: result.shieldAbsorbed && host.player.shield > 0 ? 0.35 : 0.7,
+        impactPreset: hit.wasMissile ? 'missile' : 'impact',
+        impactScale: hit.wasMissile ? 1.05 : 0.24,
       });
     } else if (hit.ship instanceof EnemyShip) {
       const enemy = hit.ship;
       enemy.notifyDamaged();
       host.hud.flashHitmarker(result.died);
-      host.explosions.spawn(hit.point, hit.wasMissile ? 1.1 : 0.28);
       if (result.died) this.killEnemy(enemy);
-      else host.audio.hitShield();
+      else {
+        showProjectileImpact(host.explosions, hit.point, hit.wasMissile, 1.1, 0.28);
+        host.audio.hitShield();
+      }
     } else if (hit.ship instanceof Turret) {
       host.hud.flashHitmarker(result.died);
-      host.explosions.spawn(hit.point, hit.wasMissile ? 1.1 : 0.28);
       if (result.died) this.killTurret(hit.ship);
-      else host.audio.hitShield();
+      else {
+        showProjectileImpact(host.explosions, hit.point, hit.wasMissile, 1.1, 0.28);
+        host.audio.hitShield();
+      }
     } else if (hit.ship instanceof CapitalShip) {
       host.hud.flashHitmarker(result.died);
-      host.explosions.spawn(hit.point, hit.wasMissile ? 1.3 : 0.4);
       if (result.died) this.killCapital(hit.ship);
+      else showProjectileImpact(host.explosions, hit.point, hit.wasMissile, 1.3, 0.4);
     } else if (hit.ship instanceof NeutralShip) {
       host.hud.flashHitmarker(result.died);
-      host.explosions.spawn(hit.point, 0.4);
       if (result.died) this.killNeutral(hit.ship);
+      else showProjectileImpact(host.explosions, hit.point, hit.wasMissile, 1.1, 0.4);
     }
   }
 
@@ -229,8 +222,8 @@ export class GameCombat {
     for (const turret of host.capitalTurrets) {
       if (!turret.alive) continue;
       turret.alive = false;
-      host.explosions.spawn(turret.position, 1.1);
-      host.debris.spawn(turret.position, 4, host.rng);
+      host.explosions.spawn(turret.position, 1.1, 'ship');
+      host.shipDebris.spawn(turret.object, turret.velocity, 4, host.rng);
       host.scene.remove(turret.object);
       turret.dispose();
     }
@@ -239,11 +232,11 @@ export class GameCombat {
     for (let i = 0; i < 5; i++) {
       const [dx, dy, dz] = host.rng.unitSphere();
       const point = capital.position.clone().add(new Vector3(dx * 12, dy * 5, dz * 20));
-      host.explosions.spawn(point, 1.6 + host.rng.next());
+      host.explosions.spawn(point, 1.6 + host.rng.next(), 'ship');
     }
-    host.explosions.spawn(capital.position, 3);
+    host.explosions.spawn(capital.position, 3, 'capital');
     host.audio.explosion(true);
-    host.debris.spawn(capital.position, 20, host.rng);
+    host.shipDebris.spawn(capital.object, capital.velocity, 20, host.rng);
     host.scene.remove(capital.object);
     capital.dispose();
     host.capital = null;
@@ -259,9 +252,9 @@ export class GameCombat {
 
   private killNeutral(neutral: NeutralShip): void {
     const host = this.host;
-    host.explosions.spawn(neutral.position, 1.6);
+    host.explosions.spawn(neutral.position, 1.6, 'ship');
     host.audio.explosion(true);
-    host.debris.spawn(neutral.position, 8, host.rng);
+    host.shipDebris.spawn(neutral.object, neutral.velocity, 8, host.rng);
     host.scene.remove(neutral.object);
     neutral.dispose();
     host.neutrals = host.neutrals.filter((candidate) => candidate !== neutral);
@@ -276,9 +269,9 @@ export class GameCombat {
     const host = this.host;
     const parentCapital = host.capital?.alive && host.capitalTurrets.includes(turret)
       ? host.capital : null;
-    host.explosions.spawn(turret.position, 1.4);
+    host.explosions.spawn(turret.position, 1.4, 'ship');
     host.audio.explosion(true);
-    host.debris.spawn(turret.position, 5, host.rng);
+    host.shipDebris.spawn(turret.object, turret.velocity, 5, host.rng);
     host.scene.remove(turret.object);
     turret.dispose();
     host.turrets = host.turrets.filter((candidate) => candidate !== turret);
@@ -395,8 +388,12 @@ export class GameCombat {
     if (trace.obstacle) {
       const rock = trace.obstacle;
       host.world.destroyRock(rock);
-      host.debris.spawn(rock.position, Math.min(18, rock.radius), host.rng);
-      host.explosions.spawn(rock.position, Math.min(3.2, 1.3 + rock.radius * 0.05));
+      spawnAsteroidChildren(host.world, rock, host.rng);
+      host.explosions.spawn(
+        rock.position,
+        Math.min(3.2, 1.3 + rock.radius * 0.05),
+        'impact',
+      );
     }
     host.audio.capitalBeam();
     host.chaseCam.addTrauma(1);
@@ -405,9 +402,15 @@ export class GameCombat {
 
   private killEnemy(enemy: EnemyShip): void {
     const host = this.host;
-    host.explosions.spawn(enemy.position, enemy.kind === 'brute' ? 1.9 : 1.2);
+    host.explosions.spawn(
+      enemy.position,
+      enemy.kind === 'brute' ? 1.9 : 1.2,
+      'ship',
+    );
     host.audio.explosion(enemy.kind === 'brute');
-    host.debris.spawn(enemy.position, enemy.kind === 'brute' ? 6 : 4, host.rng);
+    host.shipDebris.spawn(
+      enemy.object, enemy.velocity, enemy.kind === 'brute' ? 6 : 4, host.rng,
+    );
     host.scene.remove(enemy.object);
     enemy.dispose();
     host.enemies = host.enemies.filter((candidate) => candidate !== enemy);
@@ -536,15 +539,11 @@ export class GameCombat {
           const damage = Math.max(0, (impactSpeed - 4) * 0.22);
           if (damage >= 0.2) {
             const result = player.takeDamage(damage);
-            host.playerShield.hit(
-              player.position.clone().addScaledVector(pushDir, -player.radius),
-            );
-            host.chaseCam.addTrauma(Math.min(0.65, 0.12 + damage * 0.04));
-            host.hud.flashDamage(Math.min(0.8, 0.18 + damage * 0.04));
-            host.audio.hitHull();
-            host.events.emit('player-hit', {
+            showPlayerDamageFeedback(host, {
+              point: boxClosest.copy(player.position).addScaledVector(pushDir, -player.radius),
               amount: damage,
               shieldAbsorbed: result.shieldAbsorbed,
+              hudStrength: Math.min(0.8, 0.18 + damage * 0.04),
             });
           }
           break;
@@ -563,12 +562,11 @@ export class GameCombat {
         player.velocity.reflect(pushDir).multiplyScalar(0.3);
         const damage = Math.max(5, speed * 0.25);
         const result = player.takeDamage(damage);
-        host.chaseCam.addTrauma(0.5);
-        host.hud.flashDamage(0.6);
-        host.audio.hitHull();
-        host.events.emit('player-hit', {
+        showPlayerDamageFeedback(host, {
+          point: boxClosest.copy(player.position).addScaledVector(pushDir, -player.radius),
           amount: damage,
           shieldAbsorbed: result.shieldAbsorbed,
+          hudStrength: 0.6,
         });
       }
     }
@@ -582,7 +580,7 @@ export class GameCombat {
           const result = player.takeDamage(10 * dt * 10);
           enemy.takeDamage(20 * dt * 10);
           if (!enemy.alive) this.killEnemy(enemy);
-          host.chaseCam.addTrauma(0.3);
+          host.chaseCam.addDamageShake(10 * dt * 10, result.shieldAbsorbed);
           if (!result.died) host.hud.flashDamage(0.4);
           break;
         }

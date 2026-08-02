@@ -217,7 +217,7 @@ export async function runRuntimeSmoke(page) {
       game.projectiles.clear();
       game.particles.update(5);
       game.explosions.update(5);
-      game.debris.update(5);
+      game.shipDebris.update(5, game.surface);
       game.rebuildTargetLists();
       game.renderHudOnce();
       game.postFx.render(0);

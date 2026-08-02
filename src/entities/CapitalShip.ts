@@ -1,11 +1,14 @@
 import {
   AdditiveBlending,
+  Color,
   CylinderGeometry,
+  DoubleSide,
   Group,
   Mesh,
   MeshBasicMaterial,
   Quaternion,
   SphereGeometry,
+  ShaderMaterial,
   TorusGeometry,
   Vector3,
 } from 'three';
@@ -88,17 +91,21 @@ export class CapitalShip extends Ship {
   private firingLeft = 0;
   private cooldown = 5;
   private visualTime = 0;
+  private guideLength = CAPITAL_BEAM_RANGE;
 
   constructor() {
     super('capital', 1600, 0, 0, 999);
     this.throttle = 0.25;
 
+    // Charge guides, beam cylinders, orb, and rings are transient VFX rather
+    // than carrier structure; never clone this subtree into physical debris.
+    this.beamPivot.userData.excludeFromDebris = true;
     this.beamPivot.position.copy(localMuzzle);
     this.object.add(this.beamPivot);
     const cylinder = new CylinderGeometry(1, 1, 1, 16, 1, true);
-    this.chargeGuide = this.makeBeam(cylinder, 0xff4a20, 0);
-    this.beamHalo = this.makeBeam(cylinder, 0xff2608, 0);
-    this.beamCore = this.makeBeam(cylinder, 0xfff1c4, 0);
+    this.chargeGuide = this.makeBeam(cylinder, 0xff6b32, 0, true);
+    this.beamHalo = this.makeBeam(cylinder, 0xff2608, 0, false);
+    this.beamCore = this.makeBeam(cylinder, 0xfff1c4, 0, false);
 
     this.chargeOrb = new Mesh(
       new SphereGeometry(1, 18, 12),
@@ -140,8 +147,16 @@ export class CapitalShip extends Ship {
       : this.phase === 'firing' ? 1 : 0;
   }
 
+  /** Current visible charge-guide reach, exposed for deterministic diagnostics. */
+  get beamGuideLength(): number {
+    return this.guideLength;
+  }
+
   update(dt: number, context?: CapitalBeamContext): void {
     this.visualTime += dt;
+    for (const beam of [this.chargeGuide, this.beamHalo, this.beamCore]) {
+      (beam.material as ShaderMaterial).uniforms.uTime.value = this.visualTime;
+    }
     if (this.phase === 'firing') {
       this.firingLeft -= dt;
       this.updateFiringVisual();
@@ -194,8 +209,13 @@ export class CapitalShip extends Ship {
     }
     this.forward(beamForward).normalize();
     desiredAim.copy(this.lastVisiblePlayer).sub(beamOrigin);
-    if (desiredAim.lengthSq() < 1e-6) desiredAim.copy(beamForward);
-    else desiredAim.normalize();
+    const targetDistance = desiredAim.length();
+    this.guideLength = Math.min(
+      CAPITAL_BEAM_RANGE,
+      Math.max(70, targetDistance + CAPITAL_BEAM_RADIUS * 3),
+    );
+    if (targetDistance < 1e-3) desiredAim.copy(beamForward);
+    else desiredAim.divideScalar(targetDistance);
     clampDirectionToCone(
       beamForward,
       desiredAim,
@@ -222,17 +242,15 @@ export class CapitalShip extends Ship {
     this.setBeamLength(Math.max(1, Math.min(CAPITAL_BEAM_RANGE, distance)));
   }
 
-  private makeBeam(geometry: CylinderGeometry, color: number, opacity: number): Mesh {
+  private makeBeam(
+    geometry: CylinderGeometry,
+    color: number,
+    opacity: number,
+    dashed: boolean,
+  ): Mesh {
     const beam = new Mesh(
       geometry,
-      new MeshBasicMaterial({
-        color,
-        transparent: true,
-        opacity,
-        depthWrite: false,
-        toneMapped: false,
-        blending: AdditiveBlending,
-      }),
+      makeBeamMaterial(color, opacity, dashed),
     );
     beam.rotation.x = Math.PI / 2;
     this.beamPivot.add(beam);
@@ -243,9 +261,9 @@ export class CapitalShip extends Ship {
   private updateChargeVisual(): void {
     const fraction = Math.max(0, Math.min(1, this.beamChargeFraction));
     const pulse = 0.82 + Math.sin(this.visualTime * (8 + fraction * 14)) * 0.18;
-    const guideMat = this.chargeGuide.material as MeshBasicMaterial;
-    guideMat.opacity = (0.08 + fraction * 0.34) * pulse;
-    this.setMeshLength(this.chargeGuide, CAPITAL_BEAM_RANGE, 0.08 + fraction * 0.18);
+    const guideMat = this.chargeGuide.material as ShaderMaterial;
+    guideMat.uniforms.uOpacity.value = (0.035 + fraction * 0.2) * pulse;
+    this.setMeshLength(this.chargeGuide, this.guideLength, 0.06 + fraction * 0.14);
     (this.chargeOrb.material as MeshBasicMaterial).opacity = 0.18 + fraction * 0.78;
     this.chargeOrb.scale.setScalar(0.55 + fraction * 2.1 + pulse * 0.18);
     this.chargeRings.forEach((ring, index) => {
@@ -254,15 +272,15 @@ export class CapitalShip extends Ship {
       ring.scale.setScalar(collapse * pulse);
       ring.rotation.z = this.visualTime * (index % 2 === 0 ? 1.8 : -2.2);
     });
-    (this.beamHalo.material as MeshBasicMaterial).opacity = 0;
-    (this.beamCore.material as MeshBasicMaterial).opacity = 0;
+    setBeamOpacity(this.beamHalo, 0);
+    setBeamOpacity(this.beamCore, 0);
   }
 
   private updateFiringVisual(): void {
     const fraction = Math.max(0, this.firingLeft / 0.42);
-    (this.chargeGuide.material as MeshBasicMaterial).opacity = 0;
-    (this.beamHalo.material as MeshBasicMaterial).opacity = 0.5 * fraction;
-    (this.beamCore.material as MeshBasicMaterial).opacity = 0.98 * fraction;
+    setBeamOpacity(this.chargeGuide, 0);
+    setBeamOpacity(this.beamHalo, 0.5 * fraction);
+    setBeamOpacity(this.beamCore, 0.98 * fraction);
     (this.chargeOrb.material as MeshBasicMaterial).opacity = fraction;
     this.chargeOrb.scale.setScalar(3.4 + (1 - fraction) * 1.8);
     this.chargeRings.forEach((ring, index) => {
@@ -282,9 +300,9 @@ export class CapitalShip extends Ship {
   }
 
   private hideBeam(): void {
-    (this.chargeGuide.material as MeshBasicMaterial).opacity = 0;
-    (this.beamHalo.material as MeshBasicMaterial).opacity = 0;
-    (this.beamCore.material as MeshBasicMaterial).opacity = 0;
+    setBeamOpacity(this.chargeGuide, 0);
+    setBeamOpacity(this.beamHalo, 0);
+    setBeamOpacity(this.beamCore, 0);
     (this.chargeOrb.material as MeshBasicMaterial).opacity = 0;
     for (const ring of this.chargeRings) {
       (ring.material as MeshBasicMaterial).opacity = 0;
@@ -294,6 +312,51 @@ export class CapitalShip extends Ship {
   private worldMuzzle(out: Vector3): Vector3 {
     return out.copy(localMuzzle).applyQuaternion(this.object.quaternion).add(this.position);
   }
+}
+
+function makeBeamMaterial(color: number, opacity: number, dashed: boolean): ShaderMaterial {
+  const material = new ShaderMaterial({
+    uniforms: {
+      uColor: { value: new Color(color).multiplyScalar(dashed ? 2.2 : 4.2) },
+      uOpacity: { value: opacity },
+      uTime: { value: 0 },
+      uDashed: { value: dashed ? 1 : 0 },
+    },
+    side: DoubleSide,
+    transparent: true,
+    depthWrite: false,
+    toneMapped: false,
+    blending: AdditiveBlending,
+    vertexShader: /* glsl */ `
+      varying vec2 vUv;
+      void main() {
+        vUv = uv;
+        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+      }
+    `,
+    fragmentShader: /* glsl */ `
+      uniform vec3 uColor;
+      uniform float uOpacity;
+      uniform float uTime;
+      uniform float uDashed;
+      varying vec2 vUv;
+      void main() {
+        float phase = fract(vUv.y * 18.0 - uTime * 3.8);
+        float dash = smoothstep(0.1, 0.18, phase) * (1.0 - smoothstep(0.42, 0.52, phase));
+        float pulse = 0.62 + 0.38 * sin(uTime * 13.0 + vUv.y * 80.0);
+        if (uDashed > 0.5 && dash < 0.08) discard;
+        float pattern = mix(0.78 + pulse * 0.22, dash * pulse, uDashed);
+        float alpha = uOpacity * pattern;
+        if (alpha <= 0.002) discard;
+        gl_FragColor = vec4(uColor, alpha);
+      }
+    `,
+  });
+  return material;
+}
+
+function setBeamOpacity(mesh: Mesh, opacity: number): void {
+  (mesh.material as ShaderMaterial).uniforms.uOpacity.value = opacity;
 }
 
 function clampDirectionToCone(

@@ -1,4 +1,5 @@
-import { Color, Vector3 } from 'three';
+import { Vector3 } from 'three';
+import { spawnAsteroidChildren } from '../../world/AsteroidBreakup';
 import { buildShipMesh } from '../../entities/ShipMesh';
 import { Game } from '../Game';
 import { jumpToSector2, steps } from './TestSceneShared';
@@ -51,33 +52,6 @@ export function stageAsteroids(game: Game): void {
   steps(game, 3);
 }
 
-/** Explosions at two life stages, exhaust trail, and debris. */
-export function stageFx(game: Game): void {
-  game.state = 'test';
-  game.player.object.visible = false;
-  const camera = game.chaseCam.camera;
-  camera.position.set(0, 3, 12);
-  camera.lookAt(0, 0, -60);
-
-  game.explosions.spawn(new Vector3(-24, 6, -80), 1.8);
-  game.debris.spawn(new Vector3(-24, 6, -80), 14, game.rng);
-  steps(game, 16);
-  game.explosions.spawn(new Vector3(4, -1, -42), 1.1);
-  const position = new Vector3();
-  const velocity = new Vector3();
-  for (let index = 0; index < 26; index++) {
-    position.set(-18 + index * 1.3, 4 - Math.sin(index * 0.24) * 3.5, -55 + index * 0.6);
-    game.particles.spawn({
-      position,
-      velocity,
-      color: new Color(1, 0.85, 0.3),
-      size: 1.5,
-      life: 2,
-    });
-  }
-  steps(game, 9);
-}
-
 /** Inside a hollow cave asteroid: boulders, crystals, stash, and turret. */
 export function stageCave(game: Game): void {
   game.startMission();
@@ -91,7 +65,7 @@ export function stageCave(game: Game): void {
   steps(game, 4);
 }
 
-/** A large asteroid mid-shatter with child rocks and debris. */
+/** A large asteroid mid-shatter with only persistent, destructible child rocks. */
 export function stageSplit(game: Game): void {
   game.state = 'test';
   game.player.object.visible = false;
@@ -103,16 +77,7 @@ export function stageSplit(game: Game): void {
   camera.lookAt(rock.position);
 
   game.sector.asteroids.destroyRock(rock);
-  for (let index = 0; index < 3; index++) {
-    const [x, y, z] = game.rng.unitSphere();
-    game.sector.asteroids.spawnChild(
-      new Vector3(x, y, z).multiplyScalar(rock.radius * 0.55).add(rock.position),
-      rock.radius * game.rng.range(0.32, 0.48),
-      game.rng,
-      rock.palette,
-    );
-  }
-  game.debris.spawn(rock.position, rock.radius, game.rng);
+  spawnAsteroidChildren(game.sector.asteroids, rock, game.rng, 3);
   game.explosions.spawn(rock.position, 1.8);
   steps(game, 10);
 }

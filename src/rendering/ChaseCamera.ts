@@ -1,4 +1,12 @@
-import { MathUtils, Matrix4, Object3D, PerspectiveCamera, Quaternion, Vector3 } from 'three';
+import {
+  Euler,
+  MathUtils,
+  Matrix4,
+  Object3D,
+  PerspectiveCamera,
+  Quaternion,
+  Vector3,
+} from 'three';
 import { CONFIG } from '../game/Config';
 
 const tmpOffset = new Vector3();
@@ -9,6 +17,8 @@ const tmpMat = new Matrix4();
 const targetQuat = new Quaternion();
 const firstPos = new Vector3();
 const firstQuat = new Quaternion();
+const shakeEuler = new Euler();
+const shakeQuat = new Quaternion();
 
 /** Cockpit eye point in ship-local space (kept high so the dash stays low). */
 const EYE_LOCAL = new Vector3(0, 0.58, -0.55);
@@ -29,6 +39,7 @@ export class ChaseCamera {
   blend = 0;
 
   private trauma = 0;
+  private damageKick = 0;
   private shakeTime = 0;
   private followDist = CONFIG.camera.followDistance;
   // Persistent third-person smoothing state (independent of the final blend).
@@ -46,6 +57,20 @@ export class ChaseCamera {
   /** Add shake; strength in [0,1]. Decays automatically. */
   addTrauma(strength: number): void {
     this.trauma = Math.min(1, this.trauma + strength);
+  }
+
+  /** Damage-scaled impact shake. Hull strikes hit harder than shield ripples. */
+  addDamageShake(damage: number, shieldAbsorbed: boolean): void {
+    const severity = 1 - Math.exp(-Math.max(0, damage) / 24);
+    const strength = Math.min(1, 0.08 + severity * (shieldAbsorbed ? 0.48 : 0.95));
+    // A second rocket must feel like a second rocket. Preserve the larger base
+    // impulse, then compound a bounded fraction instead of replacing it via max().
+    this.trauma = Math.min(1, Math.max(this.trauma, strength) + strength * 0.32);
+    this.damageKick = Math.min(1.6, this.damageKick + strength * 0.9);
+  }
+
+  diagnostics(): { trauma: number; damageKick: number } {
+    return { trauma: this.trauma, damageKick: this.damageKick };
   }
 
   snapTo(target: Object3D): void {
@@ -83,18 +108,28 @@ export class ChaseCamera {
     this.camera.fov = MathUtils.lerp(this.camera.fov, targetFov, 1 - Math.exp(-5 * dt));
     this.camera.updateProjectionMatrix();
 
-    // Trauma shake (squared for a nicer falloff), applied as positional noise.
-    // Heavily damped in cockpit view — head-rattle reads as broken there.
-    this.trauma = Math.max(0, this.trauma - dt * 1.6);
+    // Trauma shake is squared for a soft falloff; damage adds a short rotation.
+    // Both channels are damped in cockpit view so head-rattle never feels broken.
+    this.trauma = Math.max(0, this.trauma - dt * 1.15);
+    this.damageKick = Math.max(0, this.damageKick - dt * 2.7);
     if (this.trauma > 0) {
       this.shakeTime += dt * 40;
-      const s = this.trauma * this.trauma * (0.55 - this.blend * 0.45);
+      const s = this.trauma * this.trauma * (1.05 - this.blend * 0.78);
       tmpShake.set(
         Math.sin(this.shakeTime * 1.1) * s,
         Math.cos(this.shakeTime * 1.7) * s,
         Math.sin(this.shakeTime * 2.3) * s * 0.5,
       );
       this.camera.position.add(tmpShake);
+      const rotational = (s * 0.035 + this.damageKick * 0.025) *
+        (1 - this.blend * 0.68);
+      shakeEuler.set(
+        Math.sin(this.shakeTime * 1.37) * rotational * 0.62,
+        Math.cos(this.shakeTime * 0.91) * rotational,
+        Math.sin(this.shakeTime * 1.83) * rotational * 1.25,
+      );
+      shakeQuat.setFromEuler(shakeEuler);
+      this.camera.quaternion.multiply(shakeQuat);
     }
   }
 

@@ -95,10 +95,16 @@ with a telegraphed annihilator beam — cripple it, destroy it, or outrun its fi
   Revisiting the same planet in a sortie restores the exact terrain, harvested
   loot, surviving enemies and cleared garrison state.
 - **Two cameras**: banked chase cam and a first-person cockpit with glowing MFDs,
-  blended smoothly (V).
+  blended smoothly (V), plus damage-scaled positional and rotational impact shake.
 - **Visuals**: fragment-correct solar corona, HDR bloom, ACES tonemap, SMAA,
-  chromatic aberration on boost, procedural nebula/planets/asteroids, and pooled
-  explosions with shockwaves and lights.
+  chromatic aberration on boost, procedural nebula/planets/asteroids, one-sided
+  shield-hit ripples, and pooled preset explosions with instanced 3D fireball
+  volumes, spherical shock fronts, lights, and large fly-through smoke clouds for
+  missiles and destroyed ships. Energy bolts remain smoke-free. Projectile FX begin
+  on the actual transformed asteroid surface; shattered asteroids become persistent,
+  destructible child rocks that coast and tumble outward, while ships and turrets
+  throw bounded pieces of their own modeled parts rather than VFX rods.
+  Those parts drift in space and fall, bounce, and settle against planetary terrain.
 - **Adaptive high-refresh rendering**: the rAF-driven simulation stays frame-rate
   independent while a hysteresis-controlled framebuffer targets smooth play without
   changing the native-resolution DOM HUD. Native and Retina-style 4K both begin at
@@ -169,7 +175,7 @@ The in-game **Field Manual** (main menu) documents every implemented mechanic.
 npm run test:architecture     # enforce controller and harness line-size budgets
 npm run typecheck            # strict TS, no emit
 npm run test:performance     # repeatable 1080p / native-4K / Retina-4K renderer report
-npm run test:visual          # compare 36 scenes with local, ignored baselines
+npm run test:visual          # full local/release sweep of 43 ignored baselines
 npm run test:visual:update   # re-capture local baselines after intentional changes
 npm run test:smoke           # end-to-end behavior + persistence regression suite
 ```
@@ -190,11 +196,13 @@ scene via `/?testScene=<name>&seed=7`, and diffs screenshots with pixelmatch.
 Scenes are staged deterministically (seeded RNG, fixed-step simulation, frozen CSS
 animations) — a same-machine re-render diffs at exactly 0.000%. Baselines are local
 generated artifacts and are intentionally not committed: the first run creates
-them, and subsequent runs compare against them. The 36 scenes cover world art,
+them, and subsequent runs compare against them. The 43 scenes cover world art,
 every major screen, targeting, combat/FX, caves, bases, trade, fleet connectivity,
-cloak, desktop controls, phone controls/hangar/overlays, enemy variants, missile warnings
-and the capital superweapon.
+cloak, desktop controls, phone controls/hangar/overlays, volumetric destruction,
+enemy variants, missile warnings, and the capital superweapon.
 Failure diffs land in `test/visual/diff/`.
+Use `-- --scene=<name>` during normal PR iteration; the full software-WebGL
+sweep is intentionally local/release-only and is not duplicated in CI.
 
 ## Documentation
 

@@ -26,7 +26,7 @@ import {
 import { Rng } from '../core/Rng';
 import { TURRET_COLLISION_RADIUS } from '../entities/ShipMeshTypes';
 import { getSurfaceTexture } from '../rendering/SurfaceTextures';
-import { AsteroidBody, makeBody } from './AsteroidField';
+import { AsteroidBody, ChildAsteroidMotion, makeBody } from './AsteroidField';
 import { NebulaSkybox } from './NebulaSkybox';
 import { TurretSpawn } from './CaveAsteroid';
 import { makeRingTexture } from './Planet';
@@ -629,14 +629,22 @@ export class PlanetSurface {
     if (body.solo) body.solo.visible = false;
     body.ore = null;
     body.orePoints.length = 0;
+    body.orePointRadii.length = 0;
   }
 
   depleteOre(body: AsteroidBody): void {
-    body.ore = null; // surface crystals release their ore on destruction only
+    body.ore = null;
     body.orePoints.length = 0;
+    body.orePointRadii.length = 0;
   }
 
-  spawnChild(_position: Vector3, _radius: number, _rng: Rng, _palette?: number): AsteroidBody | null {
+  spawnChild(
+    _position: Vector3,
+    _radius: number,
+    _rng: Rng,
+    _palette?: number,
+    _motion?: ChildAsteroidMotion,
+  ): AsteroidBody | null {
     return null; // surface rocks shatter without calving
   }
 
@@ -668,6 +676,7 @@ export class PlanetSurface {
   private addCrystalFormation(rng: Rng, x: number, y: number, z: number): void {
     const cluster = new Group();
     const orePoints: Vector3[] = [];
+    const orePointRadii: number[] = [];
     const mat = new MeshStandardMaterial({
       color: 0x0a1412, emissive: new Color(0x2ee6c8), emissiveIntensity: 2.1,
       roughness: 0.25, metalness: 0.1, flatShading: true,
@@ -675,10 +684,13 @@ export class PlanetSurface {
     for (let s = 0; s < 4; s++) {
       const spike = new Mesh(new OctahedronGeometry(1, 0), mat);
       spike.position.set(rng.range(-2.5, 2.5), rng.range(0, 1.5), rng.range(-2.5, 2.5));
-      spike.scale.set(rng.range(0.9, 1.6), rng.range(2.6, 5), rng.range(0.9, 1.6));
+      const spikeWidth = rng.range(0.9, 1.6);
+      const spikeHeight = rng.range(2.6, 5);
+      spike.scale.set(spikeWidth, spikeHeight, spikeWidth);
       spike.rotation.set(rng.range(-0.3, 0.3), rng.range(0, 6), rng.range(-0.3, 0.3));
       cluster.add(spike);
       orePoints.push(spike.position.clone().add(new Vector3(x, y + 1, z)));
+      orePointRadii.push(spikeHeight);
     }
     cluster.position.set(x, y + 1, z);
     this.group.add(cluster);
@@ -688,8 +700,10 @@ export class PlanetSurface {
       hp: 30,
       solo: cluster,
       ore: 'crystal',
-      oreHp: Number.POSITIVE_INFINITY,
+      oreHp: 30,
+      oreHpMax: 30,
       orePoints,
+      orePointRadii,
     }));
   }
 
