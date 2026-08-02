@@ -5,85 +5,56 @@
  */
 import { fileURLToPath } from 'node:url';
 import { chromium } from 'playwright';
+import { sampleWorld } from './performance/sample.mjs';
 import { startDistServer } from './smoke/helpers.mjs';
 
 const DIST = fileURLToPath(new URL('../dist/', import.meta.url));
 const PORT = 8134;
 const server = await startDistServer(DIST, PORT, '/NebReck');
 const browser = await chromium.launch({ args: ['--use-angle=swiftshader', '--mute-audio'] });
-const profiles = [
+const allProfiles = [
   { name: '1080p', width: 1920, height: 1080, deviceScaleFactor: 1 },
   { name: '4K', width: 3840, height: 2160, deviceScaleFactor: 1 },
   { name: 'Retina 4K', width: 1920, height: 1080, deviceScaleFactor: 2 },
 ];
+const allWorlds = ['space', 'planet'];
+const args = process.argv.slice(2);
+const profileName = args.find((argument) => argument.startsWith('--profile='))?.split('=')[1];
+const worldName = args.find((argument) => argument.startsWith('--world='))?.split('=')[1];
+const profiles = profileName
+  ? allProfiles.filter((profile) => profile.name === profileName)
+  : allProfiles;
+const worlds = worldName ? allWorlds.filter((world) => world === worldName) : allWorlds;
+if (profiles.length === 0 || worlds.length === 0) {
+  console.error('Unknown performance profile or world.');
+  process.exit(2);
+}
 const results = [];
 
 try {
   for (const profile of profiles) {
-    const context = await browser.newContext({
-      viewport: { width: profile.width, height: profile.height },
-      deviceScaleFactor: profile.deviceScaleFactor,
-    });
-    const page = await context.newPage();
-    const errors = [];
-    page.on('pageerror', (error) => errors.push(error.message));
-    await page.goto(`http://localhost:${PORT}/?seed=99&headless=1`, {
-      waitUntil: 'commit',
-    });
-    await page.waitForFunction(() => Boolean(window.game), undefined, { timeout: 120_000 });
-    const sample = await page.evaluate(({ name, width, height }) => {
-      const game = window.game;
-      const gl = game.renderer.getContext();
-      game.loop.stop();
-      game.showHangar();
-      game.startMission();
-      game.inventory.add('flux', 2);
-      game.startJump(true);
-      game.jumpSpool = 0.0001;
-      game.loop.stepManual(1 / 60);
-      game.loop.stepManual(1 / 60);
-      game.settleWarpFx();
-      for (let frame = 0; frame < 3; frame++) game.loop.stepManual(1 / 60);
-      gl.finish();
-      game.renderer.info.autoReset = false;
-      game.renderer.info.reset();
-      game.loop.stepManual(1 / 60);
-      gl.finish();
-      const calls = game.renderer.info.render.calls;
-      const triangles = game.renderer.info.render.triangles;
-      game.renderer.info.autoReset = true;
-      const frames = 8;
-      const frameStart = performance.now();
-      for (let frame = 0; frame < frames; frame++) game.loop.stepManual(1 / 60);
-      gl.finish();
-      const frameMs = (performance.now() - frameStart) / frames;
-      const renderStart = performance.now();
-      for (let frame = 0; frame < frames; frame++) game.postFx.render(1 / 60);
-      gl.finish();
-      const renderMs = (performance.now() - renderStart) / frames;
-      const debug = gl.getExtension('WEBGL_debug_renderer_info');
-      return {
-        name,
-        css: `${width}x${height}`,
-        buffer: `${game.renderer.domElement.width}x${game.renderer.domElement.height}`,
-        pixelRatio: game.renderer.getPixelRatio(),
-        megapixels: Number((game.renderer.domElement.width *
-          game.renderer.domElement.height / 1e6).toFixed(2)),
-        frameMs: Number(frameMs.toFixed(2)),
-        measuredFps: Number((1000 / frameMs).toFixed(1)),
-        renderMs: Number(renderMs.toFixed(2)),
-        calls,
-        triangles,
-        gpu: debug ? gl.getParameter(debug.UNMASKED_RENDERER_WEBGL) : 'masked',
-      };
-    }, profile);
-    results.push({ ...sample, errors });
-    await context.close();
+    for (const world of worlds) {
+      results.push(await sampleWorld(browser, PORT, profile, world));
+    }
   }
   console.table(results);
-  const drawCallRegression = results.some((result) => result.calls > 330);
-  if (drawCallRegression) console.error('Render draw-call budget exceeded (330).');
-  if (drawCallRegression || results.some((result) => result.errors.length > 0)) {
+  const drawCallRegression = results.some((result) =>
+    result.calls > (result.world === 'planet' ? 90 : 330));
+  const surfaceOptimizationRegression = results.some((result) =>
+    result.world === 'planet' && (
+      result.surfaceLights > 4 ||
+      result.batchedMeshes < 100 ||
+      result.surfaceBatches < 1 ||
+      result.collisionCells < 1
+    ));
+  if (drawCallRegression) console.error('Render draw-call budget exceeded.');
+  if (surfaceOptimizationRegression) {
+    console.error('Planet surface batching, light budget, or collision index regressed.');
+  }
+  if (
+    drawCallRegression || surfaceOptimizationRegression ||
+    results.some((result) => result.errors.length > 0)
+  ) {
     process.exitCode = 1;
   }
 } finally {

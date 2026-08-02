@@ -1,6 +1,6 @@
 # Systems & balance reference
 
-Last updated: 2026-08-01.
+Last updated: 2026-08-02.
 
 The gameplay rulebook: what every system does, with the actual numbers and where
 they live. When designing a feature, check here first — most mechanics interlock
@@ -51,6 +51,13 @@ ever-meaner sectors (or dive onto planets) → death banks score÷10 as **credit
   rendering-only batches. Cave-shell boulders use the same path, while the 26
   drifting fog cards render as three instanced billboard draws. The seed-99 hostile
   benchmark retains 163,235 triangles while reducing frame draw calls 663 -> 300.
+- Planet surfaces preserve their exact terrain, destructible meshes, collision bodies,
+  and landmarks while fusing immutable opaque decoration by material. A static X/Z
+  body index supplies narrow candidate sets to player/enemy collision, line of sight,
+  and projectile sweeps; loot inspection scans only interactive bodies. Cave lighting
+  is represented by the two anchors most relevant to the camera, keeping the standard
+  material light loop fixed regardless of cave count. The dense-base benchmark is
+  capped at 90 draw calls and four total surface lights.
 
 ## Environments
 

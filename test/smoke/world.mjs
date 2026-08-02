@@ -159,9 +159,19 @@ export async function runWorldSmoke(page) {
       ? game.surface.bodies.filter((body) => body.stash).length
       : 0;
     let caveTunnels = 0;
+    let surfaceLights = 0;
     game.surface?.group.traverse((object) => {
       if (object.name === 'cave-tunnel') caveTunnels++;
+      if (object.isLight) surfaceLights++;
     });
+    const surfaceOptimization = {
+      sourceMeshes: game.surface?.staticBatchStats.sourceMeshes ?? 0,
+      batches: game.surface?.staticBatchStats.batches ?? 0,
+      lights: surfaceLights,
+      collisionCells: game.surface?.collisionCellCount ?? 0,
+      interactionBodies: game.surface?.interactionBodies.length ?? 0,
+      bodies: game.surface?.bodies.length ?? 0,
+    };
     const caveCentersClear = game.surface?.caveLandmarks.every((landmark) =>
       !game.surface.bodies.some((body) =>
         body.hero &&
@@ -377,6 +387,7 @@ export async function runWorldSmoke(page) {
       surfaceTurretsClear,
       planetPrompt,
       jumpLayout,
+      surfaceOptimization,
     };
   });
   console.log('planetfall:', JSON.stringify(planet));

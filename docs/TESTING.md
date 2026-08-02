@@ -2,7 +2,7 @@
 
 All local and CI commands use Node.js 24.
 
-Last updated: 2026-08-01.
+Last updated: 2026-08-02.
 
 The project rule (set by the owner, non-negotiable): **every reported visual issue
 gets its own harness scene, and renders are iterated on — by actually viewing the
@@ -26,20 +26,24 @@ Pass `-- --port=<number>` to either visual command when the default review port
 
 ## Renderer benchmark (`test/performance.mjs`)
 
-The benchmark loads the production build, stages the real hostile second sector,
-stops rAF, and advances identical manual frames at 1920×1080 DPR 1, 3840×2160 DPR 1,
-and 1920×1080 DPR 2. It reports CSS size, actual framebuffer size/pixel ratio,
-megapixels, draw calls, triangles, GPU-synchronized total frame time, and
-render-only time. SwiftShader timings are useful for repeatable local comparisons,
-not as an absolute hardware FPS promise, so there is no timing threshold. The
-seeded scene does enforce a machine-independent ceiling of 330 draw calls; its
-current 300-call result guards static hull/cave batching and instanced fog.
+The benchmark loads the production build and stages both the real hostile second
+sector and the first dense planetary base. It stops rAF and advances identical
+manual frames at 1920×1080 DPR 1, 3840×2160 DPR 1, and 1920×1080 DPR 2. It reports
+CSS size, actual framebuffer size/pixel ratio, megapixels, draw calls, triangles,
+GPU-synchronized total frame time, simulation-only time, and render-only time.
+SwiftShader timings are useful for repeatable local comparisons, not as an absolute
+hardware FPS promise, so there is no timing threshold. The seeded scenes enforce
+machine-independent ceilings of 330 space draw calls and 90 planet draw calls. The
+planet row additionally requires static batching, no more than four surface lights,
+and an initialized collision index. Use `-- --world=planet` and/or
+`-- --profile=1080p` to shorten focused iteration.
 
 `test/smoke/performance.mjs` supplies the portable assertions: both 4K forms must
 start at no more than the 1080p pixel budget, sustained overload must reduce the
 ratio without crossing the 720p floor, and sustained headroom must recover it.
 It also verifies that a live player hull compresses its authored source parts to
-less than half as many render meshes.
+less than half as many render meshes. The world smoke probe guards the planet's
+static batches, light ceiling, body index, and reduced interaction-only scan set.
 Manual visual-test stepping supplies no wall-clock delta, keeping screenshots
 deterministic and native at the harness's 1280×720 viewport.
 

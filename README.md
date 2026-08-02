@@ -109,9 +109,12 @@ with a telegraphed annihilator beam — cripple it, destroy it, or outrun its fi
   independent while a hysteresis-controlled framebuffer targets smooth play without
   changing the native-resolution DOM HUD. Native and Retina-style 4K both begin at
   a 1080p internal pixel budget, can descend toward 720p after sustained overload,
-  and recover quality gradually when headroom returns. Static hull/cave primitives
-  and volumetric fog billboards are GPU-batched; the seeded hostile benchmark drops
-  from 663 to 300 draw calls without reducing its 163k-triangle scene detail.
+  and recover quality gradually when headroom returns. Static hull/cave primitives,
+  planet structures, and volumetric fog billboards are GPU-batched. Planet collision,
+  line-of-sight, and projectile sweeps use a spatial index over the exact authored
+  bodies, while cave illumination reuses two camera-local lights instead of adding
+  every cave light to every material shader. The deterministic benchmarks preserve
+  scene detail while enforcing 330 hostile-space and 90 dense-planet draw-call caps.
 
 ## Run
 
@@ -184,11 +187,13 @@ The smoke command keeps a thin runner in `test/smoke.mjs`; focused hangar, world
 targeting, capital, runtime, and real coarse-pointer mobile probes live under `test/smoke/` and share
 deterministic artificial-time helpers.
 
-The performance command stages a real hostile sector in the production build and
-reports framebuffer size, draw calls, triangles, GPU-synchronized frame time, and
-render-only time for three display profiles. Timing is diagnostic rather than a
-machine-specific threshold; a deterministic 330-draw structural budget and smoke
-tests guard batching plus the adaptive-resolution policy.
+The performance command stages both a real hostile sector and a dense planetary
+base in the production build. It reports framebuffer size, draw calls, triangles,
+GPU-synchronized frame time, simulation-only time, and render-only time for three
+display profiles. Timing is diagnostic rather than a machine-specific threshold;
+deterministic 330-call space and 90-call planet budgets plus smoke tests guard
+batching, local-light limits, collision indexing, and adaptive resolution. Pass
+`-- --world=planet` or `-- --profile=1080p` for a focused iteration run.
 
 The visual harness (`test/visual/run.mjs`) builds the app, serves `dist/`, drives
 headless Chromium on SwiftShader (software GL → GPU-independent pixels), loads each

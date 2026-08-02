@@ -158,7 +158,7 @@ export abstract class GameInteractions extends GameScreens {
   protected aimedLoot(targetDot = -1, aimDirection?: Vector3): 'stash' | 'vein' | null {
     const result = findAimedLoot(
       this.player,
-      this.world.bodies,
+      this.surface?.interactionBodies ?? this.world.bodies,
       this.shootables,
       targetDot,
       (from, to, body) => this.combat.hasLineOfSight(from, to, body),

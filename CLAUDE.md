@@ -1,6 +1,6 @@
 # Nebula Reckoning — agent guide
 
-Last updated: 2026-08-01.
+Last updated: 2026-08-02.
 
 Everspace-inspired exploration space-dogfighter. three.js + TypeScript + webpack,
 100% procedural (no binary assets). Read the docs before coding:
@@ -50,7 +50,12 @@ wall-clock sample, so visual baselines do not change with machine speed.
 Static procedural meshes are material-batched for rendering. Authored source parts
 remain on camera-disabled layer 31 for connectivity/debris; visual traversals skip
 `renderBatchSource`, while destruction skips `excludeFromDebris`. Repeated fog
-cards are instanced, not independent sprites. Preserve the 330-call benchmark cap.
+cards are instanced, not independent sprites. Planet surfaces separately merge
+immutable opaque decoration, retain destructible/test geometry, and expose static
+bodies through `SurfaceBodyIndex`; collision, LOS, and projectile code must query
+that index instead of scanning the full cave-shell lattice. Cave-local illumination
+uses the fixed two-light `SurfaceLocalLights` pool. Preserve the benchmark caps of
+330 calls in hostile space and 90 calls at the dense planetary base.
 
 Targeting mode follows pursuit state: with no engaged enemy, hostiles and civilians
 share pure camera-crosshair ranking at every range with no sensor-distance cap;

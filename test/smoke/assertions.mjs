@@ -164,7 +164,12 @@ export function collectSmokeFailures(results) {
     !planet.level ||
     !planet.jumpLayout.singleLine ||
     !planet.jumpLayout.text.includes('Lift') ||
-    !planet.surfaceTurretsClear
+    !planet.surfaceTurretsClear ||
+    planet.surfaceOptimization.sourceMeshes < 100 ||
+    planet.surfaceOptimization.batches < 1 ||
+    planet.surfaceOptimization.lights > 4 ||
+    planet.surfaceOptimization.collisionCells < 1 ||
+    planet.surfaceOptimization.interactionBodies >= planet.surfaceOptimization.bodies
   ) failures.push('planet generation and collision');
   if (
     !planetB.turretDamaged ||
