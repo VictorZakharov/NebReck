@@ -3,6 +3,7 @@ import { CapitalBeamContext } from '../entities/CapitalShip';
 import { STYLE_ENGINES } from '../entities/ShipMesh';
 import { AdaptiveResolution } from '../rendering/AdaptiveResolution';
 import { PostFx } from '../rendering/PostFx';
+import type { AsteroidBody } from '../world/AsteroidField';
 import { showPlayerDamageFeedback } from './DamageFeedback';
 import {
   CAPITAL_TURRET_LOCK_RANGE_METERS,
@@ -34,6 +35,17 @@ export abstract class GameRuntime extends GameInteractions {
   private viewportPixelRatio = this.renderResolution.pixelRatio;
   private missileWarning: 'none' | 'locked' | 'imminent' = 'none';
   private capitalBeamContext!: CapitalBeamContext;
+  private readonly surfaceProjectileBodyQuery = (
+    from: Vector3,
+    to: Vector3,
+    out: AsteroidBody[],
+  ): readonly AsteroidBody[] => {
+    if (!this.surface) {
+      out.length = 0;
+      return out;
+    }
+    return this.surface.queryBodiesAlongSegment(from, to, 1, out);
+  };
 
   protected initializeRuntime(): void {
     const runtime = this;
@@ -104,6 +116,7 @@ export abstract class GameRuntime extends GameInteractions {
       this.pulses.update(dt);
       this.warp.update(dt);
     }
+    this.surface?.updatePresentation(this.chaseCam.camera.position);
     this.postFx.update(
       dt,
       this.state === 'playing' && this.player.boosting,
@@ -190,6 +203,7 @@ export abstract class GameRuntime extends GameInteractions {
       (hit) => this.combat.resolveHit(hit),
       this.surface ? this.terrainProjectileHit : undefined,
       (target) => target !== player || !this.devices.cloaked,
+      this.surface ? this.surfaceProjectileBodyQuery : undefined,
     );
     this.updateMissileWarning();
     this.pickups.update(

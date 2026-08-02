@@ -1,6 +1,6 @@
 # Gotchas
 
-Last updated: 2026-08-01.
+Last updated: 2026-08-02.
 
 Real issues hit while building this game, kept here so they only get paid for once.
 
@@ -473,6 +473,15 @@ Real issues hit while building this game, kept here so they only get paid for on
   list. Enemy steering, projectile sweeps, and `hasLineOfSight` all consume that
   list; decorative-only rocks let enemies see, shoot, or fly through apparent
   cover.
+- **Do not turn that correctness list back into a per-query linear scan.** A cave
+  surface contains more than a thousand profile-matched shell bodies; scanning all
+  of them for every actor, projectile, LOS ray, and loot query dominates low-end
+  planet frames. Build `SurfaceBodyIndex` after generation, keep interaction bodies
+  separate, and feed the indexed candidates into the unchanged narrow-phase tests.
+- **Every local PointLight expands every standard-material shader's light loop.**
+  Cave count therefore cannot determine live light count. `SurfaceLocalLights`
+  retains authored anchors but presents only the two most camera-relevant ones;
+  adding cave lights directly to the live surface regresses every planet fragment.
 - Avoid extreme primitive aspect ratios in procedural geology. Tall low-sided
   cones turn into black needles from edge-on views; surface and cave dressing use
   displaced, bounded icosahedral lobes instead.

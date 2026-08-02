@@ -1,6 +1,6 @@
 # Architecture
 
-Last updated: 2026-08-01.
+Last updated: 2026-08-02.
 
 High-level map of how Nebula Reckoning is put together and why. Companion docs:
 [GOTCHAS.md](GOTCHAS.md) (things that will bite you), [EXTENDING.md](EXTENDING.md)
@@ -42,6 +42,8 @@ src/
     createRenderer.ts     WebGLRenderer config (no MSAA — SMAA is a post pass)
     AdaptiveResolution.ts initial framebuffer pixel budget + sustained-load scaling
     StaticMeshBatching.ts material-wise geometry fusion; preserves source parts on layer 31
+    SurfaceStaticBatch.ts material-wise fusion of immutable planet decoration
+    SurfaceLocalLights.ts camera-local two-light pool for cave illumination
     PostFx.ts             EffectComposer: bloom | chromAb + vignette + ACES | SMAA + grain;
                           recreates targets after browser-fullscreen transitions
     ChaseCamera.ts        blended chase/cockpit views; damage-scaled positional + rotational shake
@@ -64,6 +66,7 @@ src/
     PlanetSurfaceBase.ts independent Vigil base-template builder
     PlanetSurfaceCave.ts open-bottomed cave arch + profile-matched shell/clear route
     PlanetSurfaceStructures.ts shared host contract, route/guard landmarks, rock shaping
+    SurfaceBodyIndex.ts  static X/Z broadphase for surface collision/LOS/projectiles
     SpaceDust.ts          camera-following wrap-around motes (speed sensation)
     noiseGlsl.ts          shared simplex/fbm GLSL chunk
   entities/
@@ -129,6 +132,7 @@ src/
     GameInteractions.ts   travel, trade, contracts, devices, story and enemy spawning
     GameRuntime.ts        input, simulation, carrier mount LOS, missile-warning transitions
     GameCombat.ts         hits, hostile ordnance/LOS, carrier-beam effects and collisions
+    SurfaceEnemyCollision.ts indexed enemy-vs-terrain/body collision resolution
     DamageFeedback.ts     shared hit-preset, shield-flare, camera-shake, HUD and audio contract
     GameHudPresenter.ts   HUD frame assembly, projections, radar and pickup flyouts
     GameWorldFlow.ts      jump spool, contact-facing arrivals and persistent planet swaps
@@ -245,18 +249,19 @@ GameLoop.tick(dt, elapsed, wallDt)
                                  stun + cloak-blind aware, fires via callback
     Turret.update × N          → traverse hemisphere + outward-offset LOS → turretFire
     NeutralShip.update × N; CapitalShip.update → committed charge/fire state
-    ProjectileSystem.update    → homing (cloak can drop target) → resolveHit
+    ProjectileSystem.update    → homing (cloak can drop target) → indexed surface sweep → resolveHit
     ProjectileSystem threat    → live-seeker lock / monotonic ≤2 s impact countdown
        resolveHit: jump-disrupt · damage ships/turrets/capital/neutrals |
        rock: ore crack → pickups · hp → shatter (+calving) · stash burst
     PickupSystem.update        → GameCombat.collect → Inventory (+first-ore beat)
-    GameCombat.resolveShipCollisions (active bodies, capital wall, rams)
+    GameCombat.resolveShipCollisions (indexed surface bodies, capital wall, rams)
     EncounterDirector.update   (space, sector ≥2) → hunter dispatches
     ChaseCamera.update         → third/first blend, FOV, damage-scaled translation/rotation shake
     GameHudPresenter.update    → HudProjector (contacts, ore wireframe, lead marker,
                                  radar and smoothed merchant/loot/planet prompt) →
                                  HudFrameState (jump Flux/devices/offer/quest log) → Hud + Radar3D
-  Sector.update | (planet: static) ; particles/explosions/shield/debris/pulses/warp
+  Sector.update | PlanetSurface.updatePresentation (two nearest cave-light anchors)
+  particles/explosions/shield/debris/pulses/warp
   PostFx.render
 ```
 

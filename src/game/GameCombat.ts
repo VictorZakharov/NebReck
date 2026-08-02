@@ -27,12 +27,12 @@ import { EncounterDirector } from './EncounterDirector';
 import { Inventory } from './Inventory';
 import { Quest, QuestSystem } from './Quests';
 import { pointInsideBody, rayHitsBodyBox } from './WorldCollision';
+import { resolveEnemySurfaceCollision as resolveSurfaceEnemy } from './SurfaceEnemyCollision';
 
 const pushDir = new Vector3();
 const boxClosest = new Vector3();
 const losDir = new Vector3();
 const losOff = new Vector3();
-const enemyRel = new Vector3();
 const fireDirection = new Vector3();
 const fireMuzzle = new Vector3();
 const capitalHullHit = new Vector3();
@@ -93,6 +93,9 @@ export interface GameCombatHost {
  * kill, line-of-sight query, or collision means.
  */
 export class GameCombat {
+  private readonly losBodies: AsteroidBody[] = [];
+  private readonly playerSurfaceBodies: AsteroidBody[] = [];
+
   constructor(private readonly host: GameCombatHost) {}
 
   collect(type: ResourceType): void {
@@ -301,7 +304,10 @@ export class GameCombat {
     const distance = losDir.length();
     if (distance < 1e-5) return true;
     losDir.divideScalar(distance);
-    for (const body of host.world.bodies) {
+    const bodies = host.surface
+      ? host.surface.queryBodiesAlongSegment(from, to, 0, this.losBodies)
+      : host.world.bodies;
+    for (const body of bodies) {
       if (body === ignoredBody || body.destroyed || body.radius < 0.8) continue;
       losOff.copy(body.position).sub(from);
       const along = losOff.dot(losDir);
@@ -439,59 +445,21 @@ export class GameCombat {
 
   resolveEnemySurfaceCollision(enemy: EnemyShip): void {
     const surface = this.host.surface;
-    if (!surface || !enemy.alive) return;
-
-    const minY = surface.heightAt(enemy.position.x, enemy.position.z) + enemy.radius + 0.8;
-    if (enemy.position.y < minY) {
-      enemy.position.y = minY;
-      enemy.velocity.y = Math.max(8, Math.abs(enemy.velocity.y) * 0.35);
-    }
-
-    for (const body of surface.bodies) {
-      if (body.destroyed) continue;
-      const broadRadius = body.radius + enemy.radius;
-      if (body.position.distanceToSquared(enemy.position) > broadRadius * broadRadius) continue;
-
-      let touching = false;
-      if (body.box) {
-        enemyRel.copy(enemy.position).sub(body.position);
-        const px = body.box.hx + enemy.radius - Math.abs(enemyRel.x);
-        const py = body.box.hy + enemy.radius - Math.abs(enemyRel.y);
-        const pz = body.box.hz + enemy.radius - Math.abs(enemyRel.z);
-        if (px > 0 && py > 0 && pz > 0) {
-          touching = true;
-          if (px <= py && px <= pz) {
-            pushDir.set(enemyRel.x >= 0 ? 1 : -1, 0, 0);
-            enemy.position.x = body.position.x + pushDir.x * (body.box.hx + enemy.radius + 0.3);
-          } else if (py <= pz) {
-            pushDir.set(0, enemyRel.y >= 0 ? 1 : -1, 0);
-            enemy.position.y = body.position.y + pushDir.y * (body.box.hy + enemy.radius + 0.3);
-          } else {
-            pushDir.set(0, 0, enemyRel.z >= 0 ? 1 : -1);
-            enemy.position.z = body.position.z + pushDir.z * (body.box.hz + enemy.radius + 0.3);
-          }
-        }
-      } else {
-        enemyRel.copy(enemy.position).sub(body.position);
-        if (enemyRel.lengthSq() < broadRadius * broadRadius) {
-          touching = true;
-          if (enemyRel.lengthSq() < 1e-6) enemyRel.set(0, 1, 0);
-          pushDir.copy(enemyRel).normalize();
-          enemy.position.copy(body.position).addScaledVector(pushDir, broadRadius + 0.3);
-        }
-      }
-      if (touching) {
-        enemy.velocity.reflect(pushDir).multiplyScalar(0.35).addScaledVector(pushDir, 10);
-        break;
-      }
-    }
+    if (surface && enemy.alive) resolveSurfaceEnemy(enemy, surface);
   }
 
   resolveShipCollisions(dt: number): void {
     const host = this.host;
     const player = host.player;
     if (player.alive) {
-      for (const body of host.world.bodies) {
+      const nearbyBodies = host.surface
+        ? host.surface.queryBodiesNear(
+          player.position,
+          player.radius,
+          this.playerSurfaceBodies,
+        )
+        : host.world.bodies;
+      for (const body of nearbyBodies) {
         if (body.destroyed) continue;
         const combinedRadius = body.radius + player.radius;
         if (Math.abs(body.position.x - player.position.x) > combinedRadius) continue;

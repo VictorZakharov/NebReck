@@ -1,6 +1,6 @@
 # Extending the game
 
-Last updated: 2026-08-01.
+Last updated: 2026-08-02.
 
 Cookbook for the most likely additions. Read [GOTCHAS.md](GOTCHAS.md) first —
 especially the determinism and lookAt sections — and check
@@ -113,6 +113,10 @@ triangles. Never independently re-evaluate new high-frequency noise for runtime
 collision. Keep cave control points as one broad-turn ordered walk—do not splice
 a pseudo-branch back into a single Catmull-Rom curve. Decorative rock scales need
 a bounded aspect ratio so procedural formations cannot collapse into needles.
+Register new static bodies before `PlanetSurface` finishes construction so
+`SurfaceBodyIndex` includes them. Mark animated or destructible presentation roots
+so `SurfaceStaticBatch` preserves them, and provide local cave illumination through
+the consolidated light anchors rather than adding persistent runtime PointLights.
 
 ## Add a marker/contact kind
 Extend `HostileClass` (`ui/Hud.ts`), classify it in
@@ -193,4 +197,7 @@ Ships and indestructible cave-shell primitives must pass through
 `StaticMeshBatching`; do not remove their retained layer-31 source parts because
 connectivity audits and physical breakup need them. Mark any animated/dynamic mesh
 `excludeFromBatching`. Prefer instanced geometry or one shader batch for repeated
-billboards instead of one SpriteMaterial/draw call per decoration.
+billboards instead of one SpriteMaterial/draw call per decoration. Planet logic must
+use `PlanetSurface.queryBodiesNear` / `queryBodiesAlongSegment` instead of scanning
+the full body list; static opaque decoration belongs in `SurfaceStaticBatch`, and
+cave-local light count stays fixed through `SurfaceLocalLights`.

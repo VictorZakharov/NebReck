@@ -95,6 +95,7 @@ const threatToPlayer = new Vector3();
 export class ProjectileSystem {
   readonly group = new Group();
   private readonly pool: Projectile[] = [];
+  private readonly bodyCandidates: AsteroidBody[] = [];
   private readonly unitBox = new BoxGeometry(1, 1, 1);
   private readonly threat: MissileThreat = {
     locked: false,
@@ -241,6 +242,11 @@ export class ProjectileSystem {
     onHit: (hit: ProjectileHit) => void,
     terrainHit?: (from: Vector3, to: Vector3, out: Vector3) => boolean,
     canTrack?: (target: Ship) => boolean,
+    bodyQuery?: (
+      from: Vector3,
+      to: Vector3,
+      out: AsteroidBody[],
+    ) => readonly AsteroidBody[],
   ): void {
     for (const p of this.pool) {
       if (!p.active) continue;
@@ -332,7 +338,10 @@ export class ProjectileSystem {
         }
       }
       {
-        for (const a of asteroids) {
+        const collisionBodies = bodyQuery
+          ? bodyQuery(p.mesh.position, newPos, this.bodyCandidates)
+          : asteroids;
+        for (const a of collisionBodies) {
           if (a.destroyed) continue;
           // Cheap broadphase: skip rocks far from the segment start.
           if (Math.abs(a.position.x - newPos.x) > a.radius + 40) continue;

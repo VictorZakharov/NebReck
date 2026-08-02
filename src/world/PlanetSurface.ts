@@ -25,6 +25,11 @@ import {
 } from 'three';
 import { Rng } from '../core/Rng';
 import { TURRET_COLLISION_RADIUS } from '../entities/ShipMeshTypes';
+import { SurfaceLocalLights } from '../rendering/SurfaceLocalLights';
+import {
+  batchSurfaceStatics,
+  SurfaceBatchStats,
+} from '../rendering/SurfaceStaticBatch';
 import { getSurfaceTexture } from '../rendering/SurfaceTextures';
 import { AsteroidBody, ChildAsteroidMotion, makeBody } from './AsteroidField';
 import { NebulaSkybox } from './NebulaSkybox';
@@ -41,6 +46,7 @@ import type {
   SurfaceStructureHost,
 } from './PlanetSurfaceStructures';
 import { displaceRock } from './PlanetSurfaceStructures';
+import { SurfaceBodyIndex } from './SurfaceBodyIndex';
 export type {
   BaseKind,
   CaveLandmark,
@@ -80,6 +86,9 @@ export class PlanetSurface {
   readonly caveLandmarks: CaveLandmark[] = [];
   /** Base anchors for the test harness (pad-level center + template). */
   readonly baseLandmarks: { center: Vector3; kind: BaseKind }[] = [];
+  /** Loot-only view avoids scanning thousands of static cave colliders per frame. */
+  readonly interactionBodies: AsteroidBody[] = [];
+  readonly staticBatchStats: SurfaceBatchStats;
 
   private readonly seedA: number;
   private readonly seedB: number;
@@ -100,6 +109,8 @@ export class PlanetSurface {
    * noise between vertices.
    */
   private terrainHeights: Float32Array | null = null;
+  private readonly bodyIndex = new SurfaceBodyIndex();
+  private readonly localLights: SurfaceLocalLights;
 
   constructor(rng: Rng, planet: PlanetInfo) {
     this.seedA = rng.range(0, 6.28);
@@ -437,6 +448,48 @@ export class PlanetSurface {
         this.turretSpawns.splice(index, 1);
       }
     }
+    for (const body of this.bodies) {
+      if (body.stash || body.ore !== null) this.interactionBodies.push(body);
+    }
+    this.bodyIndex.rebuild(this.bodies);
+    this.localLights = new SurfaceLocalLights(this.group, 2);
+    this.staticBatchStats = batchSurfaceStatics(this.group, this.bodies);
+  }
+
+  /** Select the two cave lights that can materially affect the current view. */
+  updatePresentation(viewerPosition: Vector3): void {
+    this.localLights.update(viewerPosition);
+  }
+
+  /** Broadphase candidates for a swept projectile or line-of-sight segment. */
+  queryBodiesAlongSegment(
+    from: Vector3,
+    to: Vector3,
+    padding: number,
+    out: AsteroidBody[],
+  ): readonly AsteroidBody[] {
+    return this.bodyIndex.querySegment(from, to, padding, out);
+  }
+
+  /** Broadphase candidates for ship collision around one surface position. */
+  queryBodiesNear(
+    position: Vector3,
+    padding: number,
+    out: AsteroidBody[],
+  ): readonly AsteroidBody[] {
+    return this.bodyIndex.queryPoint(position, padding, out);
+  }
+
+  get collisionCellCount(): number {
+    return this.bodyIndex.cellCount;
+  }
+
+  get sourceLocalLightCount(): number {
+    return this.localLights.sourceCount;
+  }
+
+  get activeLocalLightCount(): number {
+    return this.localLights.activeCount;
   }
 
   /** Interpolate the exact terrain triangles submitted to the renderer. */
