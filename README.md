@@ -1,6 +1,6 @@
 # Nebula Reckoning
 
-Last updated: 2026-08-01.
+Last updated: 2026-08-02.
 
 [MIT License](LICENSE) · [Contributing](CONTRIBUTING.md) ·
 [Security](SECURITY.md) · [Play the latest production build](https://victorzakharov.github.io/NebReck/)
@@ -50,10 +50,50 @@ with a telegraphed annihilator beam — cripple it, destroy it, or outrun its fi
   multipliers. Explicit card clicks commit ship and difficulty to one-year,
   root-scoped browser cookies, so choices survive reloads without requiring Engage
   or game entry; opening or rendering the hangar never rewrites them.
+- **Interactive first-flight tutorial**: a dedicated Hangar action launches a
+  consequence-free, 27-objective Kestrel course led by the visual and spoken LYRA
+  instructor. It teaches real flight, combat, damage, devices, mining, crafting,
+  trade, missile evasion, a guided surface-base raid, planetfall and sector travel
+  using the actual systems, HUD highlights and shared world-space navigation. All
+  LYRA copy stays in-universe instead of exposing collision, spawning, or procedural
+  implementation language. The
+  incoming-seeker lesson uses the production lock/impact warning: a clean unaided
+  dodge passes immediately, while a close approach holds time until the player
+  moves laterally clear, then releases the real missile. Every completed objective holds its visible result until
+  the player performs the next prompted gameplay action; named transition buttons
+  remain only where no natural action exists. Left/Right Arrow on desktop and progress
+  chevrons on touch screens stage any lesson as
+  a live, playable debug checkpoint without rerolling the expedition's original sector
+  theme or layout. The movement lesson selects a dense real asteroid cluster and puts
+  its navigation gate beyond the field instead of demonstrating against one lonely rock.
+  LYRA's compact card expands while she speaks, minimizes when
+  she finishes, and preserves a player's manual expand/minimize choice; lesson keys
+  remain visible in the minimized strip. Escape pauses into a training menu, while
+  its **Exit tutorial** action or the touch card's close control explicitly leaves the course.
+  Only the currently taught controls accept input, with matching mobile highlights.
+  Those relevant controls work immediately even while LYRA is speaking: experienced
+  pilots may interrupt a briefing with deliberate actions, while ordinary camera motion
+  during contact identification is latched without cutting LYRA off. Enter mirrors the visible next
+  button only during optional review/free-roam states. Scripted events never cut off
+  narration on their own. One-shot crafting and trading results are latched even when
+  performed before their briefing finishes, so acting early cannot deadlock the course.
+  Closing Trade before buying returns to the still-marked merchant, and R can dock
+  again without restarting the lesson. Free-flight lessons keep Q/E roll available.
+  Scripted impacts and the harmless EMP demonstration remain visible for as long as
+  needed. Cloak training uses a live sentry that fires while the Kestrel is visible,
+  loses it during a close cloaked approach, and reacquires it after weapons reveal
+  the ship; energy is unlimited only for that drill, while LYRA explains the normal
+  finite-energy limit. The surface route keeps its passive battery and salvage cache
+  inside the same authored base. The first flight gate is placed beyond real debris,
+  requiring an actual six-axis route rather than straight-line thrust. Contextual HUD
+  prompts expose only the interaction taught by the current lesson. Looking skyward
+  confirms lift-off without snapping the view, and holding J through orbit cannot
+  silence the following sector-jump briefing. The player cannot
+  die, and the course never overwrites the chosen hangar ship or threat level.
 - **Phone and tablet controls**: an adaptive portrait/landscape flight deck supplies
-  analog move/aim sticks plus 17 non-overlapping touch targets for maneuvering,
-  weapons, devices, interactions, view, Engineering, and pause. Touch devices use
-  a compact native-DOM hangar so every ship, threat, Engage, and Back choice remains
+  analog move/aim sticks plus 18 non-overlapping touch targets for maneuvering,
+  weapons, devices, navigation, interactions, view, Engineering, and pause. Touch devices use
+  a compact native-DOM hangar so every ship, threat, Engage, Tutorial, and Back choice remains
   directly tappable and vertical swipes may begin anywhere on the hangar UI,
   including the selected ship/hardpoint panel; desktop keeps the shared curved visor.
 - **Combat**: four primary weapon profiles + lock-on seeker missiles, cover-independent
@@ -92,7 +132,7 @@ with a telegraphed annihilator beam — cripple it, destroy it, or outrun its fi
   fold through themselves, entrances stay clear, rock formations use bounded
   lobes instead of needle spires, impact damage scales with closing speed, and every
   surface turret mount is collider-cleared so the battery remains exposed to fire.
-  Revisiting the same planet in a sortie restores the exact terrain, harvested
+  Revisiting the same planet during an expedition restores the exact terrain, harvested
   loot, surviving enemies and cleared garrison state.
 - **Two cameras**: banked chase cam and a first-person cockpit with glowing MFDs,
   blended smoothly (V), plus damage-scaled positional and rotational impact shake.
@@ -153,24 +193,31 @@ deployment credentials.
 | Shift | Boost |
 | 1·2·3 / wheel | Switch weapon |
 | V | Toggle cockpit / chase camera |
+| N | Set/clear a navigation point on the selected contact or aimed planet |
 | Tab | Engineering (craft & repair) |
 | J (hold) | Spool jump / land / lift off |
 | R | Hail, trade, deliver or accept |
 | F / G / H | Cloak / EMP / nanobots |
-| Esc | Pause |
+| Esc | Pause (during Tutorial: Resume / Exit tutorial; closes Engineering or Trade when open) |
 | F11 / Fullscreen button | Toggle fullscreen |
 | Touch | Adaptive portrait/landscape dual move/aim sticks + dedicated flight, combat, system, interaction, view, loadout, and pause controls |
 
-Engage captures the desktop pointer but never changes fullscreen state. Use the
-**Toggle Fullscreen** control on the title or pause screen when you want app
-fullscreen; F11 remains the browser-level toggle. App fullscreen uses Keyboard
-Lock where supported so modifier movement chords such as `L-Ctrl + W` remain game
-input instead of browser shortcuts. If a browser rejects the first pointer-lock
-request, click the game canvas once to recapture the mouse; that click is consumed
-and does not fire.
+Engage and Tutorial capture the desktop pointer, enter app fullscreen, and use
+Keyboard Lock where supported so modifier movement chords such as `L-Ctrl + W`
+remain game input instead of browser shortcuts. Automatic app fullscreen is required:
+Chrome owns `Ctrl+W` outside JavaScript fullscreen before page input can cancel it.
+The title and pause controls can still toggle fullscreen manually. If a browser
+rejects the first pointer-lock request, click the game canvas once to recapture
+the mouse; that click is consumed and does not fire.
 Coarse-pointer devices automatically use the touch flight deck and skip pointer lock.
+The desktop Tutorial keeps capture through observation holds and renders its own
+cursor for LYRA controls. If the OS takes focus, the tutorial remains the sole UI;
+click the canvas or a lesson control to resume capture. Escape deliberately opens
+the training pause menu without abandoning progress.
 
-The in-game **Field Manual** (main menu) documents every implemented mechanic.
+New pilots can choose **Tutorial** beside Engage in the Hangar for the guided,
+hands-on course. The in-game **Field Manual** (main menu) remains the complete
+reference for every implemented mechanic.
 
 ## Testing
 
@@ -178,13 +225,13 @@ The in-game **Field Manual** (main menu) documents every implemented mechanic.
 npm run test:architecture     # enforce controller and harness line-size budgets
 npm run typecheck            # strict TS, no emit
 npm run test:performance     # repeatable 1080p / native-4K / Retina-4K renderer report
-npm run test:visual          # full local/release sweep of 43 ignored baselines
+npm run test:visual          # full local/release sweep of 46 ignored baselines
 npm run test:visual:update   # re-capture local baselines after intentional changes
 npm run test:smoke           # end-to-end behavior + persistence regression suite
 ```
 
-The smoke command keeps a thin runner in `test/smoke.mjs`; focused hangar, world,
-targeting, capital, runtime, and real coarse-pointer mobile probes live under
+The smoke command keeps a thin runner in `test/smoke.mjs`; focused tutorial,
+hangar, world, targeting, capital, runtime, and real coarse-pointer mobile probes live under
 `test/smoke/`. DOM-only checks stop the live loop, while deterministic artificial
 time skips unobserved post-processing frames. This preserves the full behavior
 coverage without making CI pay software-rendering cost for invisible frames.
@@ -203,10 +250,10 @@ scene via `/?testScene=<name>&seed=7`, and diffs screenshots with pixelmatch.
 Scenes are staged deterministically (seeded RNG, fixed-step simulation, frozen CSS
 animations) — a same-machine re-render diffs at exactly 0.000%. Baselines are local
 generated artifacts and are intentionally not committed: the first run creates
-them, and subsequent runs compare against them. The 43 scenes cover world art,
+them, and subsequent runs compare against them. The 46 scenes cover world art,
 every major screen, targeting, combat/FX, caves, bases, trade, fleet connectivity,
-cloak, desktop controls, phone controls/hangar/overlays, volumetric destruction,
-enemy variants, missile warnings, and the capital superweapon.
+cloak, desktop controls, phone controls/hangar/overlays/tutorial, volumetric destruction,
+enemy variants, missile warnings, the narrated tutorial, and the capital superweapon.
 Failure diffs land in `test/visual/diff/`.
 Use `-- --scene=<name>` during normal PR iteration; the full software-WebGL
 sweep is intentionally local/release-only and is not duplicated in CI.

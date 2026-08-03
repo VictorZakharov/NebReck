@@ -18,7 +18,7 @@ import { Rng } from '../core/Rng';
 import { getSurfaceTexture } from '../rendering/SurfaceTextures';
 import { makeBody } from './AsteroidField';
 import { PlanetInfo } from './Sector';
-import { BaseKind, SurfaceStructureHost } from './PlanetSurfaceStructures';
+import { BaseKind, BaseLandmark, SurfaceStructureHost } from './PlanetSurfaceStructures';
 
 const UP = new Vector3(0, 1, 0);
 
@@ -35,6 +35,7 @@ export function buildSurfaceBase(
 
 /** Builds one complete Vigil installation without owning terrain state. */
 class SurfaceBaseBuilder {
+  private trainingBattery: Vector3 | null = null;
   constructor(private readonly host: SurfaceStructureHost) {}
 
   private get group() { return this.host.group; }
@@ -56,9 +57,11 @@ class SurfaceBaseBuilder {
     lookZ: number,
   ): void {
     this.host.addTurretPost(x, y, z, lookX, lookZ);
+    this.trainingBattery ??= new Vector3(x, y + 2, z);
   }
 
   build(rng: Rng, bx: number, bz: number, kind: BaseKind, planet: PlanetInfo): void {
+    this.trainingBattery = null;
     const by = this.heightAt(bx, bz);
     // Low metalness: metallic surfaces go BLACK without an env map — the
     // whole base read as a dark blob against the lit terrain.
@@ -81,7 +84,10 @@ class SurfaceBaseBuilder {
     const hazardMat = new MeshStandardMaterial({
       color: 0x1a1206, emissive: new Color(0xffb347), emissiveIntensity: 1.3,
     });
-    this.baseLandmarks.push({ center: new Vector3(bx, by, bz), kind });
+    const landmark: BaseLandmark = {
+      center: new Vector3(bx, by, bz), kind, trainingBattery: null,
+    };
+    this.baseLandmarks.push(landmark);
 
     const solid = (
       mesh: Mesh,
@@ -541,6 +547,7 @@ class SurfaceBaseBuilder {
       this.addStash(rng, bx, gy + 14.5, bz); // on the keep roof, inside the guns
     }
 
+    landmark.trainingBattery = this.trainingBattery;
     // A low patrol wing circling every installation.
     const patrolRadius = rng.range(140, 200);
     this.patrols.push({

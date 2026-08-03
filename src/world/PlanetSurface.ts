@@ -40,6 +40,7 @@ import { buildSurfaceBase } from './PlanetSurfaceBase';
 import { buildSurfaceCave } from './PlanetSurfaceCave';
 import type {
   BaseKind,
+  BaseLandmark,
   CaveLandmark,
   CaveWaypoint,
   SurfacePatrol,
@@ -85,7 +86,7 @@ export class PlanetSurface {
   /** Cave anchors for approach, traversal, and spawn-clearance regressions. */
   readonly caveLandmarks: CaveLandmark[] = [];
   /** Base anchors for the test harness (pad-level center + template). */
-  readonly baseLandmarks: { center: Vector3; kind: BaseKind }[] = [];
+  readonly baseLandmarks: BaseLandmark[] = [];
   /** Loot-only view avoids scanning thousands of static cave colliders per frame. */
   readonly interactionBodies: AsteroidBody[] = [];
   readonly staticBatchStats: SurfaceBatchStats;

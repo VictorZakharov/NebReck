@@ -95,6 +95,7 @@ export interface GameWorldFlowHost {
   removeQuestBeacon(id: number): void;
   completeQuest(quest: Quest): void;
   storyComms(key: string): void;
+  clearNavigation(): void;
 }
 
 const jumpForward = new Vector3();
@@ -368,6 +369,7 @@ export class GameWorldFlow {
     const { host } = this;
     const info = host.sector.planets[index];
     if (!info || host.surface) return;
+    host.clearNavigation();
     host.voice.cancel();
     host.pendingOffer = null;
 
@@ -430,6 +432,7 @@ export class GameWorldFlow {
   exitPlanet(): void {
     const { host } = this;
     if (!host.surface || !this.spaceStash) return;
+    host.clearNavigation();
     const planetIndex = this.spaceStash.planetIndex;
 
     this.planetStates.set(planetIndex, {
@@ -481,6 +484,7 @@ export class GameWorldFlow {
   /** Tear down the old world and generate the next one from the seed stream. */
   rebuildSector(): void {
     const { host } = this;
+    host.clearNavigation();
     this.disposeStoredPlanets();
     host.scene.remove(host.sector.group);
     disposeGroup(host.sector.group);

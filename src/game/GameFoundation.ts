@@ -49,7 +49,10 @@ import { GameHudPresenter } from './GameHudPresenter';
 import { GameWorldFlow } from './GameWorldFlow';
 import { Inventory } from './Inventory';
 import { MetaProgress } from './MetaProgress';
+import { NavigationSystem } from './NavigationSystem';
 import { Quest, QuestSystem } from './Quests';
+import { TutorialDirector } from './TutorialDirector';
+import { prepareTutorialSurfaceMission } from './TutorialSurfaceMission';
 
 export type GameState =
   | 'menu'
@@ -98,11 +101,13 @@ export abstract class GameFoundation {
   readonly pickups: PickupSystem;
   shipDebris!: ShipDebris;
   readonly targeting = new Targeting();
+  readonly navigation = new NavigationSystem();
   readonly weapons: WeaponSystem;
   readonly hud: Hud;
   protected readonly hudPresenter: GameHudPresenter;
   protected readonly combat: GameCombat;
   protected readonly worldFlow: GameWorldFlow;
+  readonly tutorial: TutorialDirector;
   protected hangarBay: HangarBay | null = null;
   protected readonly hangarVisor: HangarVisor;
   readonly radar: Radar3D;
@@ -326,6 +331,12 @@ export abstract class GameFoundation {
       get jumpConsumesFlux() {
         return game.worldFlow.jumpConsumesFlux;
       },
+      get navigation() {
+        return game.navigation;
+      },
+      get tutorialStep() {
+        return game.tutorial?.active ? game.tutorial.stepId : null;
+      },
       findAimedPlanet: () => game.findAimedPlanet(),
       planetPosition: (index) => game.sector.planets[index]?.position ?? null,
       nearestNeutral: () => game.nearestNeutral(),
@@ -532,12 +543,88 @@ export abstract class GameFoundation {
         removeQuestBeacon: (id) => game.removeQuestBeacon(id),
         completeQuest: (quest) => game.completeQuest(quest),
         storyComms: (key) => game.storyComms(key),
+        clearNavigation: () => game.navigation.clearForWorldSwap(),
       },
       sectorRng,
     );
+
+    this.tutorial = new TutorialDirector(uiRoot, this.voice, {
+      get state() { return game.state; },
+      get player() { return game.player; },
+      get input() { return game.input; },
+      get touchControlsEnabled() { return game.touchControls.enabled; },
+      get chaseCam() { return game.chaseCam; },
+      get targeting() { return game.targeting; },
+      get weapons() { return game.weapons; },
+      get inventory() { return game.inventory; },
+      get devices() { return game.devices; },
+      get neutrals() { return game.neutrals; },
+      get worldBodies() { return game.world.bodies; },
+      get planets() { return game.sector.planets; },
+      get surface() { return game.surface; },
+      get sectorIndex() { return game.sectorIndex; },
+      spawnTrainingTarget: (position) => {
+        const target = new EnemyShip('brute', game.rng.fork(), 0);
+        target.training = true;
+        target.hullMax = target.hull = 280;
+        target.shieldMax = target.shield = 90;
+        target.position.copy(position);
+        target.faceToward(game.player.position);
+        game.scene.add(target.object);
+        game.enemies.push(target);
+        return target;
+      },
+      removeTrainingTarget: (target) => {
+        game.targeting.current = game.targeting.current?.ship === target
+          ? null
+          : game.targeting.current;
+        game.enemies = game.enemies.filter((enemy) => enemy !== target);
+        game.scene.remove(target.object);
+        target.dispose();
+      },
+      fireTrainingBurst: (target) => game.combat.trainingFire(target),
+      fireTrainingHit: (target, damage) => game.combat.trainingHit(target, damage),
+      fireTrainingSeeker: (target) => game.combat.trainingSeeker(target),
+      playerSeekerImpacts: (target) => game.combat.playerSeekerImpacts(target),
+      releaseTrainingSeekers: () => game.projectiles.releaseIncomingTarget(game.player),
+      incomingMissileThreat: () => game.projectiles.incomingThreat(game.player),
+      prepareSurfaceMission: () => prepareTutorialSurfaceMission(game),
+      setTutorialControls: (gate, preserveHeld) => {
+        game.input.setControlGate(gate, preserveHeld);
+        game.touchControls.setControlGate(gate);
+      },
+      stageTutorialScene: (scene) => {
+        if (game.state === 'loadout' && scene !== 'loadout') game.closeLoadout();
+        if (game.state === 'trade' && scene !== 'trade') game.closeTrade();
+        if (game.surface && scene !== 'surface') game.exitPlanet();
+        if (scene === 'surface' && !game.surface) game.enterPlanet(0);
+        else if (scene === 'loadout' && game.state === 'playing') game.openLoadout();
+        else if (scene === 'trade' && game.state === 'playing') game.openTrade();
+      },
+      setTutorialCloak: (active) => {
+        game.devices.cloakActive = active;
+        game.devices.cloakCooldown = 0;
+        game.cloakVisual.set(game.player, active);
+      },
+      setTutorialFreeze: (frozen) => {
+        game.autoPauseGraceUntil = performance.now() + 1500;
+        if (game.state !== 'playing') game.input.exitPointerLock();
+        else if (!game.headless) game.input.enterFlightMode();
+        if (frozen) game.audio.silenceEngine();
+      },
+      setTutorialNavigation: (destination) => game.navigation.setTutorial(destination),
+      releaseTutorialNavigation: () => game.navigation.releaseTutorial(),
+      exitTutorial: () => game.showHangar(),
+    });
   }
 
   abstract get jumpSuppressed(): boolean;
+  abstract openLoadout(): void;
+  abstract closeLoadout(): void;
+  abstract openTrade(): void;
+  abstract closeTrade(): void;
+  abstract enterPlanet(index: number): void;
+  abstract exitPlanet(): void;
   protected abstract createPlayer(shipId: string): void;
   protected abstract breakCloakOnFire(): void;
   protected abstract findAimedPlanet(): number | null;
@@ -552,5 +639,6 @@ export abstract class GameFoundation {
   protected abstract clearEntities(): void;
   protected abstract removeQuestBeacon(id: number): void;
   protected abstract tick(dt: number, elapsed: number, wallDt?: number): void;
+  abstract showHangar(): void;
   abstract spawnEnemy(spec: HunterSpawnSpec): void;
 }

@@ -17,13 +17,16 @@ import { findAimedLoot, nearestNeutral } from './InteractionTargeting';
 import { Quest } from './Quests';
 import { EXPLORE_COMMS } from './Story';
 import { applyTrade, canTrade } from './Trade';
-import { SYSTEM_LOCKOUT_RANGE_METERS } from './GameConstants';
+import { SYSTEM_LOCKOUT_RANGE_METERS, targetPresentation } from './GameConstants';
+import { NavigationDestination } from './NavigationSystem';
 
 /**
  * Player-triggered world interactions: travel, contracts, trade, devices, and
  * story events. Continuous simulation stays in GameRuntime.
  */
 export abstract class GameInteractions extends GameScreens {
+  private readonly freeNavigationKey = {};
+  private readonly freeNavigationPoint = new Vector3();
   /** The capital ship projects a jump-suppression field. */
   override get jumpSuppressed(): boolean {
     return this.worldFlow.jumpSuppressed;
@@ -62,6 +65,62 @@ export abstract class GameInteractions extends GameScreens {
 
   protected override threatScale(): number {
     return this.worldFlow.threatScale();
+  }
+
+  /** Set or clear the destination under the reticle using the shared N action. */
+  toggleNavigationPoint(): boolean {
+    let destination = this.navigationCandidate();
+    if (!destination && !this.navigation.current) {
+      this.chaseCam.camera.getWorldDirection(this.freeNavigationPoint);
+      this.freeNavigationPoint.multiplyScalar(1000).add(this.chaseCam.camera.position);
+      destination = {
+        key: this.freeNavigationKey,
+        label: 'Free navigation',
+        kind: 'position',
+        position: this.freeNavigationPoint,
+      };
+    }
+    const result = this.navigation.toggleManual(destination);
+    if (result === 'locked') return false;
+    this.hud.showBanner(result === 'assigned'
+      ? `Nav set — ${destination!.label}`
+      : 'Nav cleared');
+    this.audio.uiClick();
+    return true;
+  }
+
+  private navigationCandidate(): NavigationDestination | null {
+    const body = this.lootAimed ? this.lootAimBody : null;
+    if (body && !body.destroyed) {
+      const vein = body.ore !== null;
+      return {
+        key: body,
+        label: vein
+          ? body.ore === 'crystal' ? 'Ion crystal vein' : 'Scrap alloy vein'
+          : 'Salvage stash',
+        kind: vein ? 'vein' : 'stash',
+        position: body.position,
+        valid: () => !body.destroyed && (body.stash || body.ore !== null),
+      };
+    }
+    const ship = this.targeting.current?.ship;
+    if (ship?.alive) {
+      return {
+        key: ship.object,
+        label: targetPresentation(ship, this.targeting.current!.aimAssist).name,
+        kind: 'contact',
+        position: ship.position,
+        valid: () => ship.alive,
+      };
+    }
+    const planetIndex = this.surface ? null : this.findAimedPlanet();
+    const planet = planetIndex === null ? null : this.sector.planets[planetIndex];
+    return planet ? {
+      key: planet,
+      label: `Planet ${planetIndex! + 1}`,
+      kind: 'planet',
+      position: planet.position,
+    } : null;
   }
 
   /** Hail the nearest hauler: trade with merchants, contracts otherwise. */
@@ -126,6 +185,7 @@ export abstract class GameInteractions extends GameScreens {
     if (id === 'buy-missiles' && this.weapons.missileRate <= 0) return false;
     if (!canTrade(id, this.inventory)) return false;
     applyTrade(id, this.inventory);
+    this.tutorial.notifyTrade();
     return true;
   }
 

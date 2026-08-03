@@ -47,6 +47,8 @@ export class Turret extends Ship {
   readonly mountNormal: Vector3 | null;
   /** Seconds of EMP stun remaining. */
   stunTimer = 0;
+  /** Tutorial target: tracks visibly but never releases a shot. */
+  training = false;
   private fireTimer: number;
 
   constructor(rng: Rng, weapon: TurretWeapon = 'bolt', mountNormal: Vector3 | null = null) {
@@ -110,7 +112,7 @@ export class Turret extends Ship {
     this.object.quaternion.rotateTowards(targetQuat, this.stats.turnRate * dt);
 
     this.fireTimer -= dt;
-    if (this.fireTimer <= 0) {
+    if (!this.training && this.fireTimer <= 0) {
       this.forward(fwd);
       if (fwd.dot(toPlayer) > 0.97) {
         fire(this);

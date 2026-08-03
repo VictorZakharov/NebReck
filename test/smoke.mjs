@@ -33,6 +33,7 @@ import {
 } from './smoke/projectile-damage.mjs';
 import { runRuntimeSmoke } from './smoke/runtime.mjs';
 import { runTargetingSmoke } from './smoke/targeting.mjs';
+import { collectTutorialFailures, runTutorialSmoke } from './smoke/tutorial.mjs';
 import { runWorldSmoke } from './smoke/world.mjs';
 
 const DIST = fileURLToPath(new URL('../dist/', import.meta.url));
@@ -49,6 +50,10 @@ try {
 
   const hangarPreferences = await runPreferenceSmoke(browser, BASE_URL, errors);
   const mobile = await runMobileSmoke(browser, BASE_URL, errors);
+  const tutorialPage = await openSmokePage(browser, BASE_URL, errors);
+  const tutorial = await runTutorialSmoke(tutorialPage);
+  console.log('interactive tutorial:', JSON.stringify(tutorial));
+  await tutorialPage.context().close();
   const page = await openSmokePage(browser, BASE_URL, errors);
 
   // Ordering is intentional: later probes reuse world state staged by earlier
@@ -77,6 +82,7 @@ try {
     runtime,
   });
   failures.push(...collectDesktopInputFailures(desktopInput));
+  failures.push(...collectTutorialFailures(tutorial));
   failures.push(...collectPerformanceFailures(performance));
   failures.push(...collectFxFailures(fx));
   failures.push(...collectAsteroidImpactFailures(asteroidImpact));

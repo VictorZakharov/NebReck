@@ -17,14 +17,15 @@ ever-meaner sectors (or dive onto planets) → death banks score÷10 as **credit
 ## Controls & device input
 
 - Desktop uses mouse aim, keyboard flight/system actions, and mouse buttons/wheel
-  for weapons. Entering flight requests pointer lock synchronously but leaves the
-  current fullscreen state untouched. The title/pause **Toggle Fullscreen** control
-  is opt-in and adds Keyboard Lock where supported; F11 remains the browser toggle.
+  for weapons. Entering flight requests pointer lock synchronously, then enters app
+  fullscreen and adds Keyboard Lock where supported. This automatic
+  transition is required to keep the valid `Ctrl+W` descend/forward chord away from
+  the browser's close-tab shortcut. Title/pause **Toggle Fullscreen** remains available.
   A canvas click retries a rejected pointer lock and is consumed rather than firing.
 - Coarse-pointer phones/tablets skip pointer lock and expose an adaptive portrait/landscape dual-stick
   deck: left = thrust/strafe, right = pitch/yaw. Dedicated 46 px-or-larger targets
   cover roll, vertical strafe, boost, fire/seeker, weapon cycle, cloak/EMP/nanobots,
-  hold-J, use/decline, camera, Engineering, and pause.
+  hold-J, NAV, use/decline, camera, Engineering, and pause.
 - Both paths merge in `Input`; `PlayerShip`, `WeaponSystem`, and `GameRuntime` consume
   the same axes/actions, so touch is not a second gameplay implementation.
 - Touch hangars keep the source DOM interactive (rather than rasterizing it onto the
@@ -32,6 +33,98 @@ ever-meaner sectors (or dive onto planets) → death banks score÷10 as **credit
   ship/threat/action layout in landscape. The portrait scroll container restores
   pointer hit testing for its entire surface, so a swipe can start on informational
   ship copy or hardpoint chips as well as on buttons.
+- `N` (or the touch **NAV** action) toggles one shared navigation destination on
+  the selected contact or aimed planet. Its clamped HUD marker and radar blip track
+  moving contacts without turning them into weapon targets. A second activation
+  clears it; world changes discard stale references. Tutorial objectives use and
+  temporarily lock this same system rather than drawing private waypoints.
+
+## Guided tutorial
+
+- The Hangar's **Tutorial** action starts a 27-objective training expedition in the
+  Kestrel at Rookie tuning. It does not write hangar cookies or change the selected
+  ship/difficulty; exiting destroys the training expedition and restores that exact
+  showcase selection.
+- LYRA presents every lesson in a responsive visual instructor card and narrates it
+  through `SpeechSynthesis`. The voice system prefers an installed English female
+  voice, but all narration is duplicated as readable text and the course remains
+  complete when speech is unavailable or muted. The card starts minimized, expands
+  for tracked narration and collapses when it ends; once the player uses +/- their
+  choice persists across lessons. Title, progress and the active control labels stay
+  present in the minimized strip.
+- Prompted controls and visible transition buttons arm immediately. Deliberate discrete
+  actions cancel the unfinished LYRA line, allowing experienced pilots to act without
+  waiting; ordinary camera motion during contact identification does not. Its selection
+  result is latched and enters a review only after narration finishes. Passive
+  objective predicates and scripted effects remain latched until speech ends, so the
+  tutorial never interrupts itself. Enter mirrors a visible optional transition during
+  welcome/review/free roam, is named in that review's control strip, but cannot bypass
+  a natural objective such as a nav point. Successful recipes and trades are latched
+  across their opening lesson, so completing either before LYRA finishes cannot lose
+  the event or strand progression.
+  A generous per-line watchdog prevents a broken browser speech event from trapping the
+  course; unavailable or muted speech arms the lesson immediately. Held-key autorepeat
+  cannot silence the next lesson after a transition such as lift-off into sector-jump
+  training. Every spoken line remains in-universe; engine/test vocabulary is reserved
+  for developer documentation, never LYRA's dialogue.
+- This is live instruction, not a slideshow: movement, boost, camera-centred
+  targeting, primary fire, seekers, nanobots, cloak, decloaking fire, EMP, mining,
+  Engineering, crafting, merchant trade, incoming-seeker evasion, a surface base
+  approach/battery/cache raid, planetfall, lift-off and a sector jump must each be
+  performed through their real input and gameplay paths.
+  HUD focus rings and clamped world-space waypoints identify the exact system or
+  object under instruction, with keyboard/mouse and touch-specific control copy.
+  The movement gate is deliberately placed behind a real asteroid, so the direct
+  route is obstructed and six-axis movement is required. Generic land, trade and mine
+  prompts stay hidden unless the active lesson teaches that interaction.
+  A per-lesson input gate blocks every action not yet taught; the corresponding
+  mobile stick/button glows while irrelevant touch controls dim and reject input.
+  Space free-flight and live free-roam reviews retain Q/E roll. Confirming a skyward
+  heading preserves the pilot's camera orientation instead of snapping to a staged pose.
+- Every observable objective enters an explicit review instead of auto-advancing.
+  Its resulting movement, impact, device state, salvage, overlay or destination
+  remains on screen until the player performs the next prompted gameplay action.
+  Reviews freeze only when continued simulation would erase the result; repeatable
+  effects such as Boost, cloak, EMP, salvage collection and sector arrival remain live,
+  including while their review narration is speaking.
+  That same input both releases the hold and operates the next real system; named
+  buttons are limited to scripted demonstrations without a natural action. Progress
+  chevrons stage all scene/prerequisite state for any of the 27 playable debug
+  checkpoints without rebuilding or rerolling the original sector theme and layout.
+  The targeting lesson similarly remains on its own review until primary fire carries
+  the player into Weapons. The seeker lesson waits for a recorded player-seeker collision before the separate
+  shield demonstration, so outgoing fire cannot masquerade as incoming damage.
+  Controlled shield and hull shots retry through the real projectile path until an
+  impact is observed; intervening geometry therefore cannot stall the damage lesson.
+- Desktop training retains flight pointer lock through frozen reviews. The LYRA card
+  is keyboard-driven: fresh Left/Right Arrow presses restage adjacent lessons and Enter
+  accepts an offered transition. Touch layouts keep tappable chevrons and buttons. OS
+  focus/pointer-lock loss leaves the tutorial and flight HUD intact; the next eligible
+  click reacquires capture. Escape opens a tutorial-aware pause screen whose Resume
+  preserves the lesson and whose Exit Tutorial performs the same teardown as the touch close control.
+  Engineering and Trade still use their native cursor while those real overlays own input.
+  If Trade is closed before a purchase, its opening review becomes live flight again,
+  keeps the merchant marked, and permits R to reopen the same panel.
+- The EMP lesson uses a real passive hostile that fires zero-damage bolts safely
+  past the player. EMP stops those volleys for four simulated seconds, recharges
+  immediately for training, and leaves the lesson live so the player can repeat it.
+  Shield/hull lessons apply real damage and hold the one-sided flare, vitals and
+  camera feedback. The evasion lesson launches a real hostile seeker: a natural
+  miss completes without a hold; an imminent intercept holds time until sufficient
+  lateral/vertical displacement, then resumes the missile safely.
+- Cloak infiltration uses a live training sentry. It fires while the ship is
+  exposed, stops tracking during a cloaked approach inside 65 metres, and resumes
+  after weapon fire reveals the ship. The drill continuously refills weapon energy
+  so the pilot can experiment, while LYRA states that normal cloak drains the
+  finite bank and cannot last forever.
+- Surface training chooses one authored Vigil base, spawns the passive battery on
+  that base's real turret mount, and selects the salvage cache inside the same
+  landmark. The route never asks the pilot to shuttle between unrelated bases.
+- Training is consequence-free: the director restores a dead/empty player to a
+  minimum safe hull, uses a passive damageable target, clears the tutorial surface
+  garrison, supplies only course materials, and banks no score or Legacy progress.
+  Exit always returns to the Hangar and disposes enemies, turrets, neutrals and
+  cached planet state from the lesson.
 
 ## Rendering performance
 

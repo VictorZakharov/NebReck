@@ -5,6 +5,12 @@ import { TurretSpawn } from './CaveAsteroid';
 
 export type BaseKind = 'compound' | 'comm' | 'depot' | 'fortress';
 
+export interface BaseLandmark {
+  center: Vector3;
+  kind: BaseKind;
+  trainingBattery: Vector3 | null;
+}
+
 export interface SurfacePatrol {
   waypoints: Vector3[];
   size: number;
@@ -40,7 +46,7 @@ export interface SurfaceStructureHost {
   turretSpawns: TurretSpawn[];
   patrols: SurfacePatrol[];
   caveLandmarks: CaveLandmark[];
-  baseLandmarks: { center: Vector3; kind: BaseKind }[];
+  baseLandmarks: BaseLandmark[];
   heightAt(x: number, z: number): number;
   registerObstacle(object: Object3D, padding?: number): void;
   addCrystalFormation(rng: Rng, x: number, y: number, z: number): void;

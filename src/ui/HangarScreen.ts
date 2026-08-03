@@ -10,6 +10,7 @@ export interface HangarCallbacks {
   onShipSelected: (shipId: string) => void;
   onDifficultySelected: (difficultyId: string) => void;
   onEngage: (shipId: string, difficultyId: string) => void;
+  onTutorial: () => void;
   onBack: () => void;
   onHover: () => void;
   onClick: () => void;
@@ -153,6 +154,14 @@ export class HangarScreen {
       this.callbacks.onClick();
       this.callbacks.onEngage(this.shipId, this.difficultyId);
     });
+    const tutorial = document.createElement('button');
+    tutorial.className = 'ns-btn tutorial';
+    tutorial.textContent = 'Tutorial';
+    tutorial.addEventListener('mouseenter', this.callbacks.onHover);
+    tutorial.addEventListener('click', () => {
+      this.callbacks.onClick();
+      this.callbacks.onTutorial();
+    });
     const back = document.createElement('button');
     back.className = 'ns-btn danger';
     back.textContent = 'Back';
@@ -161,7 +170,7 @@ export class HangarScreen {
       this.callbacks.onClick();
       this.callbacks.onBack();
     });
-    actions.append(engage, back);
+    actions.append(engage, tutorial, back);
 
     // Keep actions independent from the top-anchored briefing stack. The
     // curved visor mounts this row against the same bottom baseline as the

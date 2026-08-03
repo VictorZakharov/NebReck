@@ -155,6 +155,65 @@ Engage. Keep the cookie root-scoped (`Path=/`) with a unique name. Extend the
 preference lifecycle smoke test so opening Hangar and reloading produce zero
 writes, while a physical visor-card click produces exactly one.
 
+## Add or change a tutorial lesson
+
+1. Add a `TutorialStepId` and its readable card to `TutorialCards.ts`. Narration
+   must make sense when spoken and must also contain the full instruction on screen;
+   voice is optional presentation, never the sole source of information. Write as
+   LYRA speaking to a pilot: never mention hit volumes, collision implementation,
+   procedural generation, test staging, or progression layers.
+2. Complete the lesson from observable real-system state in
+   `TutorialScenario.update` or an explicit notification from the owning controller.
+   Do not create a tutorial-only copy of movement, combat, crafting, trade or travel.
+   Automatic effects and events must latch while `guideSpeaking` is true. Intentional
+   discrete player input is the exception: add it to
+   `TutorialInputTransitions.tutorialInstructionActionTriggered` so it can cancel the unfinished instruction
+   before observable completion starts the next line. Never let a timer or passive
+   predicate interrupt narration.
+   Do not classify ambient mouse-look as a narration interrupt when its result can be
+   latched; contact selection should finish its current line and enter a review.
+   One-shot controller callbacks (purchases, upgrades, contract actions) must also be
+   latched across an adjacent opening/result-card boundary. Never rely on polling a
+   transient click after the owning UI has already applied it.
+3. Put scene normalization in `TutorialScenario.prepare`, one-time baselines in
+   `enter`, and expose the narrowest capability through `TutorialHost` and its
+   `GameFoundation` adapter. Use a passive live actor or real world object when
+   interaction is required. A scripted hold is appropriate for explaining an
+   impact, not for bypassing an objective.
+4. Add the narrow permission set to `TutorialControlGates.ts`; blocked controls must
+   remain inert through physical and virtual input, while taught controls must be live
+   from the moment the card appears. Free-flight gates include Q/E roll even when the
+   objective only requires translation. Supply a stable shared
+   `NavigationSystem` destination and/or real HUD selector; lock manual NAV while a
+   tutorial destination owns it. Include both desktop and touch control labels, preserve
+   44 px touch targets, and keep the card readable in
+   390×844 portrait as well as 1280×720 desktop.
+5. Let objective completion enter the standard review state; never advance directly
+   past an effect the player needs to understand. Freeze only when simulation would
+   erase the result; use a live review when the player should experiment. Map the
+   next natural
+   gameplay action in `TutorialTransitions.ts`; use a named transition button only
+   when a scripted scene change has no honest gameplay action. Use custom `review`
+   narration when the generic completion copy is not specific enough. Ensure direct
+   chevron navigation stages every prerequisite needed to complete the lesson without
+   rebuilding the mission or advancing the RNG stream. If
+   Enter is the desktop route through an optional transition, name it in the visible
+   control strip; do not advertise Enter on natural-objective cards. Left/Right Arrow
+   are reserved system keys for lesson browsing on every desktop gate; touch layouts
+   use the same staging callbacks through their visible chevrons.
+6. Extend the focused `test/smoke/tutorial-*.mjs` module through the actual input
+   path and add/update the desktop/mobile tutorial visual scenes. Assert gating,
+   indefinite result holds, natural-action handoff, arbitrary-step staging, safety,
+   preference preservation and full teardown. Artificially hold narration and prove
+   that relevant player input interrupts it, free-roam controls remain live, Enter
+   advances only an offered transition, and passive scripted effects still wait.
+   For callback-only UI actions, fire the action both during its own narration and one
+   card early; the result must still reach the correct review. Close a required native
+   overlay without acting, then prove the same marked interaction can reopen it.
+   Branching lessons such as seeker
+   evasion must cover both the assisted and unaided paths. Hold the guide-speaking
+   state artificially to prove passive effects cannot advance early.
+
 ## Add or move UI styling
 
 `ui/styles.css` is an ordered import manifest. Put rules in the narrowest module

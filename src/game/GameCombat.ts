@@ -28,6 +28,7 @@ import { Inventory } from './Inventory';
 import { Quest, QuestSystem } from './Quests';
 import { pointInsideBody, rayHitsBodyBox } from './WorldCollision';
 import { resolveEnemySurfaceCollision as resolveSurfaceEnemy } from './SurfaceEnemyCollision';
+import { fireTutorialBurst, fireTutorialHit, fireTutorialSeeker } from './TutorialCombat';
 
 const pushDir = new Vector3();
 const boxClosest = new Vector3();
@@ -95,6 +96,7 @@ export interface GameCombatHost {
 export class GameCombat {
   private readonly losBodies: AsteroidBody[] = [];
   private readonly playerSurfaceBodies: AsteroidBody[] = [];
+  private readonly playerSeekerHits = new WeakMap<Ship, number>();
 
   constructor(private readonly host: GameCombatHost) {}
 
@@ -142,6 +144,26 @@ export class GameCombat {
     }
   }
 
+  /** Fire harmless bolts visibly past the player for the tutorial EMP demonstration. */
+  trainingFire(enemy: EnemyShip): void {
+    fireTutorialBurst(this.host, enemy);
+  }
+
+  /** One visible, real collision-tested bolt for shield/hull instruction. */
+  trainingHit(enemy: EnemyShip, damage: number): void {
+    fireTutorialHit(this.host, enemy, damage);
+  }
+
+  /** A harmless real seeker: HUD tracking and steering remain production code. */
+  trainingSeeker(enemy: EnemyShip): void {
+    fireTutorialSeeker(this.host, enemy);
+  }
+
+  /** Monotonic per-target count used to teach confirmed seeker impacts. */
+  playerSeekerImpacts(target: Ship): number {
+    return this.playerSeekerHits.get(target) ?? 0;
+  }
+
   resolveHit(hit: ProjectileHit): void {
     const host = this.host;
     if (!hit.ship) {
@@ -182,6 +204,9 @@ export class GameCombat {
       return;
     }
 
+    if (hit.faction === 'player' && hit.wasMissile) {
+      this.playerSeekerHits.set(hit.ship, this.playerSeekerImpacts(hit.ship) + 1);
+    }
     const result = hit.ship.takeDamage(hit.damage);
     if (hit.ship === host.player) {
       if (host.jumpSpool >= 0) host.cancelJump('Jump disrupted — taking fire!');

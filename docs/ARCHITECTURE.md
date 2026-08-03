@@ -34,7 +34,7 @@ src/
   core/
     GameLoop.ts           rAF loop + dt clamp + stepManual() for deterministic tests
     Input.ts              merged keyboard/mouse + virtual touch axes/actions
-    DesktopFlightCapture.ts pointer lock + opt-in fullscreen/Keyboard Lock orchestration;
+    DesktopFlightCapture.ts pointer lock + automatic flight fullscreen/Keyboard Lock orchestration;
                           consumed canvas-click recapture for rejected desktop locks
     EventBus.ts           typed pub/sub (GameEvents interface = the event catalog)
     Rng.ts                seeded mulberry32; fork() derives child streams
@@ -109,12 +109,15 @@ src/
     Hud.ts                per-frame update(state) + imperative flashes/banners/comms
     MainMenu.ts           title / briefing / field manual / controls views
     HangarScreen.ts       ship + difficulty selection (pre-launch)
+    TutorialOverlay.ts    responsive LYRA card, browse chevrons and HUD focus
+    TutorialPanelState.ts narrated auto-collapse + persistent manual panel override
+    TutorialWaypoint.ts   clamped projected narrated-objective marker
     HangarVisor.ts        overlay renderer + orbit/drag/zoom + curved hit forwarding
     VisorPanels.ts        direct canvas raster + one shared convex helmet surface
     ShipThumbnails.ts     offscreen renderer → data-URL hull portraits for the cards
     Radar3D.ts            sphere radar on its own tiny WebGL canvas (ship-frame blips + stems)
     TargetPreview.ts      centered/fitted health wireframe + GPU silhouette perimeter glow
-    TouchControls.ts      dual-stick coarse-pointer deck mapped into Input actions/axes
+    TouchControls.ts      dual-stick deck + tutorial relevance/disabled-state projection
     LoadoutScreen.ts      in-run crafting (Tab); pure view over Inventory
     TradeScreen.ts        merchant Buy/Sell view over structured Trade holdings
     ResourceIcons.ts      original inline SVG set for all resources/consumables
@@ -125,6 +128,7 @@ src/
   audio/
     AudioEngine.ts        procedural WebAudio: capped/cleaned SFX graph, engine hum,
                           ambient pad
+    Voice.ts              tracked SpeechSynthesis narration, guide voice + failure watchdog
   game/
     Game.ts               public facade: constructs and initializes the controller stack
     GameFoundation.ts     shared state + subsystem construction/host wiring
@@ -136,6 +140,18 @@ src/
     DamageFeedback.ts     shared hit-preset, shield-flare, camera-shake, HUD and audio contract
     GameHudPresenter.ts   HUD frame assembly, projections, radar and pickup flyouts
     GameWorldFlow.ts      jump spool, contact-facing arrivals and persistent planet swaps
+    TutorialDirector.ts   live objective/review-hold orchestration, safety and staging
+    TutorialCards.ts      27 readable desktop/touch lesson definitions + review narration
+    TutorialControlGates.ts per-lesson keyboard/mouse/touch permission contract
+    TutorialInputTransitions.ts deliberate player-intent narration interruption
+    TutorialTransitions.ts held-result actions + cross-frame input handoff contract
+    TutorialScenario.ts   staged actors/objectives + lesson completion routing
+    TutorialFlightCourse.ts real-debris route construction for movement training
+    TutorialStealthDrills.ts real missile-evasion + live cloak-infiltration drills
+    TutorialSurfaceMission.ts safe base, passive battery and salvage-cache expedition
+    TutorialCombat.ts     narrow real-projectile training adapters
+    TutorialHost.ts       controller-to-course capability boundary
+    NavigationSystem.ts   shared player/tutorial destination, lock and moving-target reference
     SpawnSafety.ts        quiet sector-entry solver with guaranteed outer-shell fallback
     GameConstants.ts      travel/system-safety constants + target relationship/role copy
     HangarPreferences.ts  read-once, explicit-selection ship/difficulty cookies
@@ -172,6 +188,7 @@ test/
                           render-free deterministic simulation stepping
     preferences.mjs       real menu/hangar preference lifecycle + write-count probe
     hangar.mjs            hangar geometry, crafting and contact UI
+    tutorial*.mjs         isolated paced 27-step course, input gates, safety and teardown
     world.mjs             peace/trade/planet persistence/jump flow + turret clearance
     targeting.mjs         pursuit/contact policy, ordnance warnings/range and flight key chord
     capital.mjs           carrier battery, preview and annihilator probes
@@ -193,10 +210,53 @@ plus a `test` state used by the harness (renders + updates FX, no gameplay) and 
 Legacy overlay reachable from the menu.
 
 - `menu`/`hangar`: camera orbits a parked showcase ship; hangar swaps the hull live.
-- `playing`: full simulation. Esc pause · Tab loadout · V camera · hold-J jump ·
+- `playing`: full simulation. Esc pause · Tab loadout · V camera · N navigation · hold-J jump ·
   R hail/dock/accept · X decline · F/G/H devices; touch buttons feed the same actions.
 - `paused`/`loadout`/`trade`: world frozen (dt withheld) but still rendered.
 - Player death: 2.4 s cinematic delay → gameover (banks Legacy credits).
+
+`TutorialDirector` is orthogonal to this state machine rather than inventing a
+parallel tutorial game. Its live objectives move through the real `playing`,
+`loadout` and `trade` states; `tutorial.frozen` joins the normal world-freeze gate
+when an observation review needs the world stopped, while repeatable effects use
+live reviews. `TutorialTransitions` maps each review to
+the next prompted real action. `Input.setControlGate` filters physical and virtual
+actions at the common read boundary and carries that releasing action across one
+frame so it also reaches gameplay; `TouchControls` mirrors the gate as
+highlighted/disabled controls. Gates arm when a card appears rather than when speech
+ends. `TutorialInputTransitions` recognizes fresh deliberate current-step input, which cancels
+only that unfinished utterance; key autorepeat after a gate transition is never treated
+as a new command. Passive selection from camera motion and automatic events
+remain latched until narration is done. Enter is added to the gate only when the overlay exposes an optional transition,
+never for an unfinished natural objective. Desktop Left/Right Arrow and touch chevrons call the same staging path as
+linear progression, including real flight/loadout/trade/surface state and lesson
+prerequisites, but does not rebuild the mission or consume the RNG stream. The original
+sector theme, asteroid layout and planet layout therefore remain stable while browsing.
+The director owns only course progression and calls small host
+adapters for real actions/staging. Desktop flight/review cards retain pointer lock and
+do not expose mouse-driven card controls; fresh Left/Right Arrow presses browse lessons,
+while Enter accepts an explicitly offered transition. Tutorial-active pointer loss cannot enter `paused` or
+`hangar`; Escape deliberately enters a tutorial-aware `paused` screen with Resume
+and Exit Tutorial actions. Engineering/Trade retain their normal native-cursor states.
+`TutorialPanelState` keeps the card expanded while tracked narration is active and
+collapses it afterward until a manual expand/minimize choice takes ownership.
+Controller notifications for one-shot UI transactions are latched by the director;
+an early recipe purchase or merchant trade survives the transition from the opening
+lesson into its result lesson instead of being erased by scenario initialization.
+The merchant-opening review remains live: closing its native panel before a purchase
+returns to the marked hauler with flight/R controls available, so it can be reopened.
+Free-flight gates share roll, and the surface skyward handoff preserves orientation
+rather than staging a new camera pose.
+Its safety clamp runs before death processing.
+Exiting sets Hangar state before releasing a hold, tears down the
+tutorial expedition/surface, recreates the saved showcase hull, and never writes the
+hangar preference cookies.
+
+`NavigationSystem` is another orthogonal layer. A normal `N`/NAV action snapshots
+the selected contact or aimed planet as a moving destination reference and toggles
+it off when selected again. Tutorial lessons temporarily lock replacement but use
+the same destination, HUD projection and radar marker; world swaps clear stale
+manual references. It never changes `Targeting.current` or weapon aim assistance.
 
 Orthogonal to the state machine is the **environment**: space (default) vs planet
 (`Game.surface` non-null). `GameWorldFlow` owns the private `spaceStash` and
@@ -261,6 +321,7 @@ GameLoop.tick(dt, elapsed, wallDt)
     GameHudPresenter.update    → HudProjector (contacts, ore wireframe, lead marker,
                                  radar and smoothed merchant/loot/planet prompt) →
                                  HudFrameState (jump Flux/devices/offer/quest log) → Hud + Radar3D
+    TutorialDirector.update    → objective predicates, safety clamp, HUD focus + projected waypoint
   Sector.update | PlanetSurface.updatePresentation (two nearest cave-light anchors)
   particles/explosions/shield/debris/pulses/warp
   PostFx.render
@@ -314,8 +375,8 @@ See `test/visual/run.mjs`, `src/game/TestScenes.ts`, and
 `src/game/test-scenes/`. Deterministic because:
 seeded Rng, `GameLoop.stepManual` (no wall clock), frozen CSS animations
 (injected style pauses everything at t=1s), SwiftShader software GL in headless
-Chromium. Same machine → 0.000% pixel diff. The current 43 scenes cover world art,
+Chromium. Same machine → 0.000% pixel diff. The current 46 scenes cover world art,
 ships, combat/FX, hostile and civilian HUD targeting, every major screen,
 caves/bases/wrecks, trade, fleet connectivity, cloak, controls, enemy ordnance,
-missile warnings, volumetric destruction, the carrier superweapon, and phone
+missile warnings, volumetric destruction, the guided tutorial, the carrier superweapon, and phone
 flight/hangar/overlay layouts.

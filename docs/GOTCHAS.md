@@ -207,11 +207,12 @@ Real issues hit while building this game, kept here so they only get paid for on
   normalized bearings so range does not dominate, and omit `capitalTurrets` when
   the capital hull is already included; otherwise one carrier's twelve mounts turn
   the intended majority direction into a carrier-only direction.
-- **Chrome reserves Ctrl+W before ordinary page key handling.** The explicit app
-  fullscreen toggle locks physical `KeyW`, which forwards every modifier chord to
-  `Input`; the handler must still `preventDefault()` while retaining both
+- **Chrome reserves Ctrl+W before ordinary page key handling.** Entering desktop
+  flight automatically starts app fullscreen and locks physical `KeyW`, which
+  forwards every modifier chord to `Input`; the handler must still `preventDefault()` while retaining both
   `ControlLeft` and `KeyW` so descend + forward works. Pointer lock alone is not
-  enough, and outside app fullscreen the browser shortcut remains platform-owned.
+  enough. Do not make flight fullscreen opt-in again unless the chord is remapped:
+  outside app fullscreen the browser shortcut remains platform-owned.
 - **Removing an Object3D does not free its GPU allocations.** Every ship mesh is
   procedurally instantiated, so kills, sector swaps, hangar hull changes, parked
   planet visits, and an abandoned space stash must call `Ship.dispose()` after
@@ -334,16 +335,18 @@ Real issues hit while building this game, kept here so they only get paid for on
 
 ## Pointer lock / input
 
-- **Entering flight and toggling fullscreen are separate user choices.**
+- **Pointer lock must precede automatic fullscreen.**
   `DesktopFlightCapture.enter()` calls `requestPointerLock()` synchronously from
-  Engage/Resume so Safari retains transient activation, but it must not call
-  `requestFullscreen()` or exit an existing fullscreen session. The title/pause
-  toggle owns app fullscreen and Keyboard Lock. An unlocked canvas mousedown supplies
+  Engage/Resume so Safari retains transient activation, then requests app fullscreen
+  and Keyboard Lock for Ctrl+W safety. The title/pause toggle can still exit or restore
+  fullscreen. An unlocked canvas mousedown supplies
   a fresh pointer retry and is consumed so acquiring the mouse never fires the
   primary weapon.
 - Browser Esc force-exits pointer lock. The `pointerlockchange` listener auto-pauses
-  — it checks `state === 'playing'`, so any transition that intentionally exits lock
-  (loadout, pause) must **change state first, then** call `exitPointerLock()`.
+  ordinary flight — it checks `state === 'playing'` and that no tutorial is active,
+  so any normal transition that intentionally exits lock (loadout, pause) must
+  **change state first, then** call `exitPointerLock()`. Tutorial focus loss stays in
+  the course and waits for a fresh capture gesture.
 - `requestPointerLock()` only works from a user-gesture call stack (button click) —
   fine for Launch/Resume; impossible in headless tests (hence `headless` option).
 - Tab and Space are `preventDefault`ed in `Input` so they don't move browser focus.
@@ -417,6 +420,108 @@ Real issues hit while building this game, kept here so they only get paid for on
   through the real menu, settles several frames, and requires zero cookie writes;
   it then physically clicks a different visor card and requires exactly one write,
   followed by another zero-write restore after reload.
+
+- **A tutorial must orchestrate the real game, not fork it.** Fake tutorial-only
+  weapons, wallets or travel rules inevitably drift from live balance. The course
+  observes normal input/state and uses narrow host adapters only to arrange a safe
+  target, resources and scripted damage. `tutorial.frozen` joins the runtime freeze
+  predicate so HUD/FX still render while actors do not advance.
+- **Never advance a tutorial card on the same frame as its visible effect.** Fast
+  learners may need one second and others ten. Every observable objective enters a
+  review card and waits indefinitely. Freeze only effects that would otherwise be
+  lost; keep repeatable or exploratory results live. The next prompted gameplay action
+  releases the hold and must be carried into the following frame so it also operates
+  the real system; use a named button only for a scripted transition with no natural
+  action. In particular, seeker completion requires a real player-seeker collision,
+  not just ammo consumption or generic target-health loss; otherwise the next scripted
+  shield hit looks like self-damage. Count that collision in `GameCombat`. EMP
+  training fire must be real visible projectiles, zero-damage and deliberately aimed
+  past the hull.
+- **Narration must yield to the pilot, but never to a timer.** Arm the current lesson's
+  narrow `Input` gate immediately. Deliberate discrete input cancels the unfinished LYRA
+  utterance and may complete the objective; ambient camera motion should not. A recipe,
+  offer or visible transition
+  button does the same. Passive predicates, scenario events and scripted damage remain
+  latched until `Voice.guideSpeaking` clears. Enter is permitted only when a visible
+  optional transition exists, so it cannot skip navigation or another natural action.
+  A live review such as Boost must preserve held movement and remain playable while
+  its result narration runs.
+  Crafting and trade are callback-only, one-shot events: latch them before advancing
+  from the overlay-opening card, then apply the latch after the result card initializes.
+  Resetting `craftDone`/`tradeDone` on entry without that handoff silently loses fast
+  player actions and deadlocks the lesson.
+  Speech errors and unavailable/muted speech must release immediately; the voice watchdog
+  is the last-resort escape for browsers that never deliver `onend` or `onerror`.
+- **LYRA is a character, not a debug console.** Tutorial copy must describe what the
+  pilot sees and does in the fiction. Terms such as “hit volume,” “real collision,”
+  “procedural contract,” “persistent dungeon,” and “progression layer” belong in these
+  docs, never in spoken or visible instruction.
+- **Teach cloak by demonstrating detection, not by toggling a flag.** A live sentry
+  must fire while exposed, stop while the player approaches cloaked, and resume after
+  the ship reveals itself. Tutorial-only unlimited energy belongs inside that drill;
+  narration must still explain the finite bank used by normal flight.
+- **A surface lesson route owns one authored base.** Use a recorded real battery
+  mount and a cache within the same base landmark; arbitrary nearest turrets can be
+  cave batteries or belong to another base and create incoherent backtracking.
+- **Missile-evasion training must exercise the production threat model.** Spawn a
+  real enemy homing projectile and read `incomingThreat`; never fabricate a warning
+  countdown. A clean player dodge completes live. Only an imminent collision may
+  enter `maneuverHold`, and lateral/vertical clearance must release the projectile,
+  clear its target, remove the warning, and leave the protected player unharmed.
+- Tutorial restrictions belong at `Input` reads, not only in the touch DOM. The
+  shared gate blocks keyboard, mouse and virtual axes/buttons, while `TouchControls`
+  only mirrors the permission as hit-testing and glow. Clear unrelated held/transient
+  input on each gate change, but preserve the one action that intentionally releases
+  a review or screen-opening/closing lessons will consume it before gameplay sees it.
+  Beware toggles: a carried `R` that opens Trade can be observed as a fresh press on
+  the next frame and immediately close it. Dock/undock transitions must retain the
+  state change but discard that carried edge rather than accepting a one-frame flicker.
+  Conversely, a required native overlay must be recoverable: if Trade closes before
+  a purchase, make that review live, preserve its merchant destination, and allow
+  flight plus R so the pilot can dock again. Keyboard autorepeat is held state, not a
+  fresh narration-cancelling press. Free-flight gates must retain Q/E roll.
+- **Tutorial waypoints use the real navigation system.** The course may lock manual
+  `N`/NAV replacement, but HUD projection, radar tracking, moving-target references,
+  world-swap cleanup and normal-flight assignment must all remain owned by
+  `NavigationSystem`. A parallel tutorial marker will drift from live behavior.
+- **A movement lesson must test movement, not prose.** If copy says to navigate debris,
+  construct the gate from a real nearby asteroid and place it beyond that body. Verify
+  the player-to-gate segment intersects collision geometry; a visually busy backdrop
+  does not make a straight-line objective into a six-axis course.
+- **Contextual prompts are also tutorial controls.** Suppressing keyboard input while
+  leaving unrelated land/trade/mine prompts visible teaches unavailable actions and
+  makes the staged scene look broken. Project prompts from the current lesson ID.
+- **A confirmed look direction is player state.** Do not call `faceToward` or snap the
+  chase camera when a skyward/look objective advances. Preserve the exact orientation;
+  stage a new pose only when the next lesson explicitly requires one.
+- **Real scripted projectiles can be intercepted.** Damage demonstrations must retry
+  until the intended shield/hull delta is observed rather than treating one spawned
+  bolt as guaranteed progress.
+- **Tutorial chevrons are state navigation, not copy browsing.** Entering an arbitrary
+  card must stage its real scene, actors, resources, device state and orientation.
+  Otherwise a card such as Field Engineering can ask for Tab while no actionable
+  flight/loadout state exists. Restage course-owned actors and prerequisites inside the
+  current expedition; restarting the mission rerolls sector theme and geometry every
+  time the player changes a lesson.
+- **Desktop tutorial cards are keyboard-driven while flight owns pointer lock.**
+  Left/Right Arrow browse fully staged lessons and Enter accepts only an offered
+  transition; the opening card must advertise both. Do not synthesize a software
+  cursor or release capture to click the card. Touch layouts retain their large tap
+  targets and chevrons. Windows-key/focus loss must never call `pause()`. Escape is deliberately allowed
+  through every tutorial input gate and opens the tutorial-aware pause menu; it must
+  not exit directly. Only the touch card's close control or that menu's explicit Exit Tutorial action
+  may perform the course-to-Hangar transition.
+- **Release a tutorial hold only after changing away from `playing`.** Otherwise
+  `setTutorialFreeze(false)` immediately asks for pointer lock while the Hangar is
+  mounting, and the later pointer-lock loss can auto-pause or steal the exit click.
+  Tutorial exit sets `state = 'hangar'`, stops narration, destroys the sortie and
+  surface cache, then rebuilds the saved showcase hull. Skipping teardown leaks
+  hidden actors and can leave a Kestrel model behind a differently selected card.
+- Speech synthesis is an enhancement, not a dependency. Voice lists may populate
+  late, Safari/phones may deny playback, and headless runs are muted. Keep every
+  LYRA line visible, prefer an available English female voice opportunistically,
+  and gate only while a tracked utterance is genuinely active, with error and watchdog
+  release paths.
 
 - **Turrets must gate FIRE on line-of-sight, not just tracking** — otherwise they
   blast their own mounting rock/roof or a hillside all day (this happened on
